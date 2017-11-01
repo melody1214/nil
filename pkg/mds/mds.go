@@ -5,15 +5,20 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/chanyoung/nil/pkg/db"
 )
 
 // Mds is the [project name] meta-data server node.
 type Mds struct {
+	db db.DB
 }
 
 // New creates a mds object.
 func New() (*Mds, error) {
-	m := &Mds{}
+	m := &Mds{
+		db: db.New(),
+	}
 
 	return m, nil
 }
