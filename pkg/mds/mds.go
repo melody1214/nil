@@ -7,16 +7,19 @@ import (
 	"syscall"
 
 	"github.com/chanyoung/nil/pkg/db"
+	"github.com/chanyoung/nil/pkg/util/uuid"
 )
 
 // Mds is the [project name] meta-data server node.
 type Mds struct {
+	id uuid.UUID
 	db db.DB
 }
 
 // New creates a mds object.
 func New() (*Mds, error) {
 	m := &Mds{
+		id: uuid.Gen(),
 		db: db.New(),
 	}
 
