@@ -1,6 +1,7 @@
 syntax = "proto3";
 
-package swim;
+package github.com.chanyoung.nil.pkg.swim;
+option go_package = "swim";
 
 message Test {
     string content = 1;
