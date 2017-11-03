@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package mdspb;
+
+import "nil/pkg/swim/swim.proto";
+
+service Mds {
+    rpc T (swim.Test) returns (swim.Test);
+}
