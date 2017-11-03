@@ -1,0 +1,6 @@
+{
+    "mds": {
+        "default_addr": "127.0.0.1",
+        "default_port": "51000"
+    }
+}

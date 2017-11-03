@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/chanyoung/nil/pkg/mds"
+	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/spf13/cobra"
 )
 
@@ -29,6 +30,6 @@ func mdsRun(cmd *cobra.Command, args []string) {
 }
 
 func init() {
-	mdsCmd.Flags().StringVarP(&serverAddr, "bind", "b", "127.0.0.1", "address to which the mds will bind")
-	mdsCmd.Flags().StringVarP(&serverPort, "port", "p", "51000", "port on which the mds will listen")
+	mdsCmd.Flags().StringVarP(&serverAddr, "bind", "b", config.Get("mds.default_addr"), "address to which the mds will bind")
+	mdsCmd.Flags().StringVarP(&serverPort, "port", "p", config.Get("mds.default_port"), "port on which the mds will listen")
 }
