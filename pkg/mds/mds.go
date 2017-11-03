@@ -17,7 +17,7 @@ type Mds struct {
 }
 
 // New creates a mds object.
-func New() (*Mds, error) {
+func New(addr, port string) (*Mds, error) {
 	m := &Mds{
 		id: uuid.Gen(),
 		db: db.New(),
