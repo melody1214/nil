@@ -11,20 +11,19 @@ import (
 
 // server serve RPCs.
 type server struct {
-	addr, port string
+	cfg *Config
 }
 
 // newServer creates a rpc server object.
-func newServer(addr, port string) *server {
+func newServer(cfg *Config) *server {
 	return &server{
-		addr: addr,
-		port: port,
+		cfg: cfg,
 	}
 }
 
 // start starts to listen and serve RPCs.
 func (s *server) start(c chan error) {
-	ln, err := net.Listen("tcp", net.JoinHostPort(s.addr, s.port))
+	ln, err := net.Listen("tcp", net.JoinHostPort(s.cfg.ServerAddr, s.cfg.ServerPort))
 	if err != nil {
 		c <- err
 		return

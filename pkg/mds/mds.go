@@ -13,15 +13,17 @@ import (
 // Mds is the [project name] meta-data server node.
 type Mds struct {
 	id     uuid.UUID
+	cfg    *Config
 	server *server
 	db     db.DB
 }
 
 // New creates a mds object.
-func New(addr, port string) (*Mds, error) {
+func New(cfg *Config) (*Mds, error) {
 	m := &Mds{
 		id:     uuid.Gen(),
-		server: newServer(addr, port),
+		cfg:    cfg,
+		server: newServer(cfg),
 		db:     db.New(),
 	}
 

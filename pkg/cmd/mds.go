@@ -9,8 +9,7 @@ import (
 )
 
 var (
-	serverAddr string
-	serverPort string
+	cfg mds.Config
 )
 
 var mdsCmd = &cobra.Command{
@@ -21,7 +20,7 @@ var mdsCmd = &cobra.Command{
 }
 
 func mdsRun(cmd *cobra.Command, args []string) {
-	m, err := mds.New(serverAddr, serverPort)
+	m, err := mds.New(&cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -30,6 +29,7 @@ func mdsRun(cmd *cobra.Command, args []string) {
 }
 
 func init() {
-	mdsCmd.Flags().StringVarP(&serverAddr, "bind", "b", config.Get("mds.default_addr"), "address to which the mds will bind")
-	mdsCmd.Flags().StringVarP(&serverPort, "port", "p", config.Get("mds.default_port"), "port on which the mds will listen")
+	mdsCmd.Flags().StringVarP(&cfg.ServerAddr, "bind", "b", config.Get("mds.addr"), "address to which the mds will bind")
+	mdsCmd.Flags().StringVarP(&cfg.ServerPort, "port", "p", config.Get("mds.port"), "port on which the mds will listen")
+	mdsCmd.Flags().StringVarP(&cfg.LogLocation, "log", "l", config.Get("mds.log_location"), "log location of the mds will print out")
 }
