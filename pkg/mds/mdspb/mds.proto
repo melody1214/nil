@@ -6,5 +6,5 @@ option go_package = "mdspb";
 import "github.com/chanyoung/nil/pkg/swim/swim.proto";
 
 service Mds {
-    rpc T (swim.Test) returns (swim.Test);
+    rpc Ping (swim.Ping) returns (swim.Ack);
 }

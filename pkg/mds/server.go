@@ -5,19 +5,20 @@ import (
 
 	"github.com/chanyoung/nil/pkg/mds/mdspb"
 	"github.com/chanyoung/nil/pkg/swim"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
 // server serve RPCs.
 type server struct {
-	cfg *Config
+	cfg  *Config
+	swim *swim.Server
 }
 
 // newServer creates a rpc server object.
 func newServer(cfg *Config) *server {
 	return &server{
-		cfg: cfg,
+		cfg:  cfg,
+		swim: swim.NewServer(cfg.ID, cfg.ServerAddr, cfg.ServerPort),
 	}
 }
 
@@ -38,8 +39,4 @@ func (s *server) start(c chan error) {
 	if err = g.Serve(ln); err != nil {
 		c <- err
 	}
-}
-
-func (s *server) T(ctx context.Context, in *swim.Test) (*swim.Test, error) {
-	return nil, nil
 }

@@ -43,7 +43,7 @@ const _ = grpc.SupportPackageIsVersion4
 // Client API for Mds service
 
 type MdsClient interface {
-	T(ctx context.Context, in *github_com_chanyoung_nil_pkg_swim.Test, opts ...grpc.CallOption) (*github_com_chanyoung_nil_pkg_swim.Test, error)
+	Ping(ctx context.Context, in *github_com_chanyoung_nil_pkg_swim.Ping, opts ...grpc.CallOption) (*github_com_chanyoung_nil_pkg_swim.Ack, error)
 }
 
 type mdsClient struct {
@@ -54,9 +54,9 @@ func NewMdsClient(cc *grpc.ClientConn) MdsClient {
 	return &mdsClient{cc}
 }
 
-func (c *mdsClient) T(ctx context.Context, in *github_com_chanyoung_nil_pkg_swim.Test, opts ...grpc.CallOption) (*github_com_chanyoung_nil_pkg_swim.Test, error) {
-	out := new(github_com_chanyoung_nil_pkg_swim.Test)
-	err := grpc.Invoke(ctx, "/github.com.chanyoung.nil.pkg.mds.mdspb.Mds/T", in, out, c.cc, opts...)
+func (c *mdsClient) Ping(ctx context.Context, in *github_com_chanyoung_nil_pkg_swim.Ping, opts ...grpc.CallOption) (*github_com_chanyoung_nil_pkg_swim.Ack, error) {
+	out := new(github_com_chanyoung_nil_pkg_swim.Ack)
+	err := grpc.Invoke(ctx, "/github.com.chanyoung.nil.pkg.mds.mdspb.Mds/Ping", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -66,27 +66,27 @@ func (c *mdsClient) T(ctx context.Context, in *github_com_chanyoung_nil_pkg_swim
 // Server API for Mds service
 
 type MdsServer interface {
-	T(context.Context, *github_com_chanyoung_nil_pkg_swim.Test) (*github_com_chanyoung_nil_pkg_swim.Test, error)
+	Ping(context.Context, *github_com_chanyoung_nil_pkg_swim.Ping) (*github_com_chanyoung_nil_pkg_swim.Ack, error)
 }
 
 func RegisterMdsServer(s *grpc.Server, srv MdsServer) {
 	s.RegisterService(&_Mds_serviceDesc, srv)
 }
 
-func _Mds_T_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(github_com_chanyoung_nil_pkg_swim.Test)
+func _Mds_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(github_com_chanyoung_nil_pkg_swim.Ping)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MdsServer).T(ctx, in)
+		return srv.(MdsServer).Ping(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/github.com.chanyoung.nil.pkg.mds.mdspb.Mds/T",
+		FullMethod: "/github.com.chanyoung.nil.pkg.mds.mdspb.Mds/Ping",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MdsServer).T(ctx, req.(*github_com_chanyoung_nil_pkg_swim.Test))
+		return srv.(MdsServer).Ping(ctx, req.(*github_com_chanyoung_nil_pkg_swim.Ping))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -96,8 +96,8 @@ var _Mds_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*MdsServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "T",
-			Handler:    _Mds_T_Handler,
+			MethodName: "Ping",
+			Handler:    _Mds_Ping_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -107,14 +107,14 @@ var _Mds_serviceDesc = grpc.ServiceDesc{
 func init() { proto.RegisterFile("pkg/mds/mdspb/mds.proto", fileDescriptor0) }
 
 var fileDescriptor0 = []byte{
-	// 139 bytes of a gzipped FileDescriptorProto
+	// 144 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x12, 0x2f, 0xc8, 0x4e, 0xd7,
 	0xcf, 0x4d, 0x29, 0x06, 0xe1, 0x82, 0x24, 0x10, 0xa9, 0x57, 0x50, 0x94, 0x5f, 0x92, 0x2f, 0xa4,
 	0x96, 0x9e, 0x59, 0x92, 0x51, 0x9a, 0xa4, 0x97, 0x9c, 0x9f, 0xab, 0x97, 0x9c, 0x91, 0x98, 0x57,
 	0x99, 0x5f, 0x9a, 0x97, 0xae, 0x97, 0x97, 0x99, 0xa3, 0x57, 0x90, 0x9d, 0xae, 0x07, 0x52, 0x07,
 	0xd6, 0x21, 0xa5, 0x83, 0x50, 0xa7, 0x0f, 0x57, 0xa7, 0x9f, 0x97, 0x99, 0xa3, 0x0f, 0x32, 0xb9,
-	0xb8, 0x3c, 0x33, 0x17, 0x4c, 0x40, 0x4c, 0x35, 0x8a, 0xe1, 0x62, 0xf6, 0x4d, 0x29, 0x16, 0x0a,
-	0xe5, 0x62, 0x0c, 0x11, 0x52, 0xd7, 0xc3, 0x6b, 0x05, 0x58, 0x57, 0x48, 0x6a, 0x71, 0x89, 0x14,
-	0xb1, 0x0a, 0x9d, 0xd8, 0xa3, 0x58, 0xc1, 0x8e, 0x4a, 0x62, 0x03, 0xdb, 0x66, 0x0c, 0x08, 0x00,
-	0x00, 0xff, 0xff, 0xed, 0xd0, 0xb4, 0x02, 0xde, 0x00, 0x00, 0x00,
+	0xb8, 0x3c, 0x33, 0x17, 0x4c, 0x40, 0x4c, 0x35, 0x8a, 0xe3, 0x62, 0xf6, 0x4d, 0x29, 0x16, 0x0a,
+	0xe7, 0x62, 0x09, 0xc8, 0xcc, 0x4b, 0x17, 0x52, 0xd7, 0xc3, 0x6b, 0x0b, 0x58, 0x23, 0x48, 0xa1,
+	0x94, 0x1a, 0x11, 0x0a, 0x1d, 0x93, 0xb3, 0x9d, 0xd8, 0xa3, 0x58, 0xc1, 0xce, 0x4a, 0x62, 0x03,
+	0xdb, 0x67, 0x0c, 0x08, 0x00, 0x00, 0xff, 0xff, 0xc3, 0x6d, 0xe5, 0x14, 0xe0, 0x00, 0x00, 0x00,
 }

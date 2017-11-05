@@ -1,7 +1,12 @@
 package mds
 
+import "github.com/chanyoung/nil/pkg/util/uuid"
+
 // Config holds info required to set a metadata server.
 type Config struct {
+	// ID is the uuid of the metadata server.
+	ID uuid.UUID
+
 	// ServerAddr is the address of the metadata server.
 	ServerAddr string
 

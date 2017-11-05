@@ -29,7 +29,3 @@ message PingRequest {
 message Ack {
     
 }
-
-message Test {
-    string content = 1;
-}

@@ -15,3 +15,7 @@ func Gen() UUID {
 
 	return UUID(fmt.Sprintf("%x-%x", buf[0:4], buf[4:]))
 }
+
+func (u *UUID) String() string {
+	return string(*u)
+}

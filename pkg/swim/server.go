@@ -20,3 +20,14 @@ func NewServer(id uuid.UUID, addr, port string) *Server {
 		meml: memList,
 	}
 }
+
+// Set overrides membership list with the given member if the conditions meet.
+func (s *Server) Set(m *Member) {
+	s.meml.set(newMember(
+		uuid.UUID(m.Uuid),
+		m.Addr,
+		m.Port,
+		int32(m.Status),
+		m.Incarnation,
+	))
+}

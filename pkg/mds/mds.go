@@ -38,8 +38,11 @@ func New(cfg *Config) (*Mds, error) {
 	log = l
 	log.WithField("location", cfg.LogLocation).Info("Setting log lcation")
 
+	// Generate MDS ID.
+	cfg.ID = uuid.Gen()
+
 	m := &Mds{
-		id:     uuid.Gen(),
+		id:     cfg.ID,
 		cfg:    cfg,
 		server: newServer(cfg),
 		db:     db.New(),
