@@ -1,14 +1,15 @@
 package osd
 
 import (
-	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/chanyoung/nil/pkg/rest"
+	"github.com/chanyoung/nil/pkg/util/mlog"
 )
+
+var log *mlog.Log
 
 type Osd struct {
 	restServer *rest.Server
@@ -16,6 +17,15 @@ type Osd struct {
 
 // New creates a osd object.
 func New() (*Osd, error) {
+	// Setting logger.
+	l, err := mlog.New("stderr")
+	if err != nil {
+		return nil, err
+	}
+
+	log = l
+	log.WithField("location", "stderr").Info("Setting log lcation")
+
 	o := &Osd{
 		restServer: rest.NewServer(),
 	}
@@ -39,5 +49,5 @@ func (o *Osd) Start() {
 
 func (o *Osd) stop() {
 	// Clean up osd works.
-	fmt.Println("stop osd")
+	log.Println("stop osd")
 }

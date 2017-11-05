@@ -1,25 +1,43 @@
 package mds
 
 import (
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/chanyoung/nil/pkg/db"
+	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/chanyoung/nil/pkg/util/uuid"
 )
 
+var log *mlog.Log
+
 // Mds is the [project name] meta-data server node.
 type Mds struct {
-	id     uuid.UUID
-	cfg    *Config
+	// Unique id of mds.
+	id uuid.UUID
+
+	// cfg is pointing the mds config from command package.
+	cfg *Config
+
+	// RPC server.
 	server *server
-	db     db.DB
+
+	// Key/Value store for metadata.
+	db db.DB
 }
 
 // New creates a mds object.
 func New(cfg *Config) (*Mds, error) {
+	// Setting logger.
+	l, err := mlog.New(cfg.LogLocation)
+	if err != nil {
+		return nil, err
+	}
+
+	log = l
+	log.WithField("location", cfg.LogLocation).Info("Setting log lcation")
+
 	m := &Mds{
 		id:     uuid.Gen(),
 		cfg:    cfg,
@@ -40,18 +58,20 @@ func (m *Mds) Start() {
 	mc := make(chan error, 1)
 	go m.server.start(mc)
 
+	log.Info("MDS running ...")
 	for {
 		select {
 		case <-sc:
+			log.Info("Received stop signal from OS")
 			m.stop()
 			return
 		case err := <-mc:
-			fmt.Println(err)
+			log.Error(err)
 		}
 	}
 }
 
 func (m *Mds) stop() {
 	// Clean up mds works.
-	fmt.Println("stop mds")
+	log.Info("Stop MDS")
 }

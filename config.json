@@ -2,6 +2,6 @@
     "mds": {
         "addr": "127.0.0.1",
         "port": "51000",
-        "log_location": ""
+        "log_location": "stderr"
     }
 }

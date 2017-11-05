@@ -9,6 +9,6 @@ type Config struct {
 	ServerPort string
 
 	// LogLocation is the file path of mds logging.
-	// If it is empty, logging message will print out to stdout.
+	// Default output path is stderr.
 	LogLocation string
 }
