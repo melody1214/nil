@@ -3,6 +3,33 @@ syntax = "proto3";
 package github.com.chanyoung.nil.pkg.swim;
 option go_package = "swim";
 
+enum Status {
+    ALIVE = 0;
+    SUSPECT = 1;
+    FAULTY = 2;
+}
+
+message Member {
+    string uuid = 1;
+    string addr = 2;
+    string port = 3;
+    Status status = 4;
+    uint32 incarnation = 5;
+}
+
+message Ping {
+    repeated Member memlist = 1;
+}
+
+message PingRequest {
+    repeated Member memlist = 1;
+    Member target = 2;
+}
+
+message Ack {
+    
+}
+
 message Test {
     string content = 1;
 }

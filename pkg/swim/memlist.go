@@ -8,11 +8,49 @@ import (
 
 type memList struct {
 	list map[uuid.UUID]*member
-	mu   sync.RWMutex
+	sync.Mutex
 }
 
 func newMemList() *memList {
 	return &memList{
 		list: make(map[uuid.UUID]*member),
+	}
+}
+
+func (ml *memList) set(m *member) {
+	ml.Lock()
+	defer ml.Unlock()
+
+	old := ml.list[m.id]
+	if old == nil {
+		ml.list[m.id] = m
+		return
+	}
+
+	switch m.status {
+	case ALIVE:
+		if old.status == ALIVE && old.incarnation < m.incarnation {
+			ml.list[m.id] = m
+			return
+		}
+
+		if old.status == SUSPECT && old.incarnation < m.incarnation {
+			ml.list[m.id] = m
+			return
+		}
+
+	case SUSPECT:
+		if old.status == ALIVE && old.incarnation <= m.incarnation {
+			ml.list[m.id] = m
+			return
+		}
+
+		if old.status == SUSPECT && old.incarnation < m.incarnation {
+			ml.list[m.id] = m
+			return
+		}
+
+	case FAULTY:
+		delete(ml.list, m.id)
 	}
 }
