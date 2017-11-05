@@ -22,7 +22,7 @@ func (ml *memList) set(m *member) {
 	defer ml.Unlock()
 
 	old := ml.list[m.id]
-	if old == nil {
+	if old == nil && m.status != FAULTY {
 		ml.list[m.id] = m
 		return
 	}
