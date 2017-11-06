@@ -6,11 +6,5 @@ import (
 )
 
 func (s *server) Ping(ctx context.Context, in *swim.Ping) (out *swim.Ack, err error) {
-	out = &swim.Ack{}
-
-	for _, m := range in.GetMemlist() {
-		s.swim.Set(m)
-	}
-
-	return nil, nil
+	return s.swim.Ping(ctx, in)
 }
