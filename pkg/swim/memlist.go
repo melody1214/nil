@@ -50,3 +50,17 @@ func (ml *memList) set(m *Member) {
 		delete(ml.list, m.Uuid)
 	}
 }
+
+// Do not change the contents you got.
+// Use member slice to read only purpose.
+func (ml *memList) getAll() []*Member {
+	ml.Lock()
+	defer ml.Unlock()
+
+	s := make([]*Member, 0)
+	for _, m := range ml.list {
+		s = append(s, m)
+	}
+
+	return s
+}

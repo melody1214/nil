@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/chanyoung/nil/pkg/db"
 	"github.com/chanyoung/nil/pkg/util/mlog"
@@ -61,6 +62,11 @@ func (m *Mds) Start() {
 	mc := make(chan error, 1)
 	go m.server.start(mc)
 
+	// Join membership list.
+	if err := m.join(); err != nil {
+		log.Fatal(err)
+	}
+
 	log.Info("MDS running ...")
 	for {
 		select {
@@ -77,4 +83,14 @@ func (m *Mds) Start() {
 func (m *Mds) stop() {
 	// Clean up mds works.
 	log.Info("Stop MDS")
+}
+
+func (m *Mds) join() (err error) {
+	for retry := 3; retry > 0; retry-- {
+		if err = m.server.join(); err == nil {
+			break
+		}
+		time.Sleep(2 * time.Second)
+	}
+	return err
 }

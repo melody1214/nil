@@ -5,7 +5,7 @@ func newMember(id, ip, port string, status Status, incarnation uint32) *Member {
 		Uuid:        id,
 		Addr:        ip,
 		Port:        port,
-		Status:      Status(status),
+		Status:      status,
 		Incarnation: incarnation,
 	}
 }
