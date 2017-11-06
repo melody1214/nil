@@ -1,56 +1,52 @@
 package swim
 
-import (
-	"sync"
-
-	"github.com/chanyoung/nil/pkg/util/uuid"
-)
+import "sync"
 
 type memList struct {
-	list map[uuid.UUID]*member
+	list map[string]*Member
 	sync.Mutex
 }
 
 func newMemList() *memList {
 	return &memList{
-		list: make(map[uuid.UUID]*member),
+		list: make(map[string]*Member),
 	}
 }
 
-func (ml *memList) set(m *member) {
+func (ml *memList) set(m *Member) {
 	ml.Lock()
 	defer ml.Unlock()
 
-	old := ml.list[m.id]
-	if old == nil && m.status != FAULTY {
-		ml.list[m.id] = m
+	old := ml.list[m.Uuid]
+	if old == nil && m.Status != Status_FAULTY {
+		ml.list[m.Uuid] = m
 		return
 	}
 
-	switch m.status {
-	case ALIVE:
-		if old.status == ALIVE && old.incarnation < m.incarnation {
-			ml.list[m.id] = m
+	switch m.Status {
+	case Status_ALIVE:
+		if old.Status == Status_ALIVE && old.Incarnation < m.Incarnation {
+			ml.list[m.Uuid] = m
 			return
 		}
 
-		if old.status == SUSPECT && old.incarnation < m.incarnation {
-			ml.list[m.id] = m
+		if old.Status == Status_SUSPECT && old.Incarnation < m.Incarnation {
+			ml.list[m.Uuid] = m
 			return
 		}
 
-	case SUSPECT:
-		if old.status == ALIVE && old.incarnation <= m.incarnation {
-			ml.list[m.id] = m
+	case Status_SUSPECT:
+		if old.Status == Status_ALIVE && old.Incarnation <= m.Incarnation {
+			ml.list[m.Uuid] = m
 			return
 		}
 
-		if old.status == SUSPECT && old.incarnation < m.incarnation {
-			ml.list[m.id] = m
+		if old.Status == Status_SUSPECT && old.Incarnation < m.Incarnation {
+			ml.list[m.Uuid] = m
 			return
 		}
 
-	case FAULTY:
-		delete(ml.list, m.id)
+	case Status_FAULTY:
+		delete(ml.list, m.Uuid)
 	}
 }

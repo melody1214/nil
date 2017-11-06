@@ -15,7 +15,7 @@ var log *mlog.Log
 // Mds is the [project name] meta-data server node.
 type Mds struct {
 	// Unique id of mds.
-	id uuid.UUID
+	id string
 
 	// cfg is pointing the mds config from command package.
 	cfg *Config
