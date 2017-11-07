@@ -3,5 +3,16 @@ syntax = "proto3";
 package github.com.chanyoung.nil.pkg.mds.mdspb;
 option go_package = "mdspb";
 
+import "github.com/chanyoung/nil/pkg/swim/swimpb/swim.proto";
+
+message PrintMapRequest {
+
+}
+
+message PrintMapResponse {
+    repeated swimpb.Member memlist = 1;
+}
+
 service Mds {
+    rpc printMap (PrintMapRequest) returns (PrintMapResponse) {}
 }

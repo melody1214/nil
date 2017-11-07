@@ -61,6 +61,11 @@ func (s *Server) Serve(c chan error) {
 	}
 }
 
+// GetMap returns cluster map.
+func (s *Server) GetMap() []*swimpb.Member {
+	return s.meml.getAll()
+}
+
 func (s *Server) makeQ() {
 	s.q = s.q[:0]
 

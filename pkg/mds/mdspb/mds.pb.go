@@ -9,12 +9,15 @@ It is generated from these files:
 	pkg/mds/mdspb/mds.proto
 
 It has these top-level messages:
+	PrintMapRequest
+	PrintMapResponse
 */
 package mdspb
 
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
+import github_com_chanyoung_nil_pkg_swimpb "github.com/chanyoung/nil/pkg/swim/swimpb"
 
 import (
 	context "golang.org/x/net/context"
@@ -32,6 +35,35 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
+type PrintMapRequest struct {
+}
+
+func (m *PrintMapRequest) Reset()                    { *m = PrintMapRequest{} }
+func (m *PrintMapRequest) String() string            { return proto.CompactTextString(m) }
+func (*PrintMapRequest) ProtoMessage()               {}
+func (*PrintMapRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+
+type PrintMapResponse struct {
+	Memlist []*github_com_chanyoung_nil_pkg_swimpb.Member `protobuf:"bytes,1,rep,name=memlist" json:"memlist,omitempty"`
+}
+
+func (m *PrintMapResponse) Reset()                    { *m = PrintMapResponse{} }
+func (m *PrintMapResponse) String() string            { return proto.CompactTextString(m) }
+func (*PrintMapResponse) ProtoMessage()               {}
+func (*PrintMapResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
+
+func (m *PrintMapResponse) GetMemlist() []*github_com_chanyoung_nil_pkg_swimpb.Member {
+	if m != nil {
+		return m.Memlist
+	}
+	return nil
+}
+
+func init() {
+	proto.RegisterType((*PrintMapRequest)(nil), "github.com.chanyoung.nil.pkg.mds.mdspb.PrintMapRequest")
+	proto.RegisterType((*PrintMapResponse)(nil), "github.com.chanyoung.nil.pkg.mds.mdspb.PrintMapResponse")
+}
+
 // Reference imports to suppress errors if they are not otherwise used.
 var _ context.Context
 var _ grpc.ClientConn
@@ -43,6 +75,7 @@ const _ = grpc.SupportPackageIsVersion4
 // Client API for Mds service
 
 type MdsClient interface {
+	PrintMap(ctx context.Context, in *PrintMapRequest, opts ...grpc.CallOption) (*PrintMapResponse, error)
 }
 
 type mdsClient struct {
@@ -53,32 +86,72 @@ func NewMdsClient(cc *grpc.ClientConn) MdsClient {
 	return &mdsClient{cc}
 }
 
+func (c *mdsClient) PrintMap(ctx context.Context, in *PrintMapRequest, opts ...grpc.CallOption) (*PrintMapResponse, error) {
+	out := new(PrintMapResponse)
+	err := grpc.Invoke(ctx, "/github.com.chanyoung.nil.pkg.mds.mdspb.Mds/printMap", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // Server API for Mds service
 
 type MdsServer interface {
+	PrintMap(context.Context, *PrintMapRequest) (*PrintMapResponse, error)
 }
 
 func RegisterMdsServer(s *grpc.Server, srv MdsServer) {
 	s.RegisterService(&_Mds_serviceDesc, srv)
 }
 
+func _Mds_PrintMap_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PrintMapRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MdsServer).PrintMap(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/github.com.chanyoung.nil.pkg.mds.mdspb.Mds/PrintMap",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MdsServer).PrintMap(ctx, req.(*PrintMapRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _Mds_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "github.com.chanyoung.nil.pkg.mds.mdspb.Mds",
 	HandlerType: (*MdsServer)(nil),
-	Methods:     []grpc.MethodDesc{},
-	Streams:     []grpc.StreamDesc{},
-	Metadata:    "pkg/mds/mdspb/mds.proto",
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "printMap",
+			Handler:    _Mds_PrintMap_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "pkg/mds/mdspb/mds.proto",
 }
 
 func init() { proto.RegisterFile("pkg/mds/mdspb/mds.proto", fileDescriptor0) }
 
 var fileDescriptor0 = []byte{
-	// 97 bytes of a gzipped FileDescriptorProto
+	// 214 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0x12, 0x2f, 0xc8, 0x4e, 0xd7,
 	0xcf, 0x4d, 0x29, 0x06, 0xe1, 0x82, 0x24, 0x10, 0xa9, 0x57, 0x50, 0x94, 0x5f, 0x92, 0x2f, 0xa4,
 	0x96, 0x9e, 0x59, 0x92, 0x51, 0x9a, 0xa4, 0x97, 0x9c, 0x9f, 0xab, 0x97, 0x9c, 0x91, 0x98, 0x57,
 	0x99, 0x5f, 0x9a, 0x97, 0xae, 0x97, 0x97, 0x99, 0xa3, 0x57, 0x90, 0x9d, 0xae, 0x07, 0x52, 0x07,
-	0xd6, 0x61, 0xc4, 0xca, 0xc5, 0xec, 0x9b, 0x52, 0xec, 0xc4, 0x1e, 0xc5, 0x0a, 0xe6, 0x27, 0xb1,
-	0x81, 0xb5, 0x1b, 0x03, 0x02, 0x00, 0x00, 0xff, 0xff, 0xb1, 0xd8, 0x0b, 0x60, 0x59, 0x00, 0x00,
-	0x00,
+	0xd6, 0x21, 0x65, 0x8c, 0x50, 0xa7, 0x0f, 0x57, 0xa7, 0x9f, 0x97, 0x99, 0xa3, 0x0f, 0x32, 0xb9,
+	0xb8, 0x3c, 0x33, 0x17, 0x4c, 0x14, 0x24, 0x81, 0x29, 0x88, 0xe1, 0x4a, 0x82, 0x5c, 0xfc, 0x01,
+	0x45, 0x99, 0x79, 0x25, 0xbe, 0x89, 0x05, 0x41, 0xa9, 0x85, 0xa5, 0xa9, 0xc5, 0x25, 0x4a, 0x91,
+	0x5c, 0x02, 0x08, 0xa1, 0xe2, 0x82, 0xfc, 0xbc, 0xe2, 0x54, 0x21, 0x57, 0x2e, 0xf6, 0xdc, 0xd4,
+	0xdc, 0x9c, 0xcc, 0xe2, 0x12, 0x09, 0x46, 0x05, 0x66, 0x0d, 0x6e, 0x23, 0x6d, 0x3d, 0xbc, 0xae,
+	0x82, 0x58, 0xa4, 0xe7, 0x9b, 0x9a, 0x9b, 0x94, 0x5a, 0x14, 0x04, 0xd3, 0x6b, 0xd4, 0xc6, 0xc8,
+	0xc5, 0xec, 0x9b, 0x52, 0x2c, 0x54, 0xcf, 0xc5, 0x51, 0x00, 0xb5, 0x42, 0xc8, 0x5c, 0x8f, 0x38,
+	0xff, 0xe9, 0xa1, 0xb9, 0x53, 0xca, 0x82, 0x74, 0x8d, 0x10, 0xdf, 0x28, 0x31, 0x38, 0xb1, 0x47,
+	0xb1, 0x82, 0xe5, 0x92, 0xd8, 0xc0, 0xc1, 0x60, 0x0c, 0x08, 0x00, 0x00, 0xff, 0xff, 0xaf, 0x99,
+	0x9b, 0xb1, 0x7e, 0x01, 0x00, 0x00,
 }
