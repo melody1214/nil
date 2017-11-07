@@ -3,8 +3,8 @@ package swim
 import "context"
 
 // Join try to join the membership.
-func (s *Server) Join() error {
-	addr, ping := s.NextPing()
+func (s *Server) join() error {
+	addr, ping := s.nextPing()
 
 	// Test code.
 	// Coordinator address

@@ -1,6 +1,11 @@
 package swim
 
-import "github.com/chanyoung/nil/pkg/swim/swimpb"
+import (
+	"time"
+
+	"github.com/chanyoung/nil/pkg/swim/swimpb"
+	"golang.org/x/net/context"
+)
 
 // Server has functions
 type Server struct {
@@ -21,6 +26,38 @@ func NewServer(id string, addr, port string) *Server {
 		id:   id,
 		meml: memList,
 		q:    make([]*swimpb.Member, 0),
+	}
+}
+
+// Serve starts gossiping.
+func (s *Server) Serve(c chan error) {
+	// Try to join the membership.
+	// If failed, sends error message thru channel and stop serving.
+	if err := s.join(); err != nil {
+		c <- err
+		return
+	}
+
+	// ticker gives signal periodically to send a ping.
+	ticker := time.NewTicker(5 * time.Second)
+	for {
+		select {
+		case <-ticker.C:
+			// Get next ping target.
+			t, p := s.nextPing()
+
+			// Sends ping message to the target.
+			go func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+				defer cancel()
+
+				_, err := s.sendPing(ctx, t, p)
+				if err != nil {
+					c <- err
+					return
+				}
+			}()
+		}
 	}
 }
 

@@ -2,9 +2,6 @@ package mds
 
 import (
 	"errors"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/chanyoung/nil/pkg/db"
 	"github.com/chanyoung/nil/pkg/mds/server"
@@ -62,29 +59,10 @@ func New(cfg *config.Mds) (*Mds, error) {
 
 // Start starts the mds.
 func (m *Mds) Start() {
-	// Make channel for Ctrl-C or other terminate signal is received.
-	sc := make(chan os.Signal, 1)
-	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
-
-	// Make channel for message from server.
-	mc := make(chan error, 1)
-	go m.server.Start(mc)
-
-	// Join membership list.
-	if err := m.server.JoinMembership(); err != nil {
-		log.Fatal(err)
-	}
-
-	log.Info("MDS running ...")
-	for {
-		select {
-		case <-sc:
-			log.Info("Received stop signal from OS")
-			m.stop()
-			return
-		case err := <-mc:
-			log.Error(err)
-		}
+	log.Info("Start MDS service ...")
+	err := m.server.Start()
+	if err != nil {
+		log.Error(err)
 	}
 }
 

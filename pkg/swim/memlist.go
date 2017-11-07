@@ -22,7 +22,7 @@ func (ml *memList) set(m *swimpb.Member) {
 	defer ml.Unlock()
 
 	old := ml.list[m.Uuid]
-	if old == nil && m.Status != swimpb.Status_FAULTY {
+	if old == nil || m.Status != swimpb.Status_FAULTY {
 		ml.list[m.Uuid] = m
 		return
 	}
@@ -52,6 +52,16 @@ func (ml *memList) set(m *swimpb.Member) {
 
 	case swimpb.Status_FAULTY:
 		delete(ml.list, m.Uuid)
+	}
+}
+
+func (ml *memList) changeStatus(id string, status swimpb.Status) {
+	ml.Lock()
+	defer ml.Unlock()
+
+	m := ml.list[id]
+	if m != nil {
+		m.Status = status
 	}
 }
 

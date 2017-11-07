@@ -20,8 +20,8 @@ func (s *Server) Ping(ctx context.Context, in *swimpb.PingMessage) (out *swimpb.
 	return out, nil
 }
 
-// NextPing returns target node address and ping message.
-func (s *Server) NextPing() (addr string, p *swimpb.PingMessage) {
+// nextPing returns target node address and ping message.
+func (s *Server) nextPing() (addr string, p *swimpb.PingMessage) {
 	if len(s.q) == 0 {
 		s.makeQ()
 	}
