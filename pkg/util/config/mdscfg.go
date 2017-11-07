@@ -1,7 +1,7 @@
-package mds
+package config
 
-// Config holds info required to set a metadata server.
-type Config struct {
+// Mds holds info required to set a metadata server.
+type Mds struct {
 	// ID is the uuid of the metadata server.
 	ID string
 

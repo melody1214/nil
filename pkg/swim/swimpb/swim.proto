@@ -1,7 +1,7 @@
 syntax = "proto3";
 
-package github.com.chanyoung.nil.pkg.swim;
-option go_package = "swim";
+package github.com.chanyoung.nil.pkg.swimpb;
+option go_package = "swimpb";
 
 enum Status {
     ALIVE = 0;
@@ -17,7 +17,7 @@ message Member {
     uint32 incarnation = 5;
 }
 
-message Ping {
+message PingMessage {
     repeated Member memlist = 1;
 }
 
@@ -28,4 +28,8 @@ message PingRequest {
 
 message Ack {
     
+}
+
+service Swim {
+    rpc Ping (PingMessage) returns (Ack) {}
 }

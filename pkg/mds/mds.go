@@ -4,9 +4,10 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/chanyoung/nil/pkg/db"
+	"github.com/chanyoung/nil/pkg/mds/server"
+	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/chanyoung/nil/pkg/util/uuid"
 )
@@ -19,17 +20,17 @@ type Mds struct {
 	id string
 
 	// cfg is pointing the mds config from command package.
-	cfg *Config
+	cfg *config.Mds
 
 	// RPC server.
-	server *server
+	server *server.Server
 
 	// Key/Value store for metadata.
 	db db.DB
 }
 
 // New creates a mds object.
-func New(cfg *Config) (*Mds, error) {
+func New(cfg *config.Mds) (*Mds, error) {
 	// Setting logger.
 	l, err := mlog.New(cfg.LogLocation)
 	if err != nil {
@@ -45,7 +46,7 @@ func New(cfg *Config) (*Mds, error) {
 	m := &Mds{
 		id:     cfg.ID,
 		cfg:    cfg,
-		server: newServer(cfg),
+		server: server.New(cfg),
 		db:     db.New(),
 	}
 
@@ -60,10 +61,10 @@ func (m *Mds) Start() {
 
 	// Make channel for message from server.
 	mc := make(chan error, 1)
-	go m.server.start(mc)
+	go m.server.Start(mc)
 
 	// Join membership list.
-	if err := m.join(); err != nil {
+	if err := m.server.JoinMembership(); err != nil {
 		log.Fatal(err)
 	}
 
@@ -83,14 +84,4 @@ func (m *Mds) Start() {
 func (m *Mds) stop() {
 	// Clean up mds works.
 	log.Info("Stop MDS")
-}
-
-func (m *Mds) join() (err error) {
-	for retry := 3; retry > 0; retry-- {
-		if err = m.server.join(); err == nil {
-			break
-		}
-		time.Sleep(2 * time.Second)
-	}
-	return err
 }

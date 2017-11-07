@@ -1,7 +1,11 @@
 package swim
 
-func newMember(id, ip, port string, status Status, incarnation uint32) *Member {
-	return &Member{
+import (
+	"github.com/chanyoung/nil/pkg/swim/swimpb"
+)
+
+func newMember(id, ip, port string, status swimpb.Status, incarnation uint32) *swimpb.Member {
+	return &swimpb.Member{
 		Uuid:        id,
 		Addr:        ip,
 		Port:        port,

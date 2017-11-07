@@ -3,8 +3,5 @@ syntax = "proto3";
 package github.com.chanyoung.nil.pkg.mds.mdspb;
 option go_package = "mdspb";
 
-import "github.com/chanyoung/nil/pkg/swim/swim.proto";
-
 service Mds {
-    rpc Ping (swim.Ping) returns (swim.Ack);
 }

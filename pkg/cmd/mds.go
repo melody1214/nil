@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	cfg mds.Config
+	cfg config.Mds
 )
 
 var mdsCmd = &cobra.Command{
