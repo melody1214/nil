@@ -7,8 +7,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// Log wraps logrus.Logger and holds information of logging file.
-type Log struct {
+var (
+	l log
+)
+
+// log wraps logrus.Logger and holds information of logging file.
+type log struct {
 	*logrus.Logger
 
 	file     *os.File
@@ -16,11 +20,9 @@ type Log struct {
 	mu       sync.Mutex
 }
 
-// New creates Log object.
+// Init creates log object.
 // TODO: logging with linux logrotate.
-func New(location string) (*Log, error) {
-	l := &Log{}
-
+func Init(location string) error {
 	l.Logger = logrus.New()
 	l.location = location
 
@@ -30,11 +32,17 @@ func New(location string) (*Log, error) {
 	} else {
 		f, err := os.OpenFile(location, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		l.Out = f
 		l.file = f
 	}
 
-	return l, nil
+	return nil
+}
+
+// GetLogger returns static logger variable.
+// Logging with this logger at any packages.
+func GetLogger() *logrus.Logger {
+	return l.Logger
 }

@@ -1,31 +1,21 @@
 package osd
 
 import (
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/chanyoung/nil/pkg/rest"
-	"github.com/chanyoung/nil/pkg/util/mlog"
 )
 
-var log *mlog.Log
-
+// Osd is the object storage daemon.
 type Osd struct {
 	restServer *rest.Server
 }
 
 // New creates a osd object.
 func New() (*Osd, error) {
-	// Setting logger.
-	l, err := mlog.New("stderr")
-	if err != nil {
-		return nil, err
-	}
-
-	log = l
-	log.WithField("location", "stderr").Info("Setting log lcation")
-
 	o := &Osd{
 		restServer: rest.NewServer(),
 	}

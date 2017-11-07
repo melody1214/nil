@@ -1,6 +1,7 @@
 package mds
 
 import (
+	"errors"
 	"os"
 	"os/signal"
 	"syscall"
@@ -10,9 +11,10 @@ import (
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/chanyoung/nil/pkg/util/uuid"
+	"github.com/sirupsen/logrus"
 )
 
-var log *mlog.Log
+var log *logrus.Logger
 
 // Mds is the [project name] meta-data server node.
 type Mds struct {
@@ -32,16 +34,20 @@ type Mds struct {
 // New creates a mds object.
 func New(cfg *config.Mds) (*Mds, error) {
 	// Setting logger.
-	l, err := mlog.New(cfg.LogLocation)
-	if err != nil {
+	if err := mlog.Init(cfg.LogLocation); err != nil {
 		return nil, err
 	}
 
-	log = l
-	log.WithField("location", cfg.LogLocation).Info("Setting log lcation")
+	// Get initialized logger.
+	log = mlog.GetLogger()
+	if log == nil {
+		return nil, errors.New("nil logger object")
+	}
+	log.WithField("location", cfg.LogLocation).Info("Setting logger succeeded")
 
 	// Generate MDS ID.
 	cfg.ID = uuid.Gen()
+	log.WithField("uuid", cfg.ID).Info("Generating MDS UUID succeeded")
 
 	m := &Mds{
 		id:     cfg.ID,
@@ -49,6 +55,7 @@ func New(cfg *config.Mds) (*Mds, error) {
 		server: server.New(cfg),
 		db:     db.New(),
 	}
+	log.Info("Creating MDS object succeeded")
 
 	return m, nil
 }
