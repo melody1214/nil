@@ -36,7 +36,7 @@ func TestRESTEndPoints(t *testing.T) {
 		}
 		defer resp.Body.Close()
 
-		b, err := ioutil.ReadAll(resp.Body)
+		b, _ := ioutil.ReadAll(resp.Body)
 		if string(b) != c.response {
 			t.Errorf("%s %s: expected response %q, got %q", req.Method, req.URL.Path, c.response, string(b))
 		}
