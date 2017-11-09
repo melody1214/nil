@@ -3,14 +3,16 @@ package swim
 import (
 	"context"
 	"net"
+	"runtime"
+	"sync"
+	"time"
 
 	"github.com/chanyoung/nil/pkg/swim/swimpb"
 )
 
 // Join try to join the membership.
 func (s *Server) join() error {
-	// Test code.
-	// Coordinator address
+	// Test code. // Coordinator address
 	addr := "127.0.0.1:51000"
 
 	// Make ping message.
@@ -23,10 +25,17 @@ func (s *Server) join() error {
 	return err
 }
 
+// Leave try to leave the membership by it's will.
+func (s *Server) leave() {
+	s.meml.changeStatus(s.id, swimpb.Status_FAULTY)
+	s.broadcast()
+}
+
 // Send ping message to all.
 func (s *Server) broadcast() {
 	meml := s.meml.getAll()
 
+	var wg sync.WaitGroup
 	for _, m := range meml {
 		if m.Status == swimpb.Status_FAULTY {
 			continue
@@ -37,10 +46,16 @@ func (s *Server) broadcast() {
 		}
 		p.Memlist = append(p.Memlist, meml...)
 
+		wg.Add(1)
 		go func() {
-			s.sendPing(context.Background(),
-				net.JoinHostPort(m.Addr, m.Port),
-				p)
+			defer wg.Done()
+
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+
+			s.sendPing(ctx, net.JoinHostPort(m.Addr, m.Port), p)
 		}()
+		runtime.Gosched()
 	}
+	wg.Wait()
 }

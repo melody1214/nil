@@ -12,6 +12,7 @@ import (
 type Server struct {
 	id   string
 	meml *memList
+	stop chan chan error
 }
 
 // NewServer creates swim server object.
@@ -25,6 +26,7 @@ func NewServer(id string, addr, port string) *Server {
 	return &Server{
 		id:   id,
 		meml: memList,
+		stop: make(chan chan error, 1),
 	}
 }
 
@@ -43,6 +45,12 @@ func (s *Server) Serve(c chan error) {
 	var pending []*swimpb.Member
 	for {
 		select {
+		case exit := <-s.stop:
+			// Leaving from the membership.
+			// Send good-bye to all members.
+			s.leave()
+			exit <- nil
+			return
 		case <-ticker.C:
 			// Refill the pending queue.
 			if len(pending) == 0 {
@@ -76,6 +84,13 @@ func (s *Server) Serve(c chan error) {
 			}()
 		}
 	}
+}
+
+// Stop will stop the swim server and cleaning up.
+func (s *Server) Stop() error {
+	exit := make(chan error)
+	s.stop <- exit
+	return <-exit
 }
 
 // GetMap returns cluster map.

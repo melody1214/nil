@@ -82,6 +82,9 @@ func (s *Server) Start() error {
 
 // stop cleans up the services and shut down the server.
 func (s *Server) stop() error {
+	// Stop swim server and leaving from the membership.
+	s.swim.Stop()
+
 	// GracefulStop stops the server to accept new connections and RPCs
 	// and blocks until all the pending RPCs are finished.
 	s.g.GracefulStop()

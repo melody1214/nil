@@ -31,9 +31,12 @@ func (ml *memList) changeStatus(id string, status swimpb.Status) {
 	defer ml.Unlock()
 
 	m := ml.list[id]
-	if m != nil {
-		m.Status = status
+	if m == nil {
+		return
 	}
+
+	m.Status = status
+	m.Incarnation++
 }
 
 // Do not change the contents you got.
