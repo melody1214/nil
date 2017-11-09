@@ -21,37 +21,8 @@ func (ml *memList) set(m *swimpb.Member) {
 	ml.Lock()
 	defer ml.Unlock()
 
-	old := ml.list[m.Uuid]
-	if old == nil || m.Status != swimpb.Status_FAULTY {
+	if compare(ml.list[m.Uuid], m) {
 		ml.list[m.Uuid] = m
-		return
-	}
-
-	switch m.Status {
-	case swimpb.Status_ALIVE:
-		if old.Status == swimpb.Status_ALIVE && old.Incarnation < m.Incarnation {
-			ml.list[m.Uuid] = m
-			return
-		}
-
-		if old.Status == swimpb.Status_SUSPECT && old.Incarnation < m.Incarnation {
-			ml.list[m.Uuid] = m
-			return
-		}
-
-	case swimpb.Status_SUSPECT:
-		if old.Status == swimpb.Status_ALIVE && old.Incarnation <= m.Incarnation {
-			ml.list[m.Uuid] = m
-			return
-		}
-
-		if old.Status == swimpb.Status_SUSPECT && old.Incarnation < m.Incarnation {
-			ml.list[m.Uuid] = m
-			return
-		}
-
-	case swimpb.Status_FAULTY:
-		delete(ml.list, m.Uuid)
 	}
 }
 

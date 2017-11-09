@@ -9,6 +9,12 @@ enum Status {
     FAULTY = 2;
 }
 
+enum Type {
+    PING = 0;
+    PINGREQUEST = 1;
+    BROADCAST = 2;
+}
+
 message Member {
     string uuid = 1;
     string addr = 2;
@@ -18,12 +24,8 @@ message Member {
 }
 
 message PingMessage {
-    repeated Member memlist = 1;
-}
-
-message PingRequest {
-    repeated Member memlist = 1;
-    Member target = 2;
+    Type type = 1;
+    repeated Member memlist = 2;
 }
 
 message Ack {

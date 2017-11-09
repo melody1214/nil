@@ -1,8 +1,6 @@
 package swim
 
 import (
-	"net"
-
 	"github.com/chanyoung/nil/pkg/swim/swimpb"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -17,32 +15,12 @@ func (s *Server) Ping(ctx context.Context, in *swimpb.PingMessage) (out *swimpb.
 		s.meml.set(m)
 	}
 
+	switch in.GetType() {
+	case swimpb.Type_BROADCAST:
+		s.broadcast()
+	}
+
 	return out, nil
-}
-
-// nextPing returns target node address and ping message.
-func (s *Server) nextPing() (addr string, p *swimpb.PingMessage) {
-	if len(s.q) == 0 {
-		s.makeQ()
-	}
-
-	for i, m := range s.q {
-		if m.Status == swimpb.Status_FAULTY {
-			s.q[i] = nil
-			continue
-		}
-
-		addr = net.JoinHostPort(m.Addr, m.Port)
-
-		s.q[i] = nil
-		s.q = s.q[:i]
-		break
-	}
-
-	p = &swimpb.PingMessage{}
-	p.Memlist = append(p.Memlist, s.meml.getAll()...)
-
-	return
 }
 
 func (s *Server) sendPing(ctx context.Context, addr string, ping *swimpb.PingMessage) (ack *swimpb.Ack, err error) {
