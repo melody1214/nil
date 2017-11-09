@@ -33,8 +33,7 @@ func mapRun(cmd *cobra.Command, args []string) {
 	}
 
 	for _, node := range res.GetMemlist() {
-		fmt.Print(node)
-		fmt.Println(node.Status.String())
+		fmt.Println(node)
 	}
 }
 
