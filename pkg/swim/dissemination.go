@@ -100,12 +100,12 @@ func (s *Server) broadcast() {
 			Memlist: ml,
 		}
 
-		go func() {
+		go func(addr string, ping *swimpb.PingMessage) {
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			defer cancel()
 
-			s.sendPing(ctx, net.JoinHostPort(m.Addr, m.Port), p)
-		}()
+			s.sendPing(ctx, addr, ping)
+		}(net.JoinHostPort(m.Addr, m.Port), p)
 	}
 	runtime.Gosched()
 }

@@ -99,23 +99,23 @@ func (s *Server) pingRequest(dstID string, pec chan PingError) {
 			continue
 		}
 
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		p := &swimpb.PingMessage{
+			Type:    swimpb.Type_PINGREQUEST,
+			Memlist: content,
+		}
 
-			p := &swimpb.PingMessage{
-				Type:    swimpb.Type_PINGREQUEST,
-				Memlist: content,
-			}
+		wg.Add(1)
+		go func(addr string, ping *swimpb.PingMessage) {
+			defer wg.Done()
 
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			defer cancel()
 
-			_, err := s.sendPing(ctx, net.JoinHostPort(m.Addr, m.Port), p)
+			_, err := s.sendPing(ctx, addr, ping)
 			if err == nil {
 				alive = true
 			}
-		}()
+		}(net.JoinHostPort(m.Addr, m.Port), p)
 
 		k--
 	}

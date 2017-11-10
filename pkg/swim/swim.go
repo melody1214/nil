@@ -11,17 +11,6 @@ func compare(old, new *swimpb.Member) bool {
 		return true
 	}
 
-	// Incoming information is same with ours.
-	if old.Incarnation == new.Incarnation && old.Status == new.Status {
-		return false
-	}
-
-	// Incoming information is same with ours.
-	// Our information is more up-to-date.
-	if old.Incarnation > new.Incarnation {
-		return false
-	}
-
 	// Compare status and incartion.
 	// See the paper for detailed information.
 	switch new.Status {

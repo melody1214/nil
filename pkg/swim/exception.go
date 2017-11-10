@@ -17,7 +17,7 @@ var (
 	ErrPingReq = errors.New("swim: failed to retrieve ack from ping requests")
 )
 
-// PingError contains specific error information which occured in swim server.
+// PingError contains specific error information which occurred in swim server.
 type PingError struct {
 	Type   swimpb.Type
 	DestID string
