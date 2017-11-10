@@ -2,12 +2,11 @@ package swim
 
 import (
 	"errors"
-	"net"
+	"runtime"
 	"sync/atomic"
 	"time"
 
 	"github.com/chanyoung/nil/pkg/swim/swimpb"
-	"golang.org/x/net/context"
 )
 
 // Server has functions
@@ -50,8 +49,6 @@ func (s *Server) Serve(c chan error) {
 
 	// ticker gives signal periodically to send a ping.
 	ticker := time.NewTicker(5 * time.Second)
-	// pending queue for pinging.
-	var pending []*swimpb.Member
 	for {
 		select {
 		case exit := <-s.stop:
@@ -61,36 +58,8 @@ func (s *Server) Serve(c chan error) {
 			exit <- nil
 			return
 		case <-ticker.C:
-			// Refill the pending queue.
-			if len(pending) == 0 {
-				pending = append(pending, s.meml.getAll()...)
-			}
-
-			// Fetch first target from pending queue.
-			t := pending[0]
-			pending = pending[1:]
-
-			// Send ping only the target is not faulty.
-			if t.Status == swimpb.Status_FAULTY {
-				break
-			}
-
-			// Make ping message.
-			p := &swimpb.PingMessage{}
-			p.Type = swimpb.Type_PING
-			p.Memlist = s.meml.getAll()
-
-			// Sends ping message to the target.
-			go func() {
-				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-				defer cancel()
-
-				_, err := s.sendPing(ctx, net.JoinHostPort(t.Addr, t.Port), p)
-				if err != nil {
-					c <- err
-					return
-				}
-			}()
+			go s.ping()
+			runtime.Gosched()
 		}
 	}
 }
@@ -119,5 +88,5 @@ func (s *Server) Stop() error {
 
 // GetMap returns cluster map.
 func (s *Server) GetMap() []*swimpb.Member {
-	return s.meml.getAll()
+	return s.meml.fetch(0)
 }

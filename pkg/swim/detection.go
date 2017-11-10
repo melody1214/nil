@@ -1,6 +1,9 @@
 package swim
 
 import (
+	"net"
+	"time"
+
 	"github.com/chanyoung/nil/pkg/swim/swimpb"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -21,6 +24,30 @@ func (s *Server) Ping(ctx context.Context, in *swimpb.PingMessage) (out *swimpb.
 	}
 
 	return out, nil
+}
+
+func (s *Server) ping() {
+	fetched := s.meml.fetch(1)
+	// Send ping only the target is not faulty.
+	if fetched[0].Status == swimpb.Status_FAULTY {
+		return
+	}
+
+	// Make ping message.
+	p := &swimpb.PingMessage{
+		Type:    swimpb.Type_PING,
+		Memlist: s.meml.fetch(0),
+	}
+
+	// Sends ping message to the target.
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	_, err := s.sendPing(ctx, net.JoinHostPort(fetched[0].Addr, fetched[0].Port), p)
+	if err != nil {
+		// c <- err
+		return
+	}
 }
 
 func (s *Server) sendPing(ctx context.Context, addr string, ping *swimpb.PingMessage) (ack *swimpb.Ack, err error) {

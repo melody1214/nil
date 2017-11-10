@@ -17,6 +17,20 @@ func newMemList() *memList {
 	}
 }
 
+func (ml *memList) get(id string) *swimpb.Member {
+	ml.Lock()
+	defer ml.Unlock()
+
+	m := ml.list[id]
+	if m == nil {
+		return m
+	}
+
+	cp := &swimpb.Member{}
+	*cp = *m
+	return cp
+}
+
 func (ml *memList) set(m *swimpb.Member) {
 	ml.Lock()
 	defer ml.Unlock()
@@ -26,29 +40,26 @@ func (ml *memList) set(m *swimpb.Member) {
 	}
 }
 
-func (ml *memList) changeStatus(id string, status swimpb.Status) {
+// Fetch n number of random item from the member list.
+// Fetch all items if n <= 0.
+func (ml *memList) fetch(n int) []*swimpb.Member {
 	ml.Lock()
 	defer ml.Unlock()
 
-	m := ml.list[id]
-	if m == nil {
-		return
+	if n <= 0 {
+		n = len(ml.list)
 	}
 
-	m.Status = status
-	m.Incarnation++
-}
+	fetched := make([]*swimpb.Member, n)
+	for _, v := range ml.list {
+		if n--; n < 0 {
+			break
+		}
 
-// Do not change the contents you got.
-// Use member slice to read only purpose.
-func (ml *memList) getAll() []*swimpb.Member {
-	ml.Lock()
-	defer ml.Unlock()
-
-	s := make([]*swimpb.Member, 0)
-	for _, m := range ml.list {
-		s = append(s, m)
+		cv := &swimpb.Member{}
+		*cv = *v
+		fetched[n] = cv
 	}
 
-	return s
+	return fetched
 }
