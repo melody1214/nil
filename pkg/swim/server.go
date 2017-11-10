@@ -1,7 +1,9 @@
 package swim
 
 import (
+	"errors"
 	"net"
+	"sync/atomic"
 	"time"
 
 	"github.com/chanyoung/nil/pkg/swim/swimpb"
@@ -10,9 +12,10 @@ import (
 
 // Server has functions
 type Server struct {
-	id   string
-	meml *memList
-	stop chan chan error
+	id      string
+	meml    *memList
+	stop    chan chan error
+	stopped uint32
 }
 
 // NewServer creates swim server object.
@@ -24,14 +27,20 @@ func NewServer(id string, addr, port string) *Server {
 	memList.set(me)
 
 	return &Server{
-		id:   id,
-		meml: memList,
-		stop: make(chan chan error, 1),
+		id:      id,
+		meml:    memList,
+		stop:    make(chan chan error, 1),
+		stopped: uint32(1),
 	}
 }
 
 // Serve starts gossiping.
 func (s *Server) Serve(c chan error) {
+	if s.canStart() == false {
+		c <- errors.New("swim server is already running")
+		return
+	}
+
 	// Try to join the membership.
 	// If failed, sends error message thru channel and stop serving.
 	if err := s.join(); err != nil {
@@ -86,10 +95,25 @@ func (s *Server) Serve(c chan error) {
 	}
 }
 
+func (s *Server) canStart() bool {
+	return atomic.SwapUint32(&s.stopped, uint32(0)) == 1
+}
+
+func (s *Server) isStopped() bool {
+	return atomic.LoadUint32(&s.stopped) == 1
+}
+
 // Stop will stop the swim server and cleaning up.
 func (s *Server) Stop() error {
+	if s.isStopped() {
+		return errors.New("swim server is already stopped")
+	}
+
 	exit := make(chan error)
 	s.stop <- exit
+
+	atomic.SwapUint32(&s.stopped, uint32(1))
+
 	return <-exit
 }
 
