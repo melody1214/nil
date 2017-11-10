@@ -1,8 +1,6 @@
 package swim
 
 import (
-	"errors"
-	"runtime"
 	"sync/atomic"
 	"time"
 
@@ -34,18 +32,21 @@ func NewServer(id string, addr, port string) *Server {
 }
 
 // Serve starts gossiping.
-func (s *Server) Serve(c chan error) {
+func (s *Server) Serve(c chan PingError) {
 	if s.canStart() == false {
-		c <- errors.New("swim server is already running")
+		c <- PingError{Err: ErrRunning}
 		return
 	}
 
 	// Try to join the membership.
 	// If failed, sends error message thru channel and stop serving.
 	if err := s.join(); err != nil {
-		c <- err
+		c <- PingError{Err: err}
 		return
 	}
+
+	// Receive ping error thru this channel.
+	pec := make(chan PingError, 1)
 
 	// ticker gives signal periodically to send a ping.
 	ticker := time.NewTicker(5 * time.Second)
@@ -58,8 +59,10 @@ func (s *Server) Serve(c chan error) {
 			exit <- nil
 			return
 		case <-ticker.C:
-			go s.ping()
-			runtime.Gosched()
+			go s.ping(pec)
+		case pe := <-pec:
+			go s.handleErr(pe)
+			c <- pe
 		}
 	}
 }
@@ -75,7 +78,7 @@ func (s *Server) isStopped() bool {
 // Stop will stop the swim server and cleaning up.
 func (s *Server) Stop() error {
 	if s.isStopped() {
-		return errors.New("swim server is already stopped")
+		return ErrStopped
 	}
 
 	exit := make(chan error)

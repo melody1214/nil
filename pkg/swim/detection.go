@@ -26,7 +26,7 @@ func (s *Server) Ping(ctx context.Context, in *swimpb.PingMessage) (out *swimpb.
 	return out, nil
 }
 
-func (s *Server) ping() {
+func (s *Server) ping(pec chan PingError) {
 	fetched := s.meml.fetch(1)
 	// Send ping only the target is not faulty.
 	if fetched[0].Status == swimpb.Status_FAULTY {
@@ -45,7 +45,11 @@ func (s *Server) ping() {
 
 	_, err := s.sendPing(ctx, net.JoinHostPort(fetched[0].Addr, fetched[0].Port), p)
 	if err != nil {
-		// c <- err
+		pec <- PingError{
+			Type:   swimpb.Type_PING,
+			DestID: fetched[0].Uuid,
+			Err:    err,
+		}
 		return
 	}
 }

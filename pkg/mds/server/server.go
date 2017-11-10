@@ -60,7 +60,7 @@ func (s *Server) Start() error {
 	}()
 
 	// Starts swim service.
-	sc := make(chan error, 1)
+	sc := make(chan swim.PingError, 1)
 	go s.swim.Serve(sc)
 
 	// Make channel for Ctrl-C or other terminate signal is received.
@@ -72,7 +72,11 @@ func (s *Server) Start() error {
 		case err := <-gc:
 			log.Error(err)
 		case err := <-sc:
-			log.Error(err)
+			log.WithFields(logrus.Fields{
+				"server":       "swim",
+				"message type": err.Type,
+				"destID":       err.DestID,
+			}).Error(err.Err)
 		case <-sigc:
 			log.Info("Received stop signal from OS")
 			return s.stop()
