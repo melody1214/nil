@@ -2,6 +2,7 @@ package swim
 
 import (
 	"net"
+	"sync"
 	"time"
 
 	"github.com/chanyoung/nil/pkg/swim/swimpb"
@@ -19,11 +20,23 @@ func (s *Server) Ping(ctx context.Context, in *swimpb.PingMessage) (out *swimpb.
 	}
 
 	switch in.GetType() {
+	case swimpb.Type_PING:
+		return out, nil
+
 	case swimpb.Type_BROADCAST:
 		s.broadcast()
-	}
+		return out, nil
 
-	return out, nil
+	case swimpb.Type_PINGREQUEST:
+		meml := in.GetMemlist()
+		if len(meml) == 0 {
+			return out, ErrNotFound
+		}
+		return s.sendPing(ctx, net.JoinHostPort(meml[0].Addr, meml[0].Port), in)
+
+	default:
+		return out, nil
+	}
 }
 
 func (s *Server) ping(pec chan PingError) {
@@ -51,6 +64,73 @@ func (s *Server) ping(pec chan PingError) {
 			Err:    err,
 		}
 		return
+	}
+}
+
+// Pick 'k' number of random member and request them to send ping indirectly.
+func (s *Server) pingRequest(dstID string, pec chan PingError) {
+	k := 3                // Number of requests.
+	alive := false        // Result of requests.
+	var wg sync.WaitGroup // Wait for all requests are finished.
+
+	dst := s.meml.get(dstID)
+	if dst == nil {
+		pec <- PingError{
+			Type:   swimpb.Type_PINGREQUEST,
+			DestID: dstID,
+			Err:    ErrNotFound,
+		}
+		return
+	}
+	content := make([]*swimpb.Member, 1)
+	content[0] = dst
+
+	fetched := s.meml.fetch(0)
+	for _, m := range fetched {
+		if k == 0 {
+			break
+		}
+
+		if m.Status != swimpb.Status_ALIVE {
+			continue
+		}
+
+		if m.Uuid == s.id {
+			continue
+		}
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			p := &swimpb.PingMessage{
+				Type:    swimpb.Type_PINGREQUEST,
+				Memlist: content,
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+
+			_, err := s.sendPing(ctx, net.JoinHostPort(m.Addr, m.Port), p)
+			if err == nil {
+				alive = true
+			}
+		}()
+
+		k--
+	}
+
+	wg.Wait()
+
+	if alive {
+		s.alive(dstID)
+		return
+	}
+
+	pec <- PingError{
+		Type:   swimpb.Type_PINGREQUEST,
+		DestID: dstID,
+		Err:    ErrPingReq,
 	}
 }
 

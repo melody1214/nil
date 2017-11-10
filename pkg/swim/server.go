@@ -61,7 +61,7 @@ func (s *Server) Serve(c chan PingError) {
 		case <-ticker.C:
 			go s.ping(pec)
 		case pe := <-pec:
-			go s.handleErr(pe)
+			go s.handleErr(pe, pec)
 			c <- pe
 		}
 	}

@@ -22,6 +22,11 @@ func (s *Server) leave() error {
 	return s.disseminate(s.id, swimpb.Status_FAULTY)
 }
 
+// Alive try to send alive message to all members.
+func (s *Server) alive(id string) error {
+	return s.disseminate(id, swimpb.Status_ALIVE)
+}
+
 // Suspect try to send suspect message to all members.
 func (s *Server) suspect(id string) error {
 	return s.disseminate(id, swimpb.Status_SUSPECT)
