@@ -7,7 +7,10 @@ import (
 	"github.com/chanyoung/nil/pkg/swim/swimpb"
 )
 
-// Server has functions
+// Server maintains an list of connected peers and handles
+// gossip messages which incoming periodically. It generates
+// and send gossip message periodically and disseminates the
+// status of the member if the status is changed.
 type Server struct {
 	id      string
 	meml    *memList
@@ -17,10 +20,16 @@ type Server struct {
 
 // NewServer creates swim server object.
 func NewServer(id string, addr, port string) *Server {
-	// Make member myself and add to the list.
-	me := newMember(id, addr, port, swimpb.Status_ALIVE, 0)
 	memList := newMemList()
 
+	// Make member myself and add to the list.
+	me := &swimpb.Member{
+		Uuid:        id,
+		Addr:        addr,
+		Port:        port,
+		Status:      swimpb.Status_ALIVE,
+		Incarnation: 0,
+	}
 	memList.set(me)
 
 	return &Server{
@@ -49,7 +58,7 @@ func (s *Server) Serve(c chan PingError) {
 	pec := make(chan PingError, 1)
 
 	// ticker gives signal periodically to send a ping.
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(pingPeriod)
 	for {
 		select {
 		case exit := <-s.stop:

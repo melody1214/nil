@@ -4,12 +4,11 @@ import (
 	"context"
 	"net"
 	"runtime"
-	"time"
 
 	"github.com/chanyoung/nil/pkg/swim/swimpb"
 )
 
-// Join try to join the membership.
+// Join tries to join the membership.
 func (s *Server) join() error {
 	// Test code. Coordinator address.
 	coordinator := "127.0.0.1:51000"
@@ -17,27 +16,27 @@ func (s *Server) join() error {
 	return s.askBroadcast(coordinator, s.meml.fetch(0))
 }
 
-// Leave try to send leaving message to all members.
+// Leave tries to send leaving message to all members.
 func (s *Server) leave() error {
 	return s.disseminate(s.id, swimpb.Status_FAULTY)
 }
 
-// Alive try to send alive message to all members.
+// Alive tries to send alive message to all members.
 func (s *Server) alive(id string) error {
 	return s.disseminate(id, swimpb.Status_ALIVE)
 }
 
-// Suspect try to send suspect message to all members.
+// Suspect tries to send suspect message to all members.
 func (s *Server) suspect(id string) error {
 	return s.disseminate(id, swimpb.Status_SUSPECT)
 }
 
-// Faulty try to send faulty message to all members.
+// Faulty tries to send faulty message to all members.
 func (s *Server) faulty(id string) error {
 	return s.disseminate(id, swimpb.Status_FAULTY)
 }
 
-// Disseminate change the status and ask broadcast it to other healthy node.
+// Disseminate changes the status and asks broadcast it to other healthy node.
 func (s *Server) disseminate(id string, status swimpb.Status) error {
 	// Change status.
 	m := s.meml.get(id)
@@ -75,7 +74,7 @@ func (s *Server) disseminate(id string, status swimpb.Status) error {
 	return s.askBroadcast(net.JoinHostPort(gossiper.Addr, gossiper.Port), content)
 }
 
-// askBroadcast ask gossiper to broadcast message.
+// askBroadcast asks broadcasting message to gossiper node.
 func (s *Server) askBroadcast(gossiper string, meml []*swimpb.Member) error {
 	ping := &swimpb.PingMessage{
 		Type:    swimpb.Type_BROADCAST,
@@ -86,7 +85,7 @@ func (s *Server) askBroadcast(gossiper string, meml []*swimpb.Member) error {
 	return err
 }
 
-// Send ping message to all.
+// broadcast sends ping message to all.
 func (s *Server) broadcast() {
 	ml := s.meml.fetch(0)
 
@@ -101,7 +100,7 @@ func (s *Server) broadcast() {
 		}
 
 		go func(addr string, ping *swimpb.PingMessage) {
-			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), pingExpire)
 			defer cancel()
 
 			s.sendPing(ctx, addr, ping)

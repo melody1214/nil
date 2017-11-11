@@ -17,6 +17,7 @@ func newMemList() *memList {
 	}
 }
 
+// get returns copied object of the given id.
 func (ml *memList) get(id string) *swimpb.Member {
 	ml.Lock()
 	defer ml.Unlock()
@@ -31,6 +32,8 @@ func (ml *memList) get(id string) *swimpb.Member {
 	return cp
 }
 
+// set compares the given member object is newer than mine.
+// If newer than mine, then update it.
 func (ml *memList) set(m *swimpb.Member) {
 	ml.Lock()
 	defer ml.Unlock()
@@ -40,7 +43,7 @@ func (ml *memList) set(m *swimpb.Member) {
 	}
 }
 
-// Fetch n number of random item from the member list.
+// Fetch fetches 'n' random members from the member list.
 // Fetch all items if n <= 0.
 func (ml *memList) fetch(n int) []*swimpb.Member {
 	ml.Lock()

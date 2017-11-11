@@ -24,6 +24,7 @@ type PingError struct {
 	Err    error
 }
 
+// handleErr handles ping errors to check and disseminate status.
 func (s *Server) handleErr(pe PingError, pec chan PingError) {
 	switch pe.Type {
 	case swimpb.Type_PING:
