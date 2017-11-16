@@ -5,8 +5,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-const s3PathPrefix = "/"
-
 type s3APIHandlers struct {
 	cfg *config.Gw
 }
@@ -21,7 +19,24 @@ func RegisterS3APIRouter(cfg *config.Gw, m *mux.Router) error {
 		cfg: cfg,
 	}
 
-	m.PathPrefix(s3PathPrefix).HandlerFunc(h.catchAll)
+	// API routers.
+	apiRouter := m.PathPrefix("/").Subrouter()
+	bucketRouter := apiRouter.PathPrefix("/{bucket}").Subrouter()
+	objectRouter := bucketRouter.PathPrefix("/{object:.+}").Subrouter()
+
+	// Bucket request handlers
+	// makeBucket : s3cmd mb s3://BUCKET
+	bucketRouter.Methods("PUT").HandlerFunc(h.makeBucket)
+	// removeBucket : s3cmd rb s3://BUCKET
+	bucketRouter.Methods("DELETE").HandlerFunc(h.removeBucket)
+
+	// Object request handlers
+	// putObject : s3cmd put FILE [FILE...] s3://BUCKET[/PREFIX]
+	objectRouter.Methods("PUT").HandlerFunc(h.putObject)
+	// getObject : s3cmd get s3://BUCKET/OBJECT LOCAL_FILE
+	objectRouter.Methods("GET").HandlerFunc(h.getObject)
+	// deleteObject : s3cmd del s3://BUCKET/OBJECT
+	objectRouter.Methods("DELETE").HandlerFunc(h.deleteObject)
 
 	return nil
 }

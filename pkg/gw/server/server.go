@@ -40,7 +40,11 @@ func (s *Server) Start() error {
 		return err
 	}
 
-	go http.ListenAndServe(net.JoinHostPort(s.cfg.ServerAddr, s.cfg.ServerPort), s.mux)
+	// Http server runs and return error through the httpc channel.
+	httpc := make(chan error)
+	go func() {
+		httpc <- http.ListenAndServe(net.JoinHostPort(s.cfg.ServerAddr, s.cfg.ServerPort), s.mux)
+	}()
 
 	// Make channel for Ctrl-C or other terminate signal is received.
 	sigc := make(chan os.Signal, 1)
@@ -50,6 +54,9 @@ func (s *Server) Start() error {
 		select {
 		case <-sigc:
 			log.Info("Received stop signal from OS")
+			return s.stop()
+		case err := <-httpc:
+			log.Error(err)
 			return s.stop()
 		}
 	}
