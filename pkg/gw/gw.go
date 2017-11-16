@@ -3,6 +3,7 @@ package gw
 import (
 	"errors"
 
+	"github.com/chanyoung/nil/pkg/gw/server"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/chanyoung/nil/pkg/util/uuid"
@@ -18,6 +19,9 @@ type Gw struct {
 
 	// cfg is pointing the gateway config from command package.
 	cfg *config.Gw
+
+	// http server for client requests.
+	server *server.Server
 }
 
 // New creates a gateway object.
@@ -34,13 +38,14 @@ func New(cfg *config.Gw) (*Gw, error) {
 	}
 	log.WithField("location", cfg.LogLocation).Info("Setting logger succeeded")
 
-	// Generate MDS ID.
+	// Generate gateway ID.
 	cfg.ID = uuid.Gen()
 	log.WithField("uuid", cfg.ID).Info("Generating gateway UUID succeeded")
 
 	g := &Gw{
-		id:  cfg.ID,
-		cfg: cfg,
+		id:     cfg.ID,
+		cfg:    cfg,
+		server: server.New(cfg),
 	}
 	log.Info("Creating gateway object succeeded")
 
@@ -50,6 +55,10 @@ func New(cfg *config.Gw) (*Gw, error) {
 // Start starts the gateway.
 func (g *Gw) Start() {
 	log.Info("Start gateway service ...")
+	err := g.server.Start()
+	if err != nil {
+		log.Error(err)
+	}
 }
 
 func (g *Gw) stop() {
