@@ -4,6 +4,11 @@
         "port": "51000",
         "log_location": "stderr"
     },
+    "gw": {
+        "addr": "127.0.0.1",
+        "port": "50000",
+        "log_location": "stderr"
+    },
     "swim": {
         "period": "5s",
         "expire": "5s"
