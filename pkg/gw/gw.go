@@ -42,10 +42,16 @@ func New(cfg *config.Gw) (*Gw, error) {
 	cfg.ID = uuid.Gen()
 	log.WithField("uuid", cfg.ID).Info("Generating gateway UUID succeeded")
 
+	// Creates gateway server.
+	srv, err := server.New(cfg)
+	if err != nil {
+		return nil, err
+	}
+
 	g := &Gw{
 		id:     cfg.ID,
 		cfg:    cfg,
-		server: server.New(cfg),
+		server: srv,
 	}
 	log.Info("Creating gateway object succeeded")
 
