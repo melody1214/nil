@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 )
 
@@ -11,9 +9,11 @@ var RootCmd = &cobra.Command{
 	Use:   "nil [command] [flags]",
 	Short: "nil command-line interface",
 	Long:  `nil command-line interface`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("cli work!!")
-	},
+	Run:   rootCmdRun,
+}
+
+func rootCmdRun(cmd *cobra.Command, args []string) {
+	cmd.Help()
 }
 
 func init() {
@@ -22,4 +22,5 @@ func init() {
 	RootCmd.AddCommand(osdCmd)
 	RootCmd.AddCommand(mapCmd)
 	RootCmd.AddCommand(gwCmd)
+	RootCmd.AddCommand(userCmd)
 }

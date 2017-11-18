@@ -13,6 +13,16 @@ message PrintMapResponse {
     repeated swimpb.Member memlist = 1;
 }
 
+message AddUserRequest {
+    string name = 1;
+}
+
+message AddUserResponse {
+    string accessKey = 1;
+    string secretKey = 2;
+}
+
 service Mds {
     rpc printMap (PrintMapRequest) returns (PrintMapResponse) {}
+    rpc AddUser (AddUserRequest) returns (AddUserResponse) {}
 }
