@@ -14,4 +14,10 @@ type Gw struct {
 	// LogLocation is the file path of mds logging.
 	// Default output path is stderr.
 	LogLocation string
+
+	// UseHTTPS uses https to communicate client applications.
+	UseHTTPS string
+
+	// CertsDir is the directory path which contains files for https configuration.
+	CertsDir string
 }

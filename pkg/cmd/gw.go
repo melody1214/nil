@@ -32,4 +32,6 @@ func init() {
 	gwCmd.Flags().StringVarP(&gwCfg.ServerAddr, "bind", "b", config.Get("gw.addr"), "address to which the gateway will bind")
 	gwCmd.Flags().StringVarP(&gwCfg.ServerPort, "port", "p", config.Get("gw.port"), "port on which the gateway will listen")
 	gwCmd.Flags().StringVarP(&gwCfg.LogLocation, "log", "l", config.Get("gw.log_location"), "log location of the gateway will print out")
+	gwCmd.Flags().StringVarP(&gwCfg.UseHTTPS, "secure", "s", config.Get("gw.use_https"), "use https to communicate clients")
+	gwCmd.Flags().StringVarP(&gwCfg.CertsDir, "certs-dir", "c", config.Get("gw.certs_dir"), "directory path of secure configuration files")
 }
