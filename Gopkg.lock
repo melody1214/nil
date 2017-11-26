@@ -8,6 +8,12 @@
   version = "1.0"
 
 [[projects]]
+  name = "github.com/go-sql-driver/mysql"
+  packages = ["."]
+  revision = "a0583e0143b1624142adab07e0e97fe106d99561"
+  version = "v1.3"
+
+[[projects]]
   branch = "master"
   name = "github.com/golang/protobuf"
   packages = ["proto","ptypes","ptypes/any","ptypes/duration","ptypes/timestamp"]
@@ -88,6 +94,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "ab1e03346cac7deb2002bb8874a9cd784690c71f6fd57dab1ee89d6d28675ca9"
+  inputs-digest = "d5846a3c05581cfb87c7b5137af94be2ce6d0368de5ee991c09fec57f36fc252"
   solver-name = "gps-cdcl"
   solver-version = 1
