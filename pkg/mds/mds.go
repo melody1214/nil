@@ -46,10 +46,15 @@ func New(cfg *config.Mds) (*Mds, error) {
 	cfg.ID = uuid.Gen()
 	log.WithField("uuid", cfg.ID).Info("Generating MDS UUID succeeded")
 
+	s, err := server.New(cfg)
+	if err != nil {
+		return nil, err
+	}
+
 	m := &Mds{
 		id:     cfg.ID,
 		cfg:    cfg,
-		server: server.New(cfg),
+		server: s,
 		kv:     kv.New(),
 	}
 	log.Info("Creating MDS object succeeded")

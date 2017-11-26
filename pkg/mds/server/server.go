@@ -7,6 +7,7 @@ import (
 	"syscall"
 
 	"github.com/chanyoung/nil/pkg/mds/mdspb"
+	"github.com/chanyoung/nil/pkg/mds/mysql"
 	"github.com/chanyoung/nil/pkg/swim"
 	"github.com/chanyoung/nil/pkg/swim/swimpb"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -22,16 +23,33 @@ type Server struct {
 	cfg  *config.Mds
 	g    *grpc.Server
 	swim *swim.Server
+	db   *mysql.MySQL
 }
 
 // New creates a rpc server object.
-func New(cfg *config.Mds) *Server {
+func New(cfg *config.Mds) (*Server, error) {
 	log = mlog.GetLogger()
 
-	return &Server{
+	s := &Server{
 		cfg:  cfg,
+		g:    grpc.NewServer(),
 		swim: swim.NewServer(cfg.ID, cfg.ServerAddr, cfg.ServerPort),
 	}
+
+	// Register swim gossip protocol service to grpc server.
+	swimpb.RegisterSwimServer(s.g, s.swim)
+
+	// Register MDS service to grpc server.
+	mdspb.RegisterMdsServer(s.g, s)
+
+	// Connect and initiate to mysql server.
+	db, err := mysql.New(s.cfg)
+	if err != nil {
+		return nil, err
+	}
+	s.db = db
+
+	return s, nil
 }
 
 // Start starts to listen and serve RPCs.
@@ -41,15 +59,6 @@ func (s *Server) Start() error {
 	if err != nil {
 		return err
 	}
-
-	// Creates new grpc server for serving MDS requests.
-	s.g = grpc.NewServer()
-
-	// Register swim gossip protocol service to grpc server.
-	swimpb.RegisterSwimServer(s.g, s.swim)
-
-	// Register MDS service to grpc server.
-	mdspb.RegisterMdsServer(s.g, s)
 
 	// Starts gRPC service.
 	gc := make(chan error, 1)
@@ -92,6 +101,9 @@ func (s *Server) stop() error {
 	// GracefulStop stops the server to accept new connections and RPCs
 	// and blocks until all the pending RPCs are finished.
 	s.g.GracefulStop()
+
+	// Close mysql connection.
+	s.db.Close()
 
 	return nil
 }
