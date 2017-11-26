@@ -1,4 +1,4 @@
-package db
+package kv
 
 // DB interface wraps the operations of a key/value store.
 type DB interface {

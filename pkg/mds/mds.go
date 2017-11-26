@@ -3,7 +3,7 @@ package mds
 import (
 	"errors"
 
-	"github.com/chanyoung/nil/pkg/db"
+	"github.com/chanyoung/nil/pkg/kv"
 	"github.com/chanyoung/nil/pkg/mds/server"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
@@ -25,7 +25,7 @@ type Mds struct {
 	server *server.Server
 
 	// Key/Value store for metadata.
-	db db.DB
+	kv kv.DB
 }
 
 // New creates a mds object.
@@ -50,7 +50,7 @@ func New(cfg *config.Mds) (*Mds, error) {
 		id:     cfg.ID,
 		cfg:    cfg,
 		server: server.New(cfg),
-		db:     db.New(),
+		kv:     kv.New(),
 	}
 	log.Info("Creating MDS object succeeded")
 

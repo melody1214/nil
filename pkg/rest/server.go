@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/chanyoung/nil/pkg/db"
+	"github.com/chanyoung/nil/pkg/kv"
 )
 
 const objectBasePath = "/obj/"
@@ -17,14 +17,14 @@ const objectBasePath = "/obj/"
 // Each osd has an own rest server.
 type Server struct {
 	mux *http.ServeMux
-	db  db.DB
+	kv  kv.DB
 }
 
 // NewServer creates a new server object.
 func NewServer() *Server {
 	s := &Server{
 		mux: http.NewServeMux(),
-		db:  db.New(),
+		kv:  kv.New(),
 	}
 	s.init()
 
