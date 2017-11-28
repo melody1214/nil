@@ -63,8 +63,8 @@ func (s *Server) Start() error {
 	go func() {
 		if s.cfg.UseHTTPS == "true" {
 			httpc <- s.srv.ListenAndServeTLS(
-				s.cfg.CertsDir+"/"+security.PublicCertFile(),
-				s.cfg.CertsDir+"/"+security.PrivateKeyFile(),
+				s.cfg.Security.CertsDir+"/"+s.cfg.Security.ServerCrt,
+				s.cfg.Security.CertsDir+"/"+s.cfg.Security.ServerKey,
 			)
 		} else {
 			httpc <- s.srv.ListenAndServe()

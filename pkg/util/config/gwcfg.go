@@ -18,6 +18,6 @@ type Gw struct {
 	// UseHTTPS uses https to communicate client applications.
 	UseHTTPS string
 
-	// CertsDir is the directory path which contains files for https configuration.
-	CertsDir string
+	// Security is the container of the information related with security.
+	Security Security
 }
