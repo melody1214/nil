@@ -12,6 +12,7 @@
     "gw": {
         "addr": "127.0.0.1",
         "port": "50000",
+        "first_mds": "127.0.0.1:51000",
         "log_location": "stderr",
         "use_https": "true"
     },
