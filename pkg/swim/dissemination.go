@@ -77,7 +77,7 @@ func (s *Server) disseminate(id string, status swimpb.Status) error {
 // askBroadcast asks broadcasting message to gossiper node.
 func (s *Server) askBroadcast(gossiper string, meml []*swimpb.Member) error {
 	ping := &swimpb.PingMessage{
-		Type:    swimpb.Type_BROADCAST,
+		Type:    swimpb.MessageType_BROADCAST,
 		Memlist: meml,
 	}
 
@@ -95,7 +95,7 @@ func (s *Server) broadcast() {
 		}
 
 		p := &swimpb.PingMessage{
-			Type:    swimpb.Type_PING,
+			Type:    swimpb.MessageType_PING,
 			Memlist: ml,
 		}
 

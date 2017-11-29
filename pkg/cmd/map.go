@@ -6,6 +6,7 @@ import (
 	"net"
 
 	"github.com/chanyoung/nil/pkg/mds/mdspb"
+	"github.com/chanyoung/nil/pkg/swim/swimpb"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
@@ -27,13 +28,20 @@ func mapRun(cmd *cobra.Command, args []string) {
 
 	cli := mdspb.NewMdsClient(cc)
 
-	res, err := cli.PrintMap(context.Background(), &mdspb.PrintMapRequest{})
+	res, err := cli.GetClusterMap(context.Background(), &mdspb.GetClusterMapRequest{})
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	for _, node := range res.GetMemlist() {
-		fmt.Println(node)
+		fmt.Printf(
+			"| %4s | %s | %s:%s | %7s | Incarnation: %d |\n",
+			swimpb.MemberType_name[int32(node.GetType())],
+			node.GetUuid(),
+			node.GetAddr(), node.GetPort(),
+			swimpb.Status_name[int32(node.GetStatus())],
+			node.GetIncarnation(),
+		)
 	}
 }
 

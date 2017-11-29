@@ -5,11 +5,11 @@ option go_package = "mdspb";
 
 import "github.com/chanyoung/nil/pkg/swim/swimpb/swim.proto";
 
-message PrintMapRequest {
+message GetClusterMapRequest {
 
 }
 
-message PrintMapResponse {
+message GetClusterMapResponse {
     repeated swimpb.Member memlist = 1;
 }
 
@@ -23,6 +23,6 @@ message AddUserResponse {
 }
 
 service Mds {
-    rpc printMap (PrintMapRequest) returns (PrintMapResponse) {}
+    rpc GetClusterMap (GetClusterMapRequest) returns (GetClusterMapResponse) {}
     rpc AddUser (AddUserRequest) returns (AddUserResponse) {}
 }

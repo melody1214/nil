@@ -19,12 +19,13 @@ type Server struct {
 }
 
 // NewServer creates swim server object.
-func NewServer(id string, addr, port string) *Server {
+func NewServer(id, addr, port, srvType string) *Server {
 	memList := newMemList()
 
 	// Make member myself and add to the list.
 	me := &swimpb.Member{
 		Uuid:        id,
+		Type:        swimpb.MemberType(swimpb.MemberType_value[srvType]),
 		Addr:        addr,
 		Port:        port,
 		Status:      swimpb.Status_ALIVE,

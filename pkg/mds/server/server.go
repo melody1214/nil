@@ -33,7 +33,7 @@ func New(cfg *config.Mds) (*Server, error) {
 	s := &Server{
 		cfg:  cfg,
 		g:    grpc.NewServer(),
-		swim: swim.NewServer(cfg.ID, cfg.ServerAddr, cfg.ServerPort),
+		swim: swim.NewServer(cfg.ID, cfg.ServerAddr, cfg.ServerPort, "MDS"),
 	}
 
 	// Register swim gossip protocol service to grpc server.

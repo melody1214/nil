@@ -19,7 +19,7 @@ var (
 
 // PingError contains specific error information which occurred in swim server.
 type PingError struct {
-	Type   swimpb.Type
+	Type   swimpb.MessageType
 	DestID string
 	Err    error
 }
@@ -27,10 +27,10 @@ type PingError struct {
 // handleErr handles ping errors to check and disseminate status.
 func (s *Server) handleErr(pe PingError, pec chan PingError) {
 	switch pe.Type {
-	case swimpb.Type_PING:
+	case swimpb.MessageType_PING:
 		s.suspect(pe.DestID)
 		go s.pingRequest(pe.DestID, pec)
-	case swimpb.Type_PINGREQUEST:
+	case swimpb.MessageType_PINGREQUEST:
 		s.faulty(pe.DestID)
 	}
 }

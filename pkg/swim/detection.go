@@ -19,14 +19,14 @@ func (s *Server) Ping(ctx context.Context, in *swimpb.PingMessage) (out *swimpb.
 	}
 
 	switch in.GetType() {
-	case swimpb.Type_PING:
+	case swimpb.MessageType_PING:
 		return out, nil
 
-	case swimpb.Type_BROADCAST:
+	case swimpb.MessageType_BROADCAST:
 		s.broadcast()
 		return out, nil
 
-	case swimpb.Type_PINGREQUEST:
+	case swimpb.MessageType_PINGREQUEST:
 		meml := in.GetMemlist()
 		if len(meml) == 0 {
 			return out, ErrNotFound
@@ -48,7 +48,7 @@ func (s *Server) ping(pec chan PingError) {
 
 	// Make ping message.
 	p := &swimpb.PingMessage{
-		Type:    swimpb.Type_PING,
+		Type:    swimpb.MessageType_PING,
 		Memlist: s.meml.fetch(0),
 	}
 
@@ -59,7 +59,7 @@ func (s *Server) ping(pec chan PingError) {
 	_, err := s.sendPing(ctx, net.JoinHostPort(fetched[0].Addr, fetched[0].Port), p)
 	if err != nil {
 		pec <- PingError{
-			Type:   swimpb.Type_PING,
+			Type:   swimpb.MessageType_PING,
 			DestID: fetched[0].Uuid,
 			Err:    err,
 		}
@@ -76,7 +76,7 @@ func (s *Server) pingRequest(dstID string, pec chan PingError) {
 	dst := s.meml.get(dstID)
 	if dst == nil {
 		pec <- PingError{
-			Type:   swimpb.Type_PINGREQUEST,
+			Type:   swimpb.MessageType_PINGREQUEST,
 			DestID: dstID,
 			Err:    ErrNotFound,
 		}
@@ -100,7 +100,7 @@ func (s *Server) pingRequest(dstID string, pec chan PingError) {
 		}
 
 		p := &swimpb.PingMessage{
-			Type:    swimpb.Type_PINGREQUEST,
+			Type:    swimpb.MessageType_PINGREQUEST,
 			Memlist: content,
 		}
 
@@ -128,7 +128,7 @@ func (s *Server) pingRequest(dstID string, pec chan PingError) {
 	}
 
 	pec <- PingError{
-		Type:   swimpb.Type_PINGREQUEST,
+		Type:   swimpb.MessageType_PINGREQUEST,
 		DestID: dstID,
 		Err:    ErrPingReq,
 	}

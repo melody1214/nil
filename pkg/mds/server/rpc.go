@@ -7,8 +7,8 @@ import (
 )
 
 // PrintMap returns cluster map info.
-func (s *Server) PrintMap(ctx context.Context, in *mdspb.PrintMapRequest) (out *mdspb.PrintMapResponse, err error) {
-	return &mdspb.PrintMapResponse{
+func (s *Server) GetClusterMap(ctx context.Context, in *mdspb.GetClusterMapRequest) (out *mdspb.GetClusterMapResponse, err error) {
+	return &mdspb.GetClusterMapResponse{
 		Memlist: s.swim.GetMap(),
 	}, nil
 }
