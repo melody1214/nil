@@ -10,7 +10,8 @@ import (
 
 // MySQL is the handle of MySQL client.
 type MySQL struct {
-	db *sql.DB
+	cfg *config.Mds
+	db  *sql.DB
 }
 
 // New returns MySQL handle with the opened db.
@@ -29,7 +30,10 @@ func New(cfg *config.Mds) (*MySQL, error) {
 		return nil, err
 	}
 
-	m := &MySQL{db: db}
+	m := &MySQL{
+		cfg: cfg,
+		db:  db,
+	}
 	if err = m.init(); err != nil {
 		m.db.Close()
 		return nil, err
@@ -44,10 +48,27 @@ func (m *MySQL) Close() {
 }
 
 func (m *MySQL) init() error {
+	// Generates base tables.
 	for _, q := range generateSQLBase {
 		if _, err := m.db.Exec(q); err != nil {
 			return err
 		}
+	}
+
+	// Write the local cluster region name.
+	if _, err := m.db.Exec(
+		`
+		INSERT INTO region (region_name, end_point)
+		SELECT * FROM (SELECT ? AS rn, ? AS ep) AS tmp
+		WHERE NOT EXISTS ( 
+			SELECT region_name FROM region WHERE region_name = ?
+		) LIMIT 1;
+		`,
+		m.cfg.LocalClusterRegion,
+		m.cfg.LocalClusterAddr,
+		m.cfg.LocalClusterRegion,
+	); err != nil {
+		return err
 	}
 
 	return nil
