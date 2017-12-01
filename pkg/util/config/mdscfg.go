@@ -21,6 +21,11 @@ type Mds struct {
 	// MySQLPort is the port number of MySQL server.
 	MySQLPort string
 
+	// GlobalClusterAddr is one of the end point
+	// address of global cluster. MDS will ask here
+	// to try to join the raft clsuter.
+	GlobalClusterAddr string
+
 	// LogLocation is the file path of mds logging.
 	// Default output path is stderr.
 	LogLocation string
