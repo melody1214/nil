@@ -2,12 +2,19 @@
     "mds": {
         "addr": "127.0.0.1",
         "port": "51000",
+
         "mysql_user": "nil",
         "mysql_password": "nil",
         "mysql_database": "nil",
         "mysql_host": "127.0.0.1",
         "mysql_port": "3306",
+
+        "local_cluster_region": "KR",
+        "local_cluster_addr": "127.0.0.1:50000",
+
         "global_cluster_addr": "127.0.0.1:50000",
+        "global_cluster_join": "true",
+
         "log_location": "stderr"
     },
     "gw": {

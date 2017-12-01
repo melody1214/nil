@@ -38,7 +38,11 @@ func init() {
 	mdsCmd.Flags().StringVarP(&mdscfg.MySQLPort, "mysql-port", "", config.Get("mds.mysql_port"), "port number of mysql server")
 	mdsCmd.Flags().StringVarP(&mdscfg.MySQLDatabase, "mysql-database", "", config.Get("mds.mysql_database"), "mysql schema name")
 
+	mdsCmd.Flags().StringVarP(&mdscfg.LocalClusterAddr, "local-cluster-addr", "", config.Get("mds.local_cluster_addr"), "local cluster end point")
+	mdsCmd.Flags().StringVarP(&mdscfg.LocalClusterRegion, "local-cluster-region", "", config.Get("mds.local_cluster_region"), "region name of the local cluster")
+
 	mdsCmd.Flags().StringVarP(&mdscfg.GlobalClusterAddr, "global-cluster-addr", "", config.Get("mds.global_cluster_addr"), "global cluster end point")
+	mdsCmd.Flags().StringVarP(&mdscfg.GlobalClusterJoin, "global-cluster-join", "", config.Get("mds.global_cluster_join"), "join an existing global cluster")
 
 	mdsCmd.Flags().StringVarP(&mdscfg.LogLocation, "log", "l", config.Get("mds.log_location"), "log location of the mds will print out")
 }

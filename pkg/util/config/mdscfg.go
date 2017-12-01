@@ -21,10 +21,17 @@ type Mds struct {
 	// MySQLPort is the port number of MySQL server.
 	MySQLPort string
 
-	// GlobalClusterAddr is one of the end point
-	// address of global cluster. MDS will ask here
-	// to try to join the raft clsuter.
+	// LocalClusterRigion is the region name of the local cluster.
+	LocalClusterRegion string
+	// LocalClusterAddr is the endpoint address of the local cluster.
+	LocalClusterAddr string
+
+	// GlobalClusterAddr is one of the endpoint address of global cluster.
+	// Mds will ask here to try to join the raft clsuter.
 	GlobalClusterAddr string
+	// GlobalClusterJoin is set 'true' when mds is going to join existed global
+	// cluster. Set 'false' when this is the first mds of whole cluster.
+	GlobalClusterJoin string
 
 	// LogLocation is the file path of mds logging.
 	// Default output path is stderr.
