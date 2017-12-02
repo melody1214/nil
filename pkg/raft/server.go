@@ -1,6 +1,8 @@
 package raft
 
-import "github.com/chanyoung/nil/pkg/util/config"
+import (
+	"github.com/chanyoung/nil/pkg/util/config"
+)
 
 // Server is the core object of the raft server.
 type Server struct {

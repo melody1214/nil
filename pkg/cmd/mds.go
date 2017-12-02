@@ -41,8 +41,9 @@ func init() {
 	mdsCmd.Flags().StringVarP(&mdscfg.LocalClusterAddr, "local-cluster-addr", "", config.Get("mds.local_cluster_addr"), "local cluster end point")
 	mdsCmd.Flags().StringVarP(&mdscfg.LocalClusterRegion, "local-cluster-region", "", config.Get("mds.local_cluster_region"), "region name of the local cluster")
 
-	mdsCmd.Flags().StringVarP(&mdscfg.GlobalClusterAddr, "global-cluster-addr", "", config.Get("mds.global_cluster_addr"), "global cluster end point")
-	mdsCmd.Flags().StringVarP(&mdscfg.GlobalClusterJoin, "global-cluster-join", "", config.Get("mds.global_cluster_join"), "join an existing global cluster")
+	mdsCmd.Flags().StringVarP(&mdscfg.Raft.ClusterAddr, "raft-cluster-addr", "", config.Get("raft.cluster_addr"), "raft cluster end point")
+	mdsCmd.Flags().StringVarP(&mdscfg.Raft.ClusterJoin, "raft-cluster-join", "", config.Get("raft.cluster_join"), "join an existing raft cluster")
+	mdsCmd.Flags().StringVarP(&mdscfg.Raft.ElectionTimeout, "raft-election-timeout", "", config.Get("raft.election_timeout"), "raft election timeout")
 
 	mdsCmd.Flags().StringVarP(&mdscfg.LogLocation, "log", "l", config.Get("mds.log_location"), "log location of the mds will print out")
 }

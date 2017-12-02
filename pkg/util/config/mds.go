@@ -26,12 +26,8 @@ type Mds struct {
 	// LocalClusterAddr is the endpoint address of the local cluster.
 	LocalClusterAddr string
 
-	// GlobalClusterAddr is one of the endpoint address of global cluster.
-	// Mds will ask here to try to join the raft clsuter.
-	GlobalClusterAddr string
-	// GlobalClusterJoin is set 'true' when mds is going to join existed global
-	// cluster. Set 'false' when this is the first mds of whole cluster.
-	GlobalClusterJoin string
+	// Raft configs.
+	Raft Raft
 
 	// LogLocation is the file path of mds logging.
 	// Default output path is stderr.

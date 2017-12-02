@@ -8,6 +8,7 @@ import (
 
 	"github.com/chanyoung/nil/pkg/mds/mdspb"
 	"github.com/chanyoung/nil/pkg/mds/mysql"
+	"github.com/chanyoung/nil/pkg/raft"
 	"github.com/chanyoung/nil/pkg/swim"
 	"github.com/chanyoung/nil/pkg/swim/swimpb"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -23,6 +24,7 @@ type Server struct {
 	cfg  *config.Mds
 	g    *grpc.Server
 	swim *swim.Server
+	raft *raft.Server
 	db   *mysql.MySQL
 }
 
@@ -34,6 +36,7 @@ func New(cfg *config.Mds) (*Server, error) {
 		cfg:  cfg,
 		g:    grpc.NewServer(),
 		swim: swim.NewServer(cfg.ID, cfg.ServerAddr, cfg.ServerPort, "MDS"),
+		raft: raft.New(&cfg.Raft),
 	}
 
 	// Register swim gossip protocol service to grpc server.

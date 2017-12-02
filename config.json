@@ -12,9 +12,6 @@
         "local_cluster_region": "KR",
         "local_cluster_addr": "127.0.0.1:50000",
 
-        "global_cluster_addr": "127.0.0.1:50000",
-        "global_cluster_join": "true",
-
         "log_location": "stderr"
     },
     "gw": {
@@ -29,6 +26,8 @@
         "expire": "5s"
     },
     "raft": {
+        "cluster_addr": "127.0.0.1:50000",
+        "cluster_join": "true",
         "election_timeout": "150ms"
     },
     "security": {
