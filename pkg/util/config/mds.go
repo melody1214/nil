@@ -26,8 +26,10 @@ type Mds struct {
 	// LocalClusterAddr is the endpoint address of the local cluster.
 	LocalClusterAddr string
 
-	// Raft configs.
+	// Raft config.
 	Raft Raft
+	// Security config.
+	Security Security
 
 	// LogLocation is the file path of mds logging.
 	// Default output path is stderr.

@@ -45,5 +45,10 @@ func init() {
 	mdsCmd.Flags().StringVarP(&mdscfg.Raft.ClusterJoin, "raft-cluster-join", "", config.Get("raft.cluster_join"), "join an existing raft cluster")
 	mdsCmd.Flags().StringVarP(&mdscfg.Raft.ElectionTimeout, "raft-election-timeout", "", config.Get("raft.election_timeout"), "raft election timeout")
 
+	mdsCmd.Flags().StringVarP(&mdscfg.Security.CertsDir, "secure-certs-dir", "", config.Get("security.certs_dir"), "directory path of secure configuration files")
+	mdsCmd.Flags().StringVarP(&mdscfg.Security.RootCAPem, "secure-rootca-pem", "", config.Get("security.rootca_pem"), "file name of rootCA.pem")
+	mdsCmd.Flags().StringVarP(&mdscfg.Security.ServerKey, "secure-server-key", "", config.Get("security.server_key"), "file name of server key")
+	mdsCmd.Flags().StringVarP(&mdscfg.Security.ServerCrt, "secure-server-crt", "", config.Get("security.server_crt"), "file name of server crt")
+
 	mdsCmd.Flags().StringVarP(&mdscfg.LogLocation, "log", "l", config.Get("mds.log_location"), "log location of the mds will print out")
 }

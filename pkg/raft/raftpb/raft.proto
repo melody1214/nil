@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package github.com.chanyoung.nil.pkg.raft.raftpb;
+option go_package = "raftpb";
+
+message JoinRequest {
+}
+
+message JoinResponse {
+    enum Type {
+        ACK           = 0;
+        DB_MIGRATION  = 1;
+        LOG_MIGRATION = 2;
+    }
+
+    Type   messageType = 1;
+    string query       = 2;
+}
+
+service Raft {
+    rpc Join (JoinRequest) returns (stream JoinResponse) {}
+}
