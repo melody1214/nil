@@ -28,6 +28,9 @@
         "period": "5s",
         "expire": "5s"
     },
+    "raft": {
+        "election_timeout": "150ms"
+    },
     "security": {
         "certs_dir": ".certs",
         "rootca_pem": "test-rootCA.pem",
