@@ -1,10 +1,12 @@
 package server
 
 import (
+	"fmt"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/chanyoung/nil/pkg/mds/mdspb"
 	"github.com/chanyoung/nil/pkg/mds/mysql"
@@ -70,6 +72,23 @@ func (s *Server) Start() error {
 			gc <- err
 		}
 	}()
+
+	// Starts raft service.
+	// Test code now.
+	for {
+		rc := make(chan error, 1)
+		go s.raft.Run(rc)
+
+		if err := <-rc; err != nil {
+			fmt.Println(err)
+			close(rc)
+
+			time.Sleep(1 * time.Second)
+			continue
+		}
+
+		break
+	}
 
 	// Starts swim service.
 	sc := make(chan swim.PingError, 1)

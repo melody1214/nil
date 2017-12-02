@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/chanyoung/nil/pkg/gw/grpc"
+	"github.com/chanyoung/nil/pkg/gw/raft"
 	"github.com/chanyoung/nil/pkg/gw/s3"
 	"github.com/chanyoung/nil/pkg/security"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -32,8 +32,8 @@ func New(cfg *config.Gw) (*Server, error) {
 	log = mlog.GetLogger()
 
 	router := mux.NewRouter()
-	// Register gRPC router.
-	if err := grpc.RegisterGRPCRouter(cfg, router); err != nil {
+	// Register raft router.
+	if err := raft.RegisterRaftRouter(cfg, router); err != nil {
 		return nil, err
 	}
 	// Register s3 API router.
