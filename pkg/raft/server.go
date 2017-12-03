@@ -84,3 +84,28 @@ func (s *Server) joinToCluster() error {
 
 	return nil
 }
+
+// Join handles the join requests from the follower node.
+func (s *Server) Join(in *raftpb.JoinRequest, stream raftpb.Raft_JoinServer) error {
+	testMessage := []raftpb.JoinResponse{
+		{
+			MessageType: raftpb.JoinResponse_ACK,
+			Query:       "query 1",
+		},
+		{
+			MessageType: raftpb.JoinResponse_DB_MIGRATION,
+			Query:       "query 2",
+		},
+		{
+			MessageType: raftpb.JoinResponse_LOG_MIGRATION,
+			Query:       "query 3",
+		},
+	}
+
+	for _, m := range testMessage {
+		if err := stream.Send(&m); err != nil {
+			return err
+		}
+	}
+	return nil
+}

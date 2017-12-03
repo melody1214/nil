@@ -32,6 +32,24 @@ func New(firstMdsAddr string) (*MdsMap, error) {
 	return m, nil
 }
 
+// Dial dials grpc client to healthy mds.
+// TODO: cache clients.
+func (m *MdsMap) Dial() (*grpc.ClientConn, error) {
+	if len(m.mdsMap) < 1 {
+		return nil, errors.New("no connected mds")
+	}
+
+	for _, node := range m.mdsMap {
+		cc, err := grpc.Dial(node.Addr+":"+node.Port, grpc.WithInsecure())
+		if err != nil {
+			continue
+		}
+
+		return cc, err
+	}
+	return nil, errors.New("failed to connect mds")
+}
+
 func (m *MdsMap) refresh(mdsAddr string) error {
 	cc, err := grpc.Dial(mdsAddr, grpc.WithInsecure())
 	if err != nil {

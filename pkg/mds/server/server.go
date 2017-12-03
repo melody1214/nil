@@ -11,6 +11,7 @@ import (
 	"github.com/chanyoung/nil/pkg/mds/mdspb"
 	"github.com/chanyoung/nil/pkg/mds/mysql"
 	"github.com/chanyoung/nil/pkg/raft"
+	"github.com/chanyoung/nil/pkg/raft/raftpb"
 	"github.com/chanyoung/nil/pkg/swim"
 	"github.com/chanyoung/nil/pkg/swim/swimpb"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -46,6 +47,9 @@ func New(cfg *config.Mds) (*Server, error) {
 
 	// Register MDS service to grpc server.
 	mdspb.RegisterMdsServer(s.g, s)
+
+	// Register Raft service to grpc server.
+	raftpb.RegisterRaftServer(s.g, s.raft)
 
 	// Connect and initiate to mysql server.
 	db, err := mysql.New(s.cfg)
