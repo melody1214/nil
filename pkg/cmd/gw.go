@@ -33,7 +33,7 @@ func init() {
 	gwCmd.Flags().StringVarP(&gwCfg.ServerPort, "port", "p", config.Get("gw.port"), "port on which the gateway will listen")
 	gwCmd.Flags().StringVarP(&gwCfg.LogLocation, "log", "l", config.Get("gw.log_location"), "log location of the gateway will print out")
 	gwCmd.Flags().StringVarP(&gwCfg.FirstMds, "first-mds", "", config.Get("gw.first_mds"), "mds address to get local cluster information in initialize routine")
-	gwCmd.Flags().StringVarP(&gwCfg.UseHTTPS, "secure", "s", config.Get("gw.use_https"), "use https to communicate clients")
+
 	gwCmd.Flags().StringVarP(&gwCfg.Security.CertsDir, "secure-certs-dir", "", config.Get("security.certs_dir"), "directory path of secure configuration files")
 	gwCmd.Flags().StringVarP(&gwCfg.Security.RootCAPem, "secure-rootca-pem", "", config.Get("security.rootca_pem"), "file name of rootCA.pem")
 	gwCmd.Flags().StringVarP(&gwCfg.Security.ServerKey, "secure-server-key", "", config.Get("security.server_key"), "file name of server key")

@@ -18,6 +18,7 @@ import (
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 var log *logrus.Logger
@@ -37,10 +38,20 @@ func New(cfg *config.Mds) (*Server, error) {
 
 	s := &Server{
 		cfg:  cfg,
-		g:    grpc.NewServer(),
 		swim: swim.NewServer(cfg.ID, cfg.ServerAddr, cfg.ServerPort, "MDS"),
 		raft: raft.New(&cfg.Raft, &cfg.Security),
 	}
+
+	// Check security option and prepare grpc server.
+	creds, err := credentials.NewServerTLSFromFile(
+		cfg.Security.CertsDir+"/"+cfg.Security.ServerCrt,
+		cfg.Security.CertsDir+"/"+cfg.Security.ServerKey,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	s.g = grpc.NewServer(grpc.Creds(creds))
 
 	// Register swim gossip protocol service to grpc server.
 	swimpb.RegisterSwimServer(s.g, s.swim)
