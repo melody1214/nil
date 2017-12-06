@@ -1,23 +1,23 @@
 {
     "mds": {
-        "addr": "127.0.0.1",
+        "addr": "localhost",
         "port": "51000",
 
         "mysql_user": "nil",
         "mysql_password": "nil",
         "mysql_database": "nil",
-        "mysql_host": "127.0.0.1",
+        "mysql_host": "localhost",
         "mysql_port": "3306",
 
         "local_cluster_region": "KR",
-        "local_cluster_addr": "127.0.0.1:50000",
+        "local_cluster_addr": "localhost:50000",
 
         "log_location": "stderr"
     },
     "gw": {
-        "addr": "127.0.0.1",
+        "addr": "localhost",
         "port": "50000",
-        "first_mds": "127.0.0.1:51000",
+        "first_mds": "localhost:51000",
         "log_location": "stderr"
     },
     "swim": {
@@ -25,7 +25,7 @@
         "expire": "5s"
     },
     "raft": {
-        "cluster_addr": "127.0.0.1:50000",
+        "cluster_addr": "localhost:50000",
         "cluster_join": "true",
         "election_timeout": "150ms"
     },

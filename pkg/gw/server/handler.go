@@ -54,10 +54,7 @@ func (s *Server) raftServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Fix this problem.
-	// rpURL, err := url.Parse("https://" + mds)
-	_ = mds
-	rpURL, err := url.Parse("https://localhost:51000")
+	rpURL, err := url.Parse("https://" + mds)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
