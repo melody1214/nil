@@ -34,3 +34,15 @@ certs:
 		-CAkey $(ROOTCA_KEY) \
 		-out $(SERVER_CRT)
 	rm .srl
+
+GO ?= go 
+
+.DEFAULT_GOAL	:= all
+
+.PHONY: all
+all:
+	$(GO) build
+
+.PHONY: clean
+clean:
+	$(GO) clean
