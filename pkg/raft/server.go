@@ -21,6 +21,9 @@ type Server struct {
 	// Current server state.
 	state State
 
+	// Log store.
+	logStore logStore
+
 	// The latest term server has seen.
 	currentTerm uint64
 
@@ -37,6 +40,7 @@ func New(raftCfg *config.Raft, secuCfg *config.Security) *Server {
 		raftCfg:     raftCfg,
 		secuCfg:     secuCfg,
 		state:       Follower,
+		logStore:    newBasicStore(),
 		currentTerm: 0,
 		commitIndex: 0,
 		lastApplied: 0,
@@ -79,7 +83,7 @@ func (s *Server) joinToCluster() error {
 		if err != nil {
 			return errors.Wrap(err, "join raft cluster failed")
 		}
-		fmt.Printf("Message: %#v\n", r)
+		fmt.Printf("Message: %#v\n%#v", r, r.LogEntry)
 	}
 
 	return nil
@@ -87,25 +91,30 @@ func (s *Server) joinToCluster() error {
 
 // Join handles the join requests from the follower node.
 func (s *Server) Join(in *raftpb.JoinRequest, stream raftpb.Raft_JoinServer) error {
-	testMessage := []raftpb.JoinResponse{
-		{
-			MessageType: raftpb.JoinResponse_ACK,
-			Query:       "query 1",
-		},
-		{
-			MessageType: raftpb.JoinResponse_DB_MIGRATION,
-			Query:       "query 2",
-		},
-		{
-			MessageType: raftpb.JoinResponse_LOG_MIGRATION,
-			Query:       "query 3",
-		},
-	}
+	// Copy logs.
+	index := s.logStore.lastIndex()
 
-	for _, m := range testMessage {
-		if err := stream.Send(&m); err != nil {
+	// Log index starts from 1.
+	// 0 means log store has no entries.
+	var i uint64
+	for i = 1; i <= index; i++ {
+		l, err := s.logStore.readLog(i)
+		if err != nil {
+			return err
+		}
+
+		if err := stream.Send(&raftpb.JoinResponse{
+			MessageType: raftpb.JoinResponse_LOG_MIGRATION,
+			LogEntry: &raftpb.LogEntry{
+				Index: l.index,
+				Query: l.query,
+			},
+		}); err != nil {
 			return err
 		}
 	}
+
+	// TODO: Sends a join request to leader with the copied log index.
+
 	return nil
 }
