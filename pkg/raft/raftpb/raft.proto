@@ -47,22 +47,22 @@ message RequestVoteResponse {
 
 message AppendEntriesRequest {
     // Leader's term.
-    uint64   term          = 1;
+    uint64   term           = 1;
 
     // So follower can redirect clients.
-    string   leaderId      = 2;
+    string   leaderId       = 2;
 
     // Index of log entry immediately preceding new ones.
-    uint64   prevLogIndex  = 3;
+    uint64   prevLogIndex   = 3;
 
     // Term of prevLogIndex entry.
-    uint64   prevLogTerm   = 4;
+    uint64   prevLogTerm    = 4;
 
     // Log entries to store (empty for heartbeat; may send more than one for efficiency)
-    repeated bytes entries = 5;
+    repeated string entries = 5;
 
     // Leader's commit index.
-    uint64   leaderCommit  = 6;
+    uint64   leaderCommit   = 6;
 }
 
 message AppendEntriesResponse {

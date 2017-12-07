@@ -3,5 +3,5 @@ package raft
 // logs store.
 type log struct {
 	index uint64
-	data  []byte
+	data  []string
 }
