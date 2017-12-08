@@ -9,17 +9,12 @@ message LogEntry {
 }
 
 message JoinRequest {
+    string region  = 1;
+    string address = 2;
 }
 
 message JoinResponse {
-    enum Type {
-        ACK           = 0;
-        DB_MIGRATION  = 1;
-        LOG_MIGRATION = 2;
-    }
-
-    Type     messageType = 1;
-    LogEntry logEntry    = 2;
+    LogEntry logEntry = 1;
 }
 
 //

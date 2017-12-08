@@ -64,9 +64,9 @@ func (m *MySQL) init() error {
 			SELECT region_name FROM region WHERE region_name = ?
 		) LIMIT 1;
 		`,
-		m.cfg.LocalClusterRegion,
-		m.cfg.LocalClusterAddr,
-		m.cfg.LocalClusterRegion,
+		m.cfg.Raft.LocalClusterRegion,
+		m.cfg.Raft.LocalClusterAddr,
+		m.cfg.Raft.LocalClusterRegion,
 	); err != nil {
 		return err
 	}

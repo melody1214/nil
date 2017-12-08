@@ -38,10 +38,9 @@ func init() {
 	mdsCmd.Flags().StringVarP(&mdscfg.MySQLPort, "mysql-port", "", config.Get("mds.mysql_port"), "port number of mysql server")
 	mdsCmd.Flags().StringVarP(&mdscfg.MySQLDatabase, "mysql-database", "", config.Get("mds.mysql_database"), "mysql schema name")
 
-	mdsCmd.Flags().StringVarP(&mdscfg.LocalClusterAddr, "local-cluster-addr", "", config.Get("mds.local_cluster_addr"), "local cluster end point")
-	mdsCmd.Flags().StringVarP(&mdscfg.LocalClusterRegion, "local-cluster-region", "", config.Get("mds.local_cluster_region"), "region name of the local cluster")
-
-	mdsCmd.Flags().StringVarP(&mdscfg.Raft.ClusterAddr, "raft-cluster-addr", "", config.Get("raft.cluster_addr"), "raft cluster end point")
+	mdsCmd.Flags().StringVarP(&mdscfg.Raft.LocalClusterAddr, "raft-local-cluster-addr", "", config.Get("raft.local_cluster_addr"), "raft local cluster end point")
+	mdsCmd.Flags().StringVarP(&mdscfg.Raft.LocalClusterRegion, "raft-local-cluster-region", "", config.Get("raft.local_cluster_region"), "region name of the local cluster")
+	mdsCmd.Flags().StringVarP(&mdscfg.Raft.GlobalClusterAddr, "raft-global-cluster-addr", "", config.Get("raft.global_cluster_addr"), "global raft cluster end point")
 	mdsCmd.Flags().StringVarP(&mdscfg.Raft.ClusterJoin, "raft-cluster-join", "", config.Get("raft.cluster_join"), "join an existing raft cluster")
 	mdsCmd.Flags().StringVarP(&mdscfg.Raft.ElectionTimeout, "raft-election-timeout", "", config.Get("raft.election_timeout"), "raft election timeout")
 

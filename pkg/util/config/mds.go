@@ -21,11 +21,6 @@ type Mds struct {
 	// MySQLPort is the port number of MySQL server.
 	MySQLPort string
 
-	// LocalClusterRigion is the region name of the local cluster.
-	LocalClusterRegion string
-	// LocalClusterAddr is the endpoint address of the local cluster.
-	LocalClusterAddr string
-
 	// Raft config.
 	Raft Raft
 	// Security config.

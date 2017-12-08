@@ -9,9 +9,6 @@
         "mysql_host": "localhost",
         "mysql_port": "3306",
 
-        "local_cluster_region": "KR",
-        "local_cluster_addr": "localhost:50000",
-
         "log_location": "stderr"
     },
     "gw": {
@@ -25,8 +22,11 @@
         "expire": "5s"
     },
     "raft": {
-        "cluster_addr": "localhost:50000",
+        "local_cluster_region": "KR",
+        "local_cluster_addr": "localhost:50000",
+        "global_cluster_addr": "localhost:50000",
         "cluster_join": "true",
+
         "election_timeout": "150ms"
     },
     "security": {
