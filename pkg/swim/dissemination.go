@@ -11,14 +11,14 @@ import (
 // Join tries to join the membership.
 func (s *Server) join() error {
 	// Test code. Coordinator address.
-	coordinator := "127.0.0.1:51000"
+	coordinator := s.cfg.ClusterJoinAddr
 
 	return s.askBroadcast(coordinator, s.meml.fetch(0))
 }
 
 // Leave tries to send leaving message to all members.
 func (s *Server) leave() error {
-	return s.disseminate(s.id, swimpb.Status_FAULTY)
+	return s.disseminate(s.cfg.ID, swimpb.Status_FAULTY)
 }
 
 // Alive tries to send alive message to all members.
@@ -43,7 +43,7 @@ func (s *Server) disseminate(id string, status swimpb.Status) error {
 	m.Status = status
 
 	// If changing my status, then increase incarnation number.
-	if s.id == id {
+	if s.cfg.ID == id {
 		m.Incarnation++
 	}
 
@@ -59,7 +59,7 @@ func (s *Server) disseminate(id string, status swimpb.Status) error {
 	var gossiper *swimpb.Member
 	for _, m := range meml {
 		// Gossiper would be healthy and not myself.
-		if m.Uuid != s.id && m.Status == swimpb.Status_ALIVE {
+		if m.Uuid != s.cfg.ID && m.Status == swimpb.Status_ALIVE {
 			gossiper = m
 			break
 		}

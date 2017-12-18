@@ -7,6 +7,7 @@ import (
 	"github.com/chanyoung/nil/pkg/swim/swimpb"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 // Ping handles received ping message and returns ack.
@@ -95,7 +96,7 @@ func (s *Server) pingRequest(dstID string, pec chan PingError) {
 			continue
 		}
 
-		if m.Uuid == s.id {
+		if m.Uuid == s.cfg.ID {
 			continue
 		}
 
@@ -136,7 +137,15 @@ func (s *Server) pingRequest(dstID string, pec chan PingError) {
 
 // sendPing creates gRPC client and send ping by using it.
 func (s *Server) sendPing(ctx context.Context, addr string, ping *swimpb.PingMessage) (ack *swimpb.Ack, err error) {
-	conn, err := grpc.Dial(addr, grpc.WithInsecure())
+	creds, err := credentials.NewClientTLSFromFile(
+		s.cfg.Security.CertsDir+"/"+s.cfg.Security.RootCAPem,
+		"localhost",
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(creds))
 	if err != nil {
 		return nil, err
 	}

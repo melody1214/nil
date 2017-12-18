@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/chanyoung/nil/pkg/swim/swimpb"
+	"github.com/chanyoung/nil/pkg/util/config"
 )
 
 // Server maintains an list of connected peers and handles
@@ -12,29 +13,29 @@ import (
 // and send gossip message periodically and disseminates the
 // status of the member if the status is changed.
 type Server struct {
-	id      string
+	cfg     *config.Swim
 	meml    *memList
 	stop    chan chan error
 	stopped uint32
 }
 
 // NewServer creates swim server object.
-func NewServer(id, addr, port, srvType string) *Server {
+func NewServer(cfg *config.Swim) *Server {
 	memList := newMemList()
 
 	// Make member myself and add to the list.
 	me := &swimpb.Member{
-		Uuid:        id,
-		Type:        swimpb.MemberType(swimpb.MemberType_value[srvType]),
-		Addr:        addr,
-		Port:        port,
+		Uuid:        cfg.ID,
+		Type:        swimpb.MemberType(swimpb.MemberType_value[cfg.Type]),
+		Addr:        cfg.Host,
+		Port:        cfg.Port,
 		Status:      swimpb.Status_ALIVE,
 		Incarnation: 0,
 	}
 	memList.set(me)
 
 	return &Server{
-		id:      id,
+		cfg:     cfg,
 		meml:    memList,
 		stop:    make(chan chan error, 1),
 		stopped: uint32(1),

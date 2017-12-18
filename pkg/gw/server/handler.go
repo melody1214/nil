@@ -21,9 +21,6 @@ func (s *Server) initHandler() {
 }
 
 func (s *Server) registerRaftHandler(router *mux.Router) {
-	router.MatcherFunc(func(r *http.Request, rm *mux.RouteMatch) bool {
-		return r.ProtoMajor == 2
-	}).HeadersRegexp("Content-Type", "application/grpc").HandlerFunc(s.raftServeHTTP)
 }
 
 func (s *Server) registerS3Handler(router *mux.Router) {
@@ -62,10 +59,6 @@ func (s *Server) raftServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: cache proxy.
 	prx := httputil.NewSingleHostReverseProxy(rpURL)
-	// Write gRPC default headers.
-	w.Header().Add("Trailer", "Grpc-Status")
-	w.Header().Add("Trailer", "Grpc-Message")
-	w.Header().Add("Trailer", "Grpc-Status-Details-Bin")
 	prx.ServeHTTP(w, r)
 
 	// DEBUG

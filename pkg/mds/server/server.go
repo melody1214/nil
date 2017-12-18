@@ -1,17 +1,13 @@
 package server
 
 import (
-	"fmt"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/chanyoung/nil/pkg/mds/mdspb"
 	"github.com/chanyoung/nil/pkg/mds/mysql"
-	"github.com/chanyoung/nil/pkg/raft"
-	"github.com/chanyoung/nil/pkg/raft/raftpb"
 	"github.com/chanyoung/nil/pkg/swim"
 	"github.com/chanyoung/nil/pkg/swim/swimpb"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -28,7 +24,6 @@ type Server struct {
 	cfg  *config.Mds
 	g    *grpc.Server
 	swim *swim.Server
-	raft *raft.Server
 	db   *mysql.MySQL
 }
 
@@ -37,9 +32,17 @@ func New(cfg *config.Mds) (*Server, error) {
 	log = mlog.GetLogger()
 
 	s := &Server{
-		cfg:  cfg,
-		swim: swim.NewServer(cfg.ID, cfg.ServerAddr, cfg.ServerPort, "MDS"),
-		raft: raft.New(&cfg.Raft, &cfg.Security),
+		cfg: cfg,
+		swim: swim.NewServer(
+			&config.Swim{
+				ClusterJoinAddr: "localhost:51000",
+				ID:              cfg.ID,
+				Host:            cfg.ServerAddr,
+				Port:            cfg.ServerPort,
+				Type:            "MDS",
+				Security:        cfg.Security,
+			},
+		),
 	}
 
 	// Check security option and prepare grpc server.
@@ -58,9 +61,6 @@ func New(cfg *config.Mds) (*Server, error) {
 
 	// Register MDS service to grpc server.
 	mdspb.RegisterMdsServer(s.g, s)
-
-	// Register Raft service to grpc server.
-	raftpb.RegisterRaftServer(s.g, s.raft)
 
 	// Connect and initiate to mysql server.
 	db, err := mysql.New(s.cfg)
@@ -87,23 +87,6 @@ func (s *Server) Start() error {
 			gc <- err
 		}
 	}()
-
-	// Starts raft service.
-	// Test code now.
-	for {
-		rc := make(chan error, 1)
-		go s.raft.Run(rc)
-
-		if err := <-rc; err != nil {
-			fmt.Println(err)
-			close(rc)
-
-			time.Sleep(1 * time.Second)
-			continue
-		}
-
-		break
-	}
 
 	// Starts swim service.
 	sc := make(chan swim.PingError, 1)

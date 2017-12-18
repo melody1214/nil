@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 var mapCmd = &cobra.Command{
@@ -20,8 +21,22 @@ var mapCmd = &cobra.Command{
 	Run:   mapRun,
 }
 
+var (
+	bind string
+	port string
+	cert string
+)
+
 func mapRun(cmd *cobra.Command, args []string) {
-	cc, err := grpc.Dial(net.JoinHostPort(mdscfg.ServerAddr, mdscfg.ServerPort), grpc.WithInsecure())
+	creds, err := credentials.NewClientTLSFromFile(
+		cert,
+		"localhost",
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	cc, err := grpc.Dial(net.JoinHostPort(bind, port), grpc.WithTransportCredentials(creds))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -46,6 +61,7 @@ func mapRun(cmd *cobra.Command, args []string) {
 }
 
 func init() {
-	mapCmd.Flags().StringVarP(&mdscfg.ServerAddr, "bind", "b", config.Get("mds.addr"), "will ask the mds of this address")
-	mapCmd.Flags().StringVarP(&mdscfg.ServerPort, "port", "p", config.Get("mds.port"), "will ask the mds of this port")
+	mapCmd.Flags().StringVarP(&bind, "bind", "b", config.Get("mds.addr"), "will ask the mds of this address")
+	mapCmd.Flags().StringVarP(&port, "port", "p", config.Get("mds.port"), "will ask the mds of this port")
+	mapCmd.Flags().StringVarP(&cert, "cert", "c", config.Get("security.certs_dir")+"/"+config.Get("security.rootca_pem"), "will ask the mds of this port")
 }
