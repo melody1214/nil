@@ -8,6 +8,18 @@
   version = "1.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/armon/go-metrics"
+  packages = ["."]
+  revision = "7aa49fde808223f8dadfdbfd3a20ff6c19e5f9ec"
+
+[[projects]]
+  name = "github.com/boltdb/bolt"
+  packages = ["."]
+  revision = "2f1ce7a837dcb8da3ec595b1dac9d0632f0f99e8"
+  version = "v1.3.1"
+
+[[projects]]
   name = "github.com/go-sql-driver/mysql"
   packages = ["."]
   revision = "a0583e0143b1624142adab07e0e97fe106d99561"
@@ -30,6 +42,36 @@
   packages = ["."]
   revision = "7f08801859139f86dfafd1c296e2cba9a80d292e"
   version = "v1.6.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/hashicorp/go-immutable-radix"
+  packages = ["."]
+  revision = "8aac2701530899b64bdea735a1de8da899815220"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/hashicorp/go-msgpack"
+  packages = ["codec"]
+  revision = "fa3f63826f7c23912c15263591e65d54d080b458"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/hashicorp/golang-lru"
+  packages = ["simplelru"]
+  revision = "0a025b7e63adc15a622f29b0b2c4c3848243bbf6"
+
+[[projects]]
+  name = "github.com/hashicorp/raft"
+  packages = ["."]
+  revision = "6d14f0c70869faabd9e60ba7ed88a6cbbd6a661f"
+  version = "v1.0.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/hashicorp/raft-boltdb"
+  packages = ["."]
+  revision = "6e5ba93211eaf8d9a2ad7e41ffad8c6f160f9fe3"
 
 [[projects]]
   name = "github.com/inconshreveable/mousetrap"
@@ -100,6 +142,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "6d9904a241c29678f27022917df1b49fe438ea26e3888463b6c10acf3bcbe18b"
+  inputs-digest = "6cf1cc0b59936427247e5b7c8472d46d775e652ca1c1a884f8cba495bce25c3c"
   solver-name = "gps-cdcl"
   solver-version = 1
