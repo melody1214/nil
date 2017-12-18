@@ -27,6 +27,7 @@
         "global_cluster_addr": "localhost:50000",
         "cluster_join": "true",
 
+        "raft_dir": "raftdir",        
         "election_timeout": "150ms"
     },
     "security": {

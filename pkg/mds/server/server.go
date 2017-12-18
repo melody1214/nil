@@ -1,13 +1,13 @@
 package server
 
 import (
-	"net"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/chanyoung/nil/pkg/mds/mdspb"
 	"github.com/chanyoung/nil/pkg/mds/mysql"
+	"github.com/chanyoung/nil/pkg/mds/store"
 	"github.com/chanyoung/nil/pkg/swim"
 	"github.com/chanyoung/nil/pkg/swim/swimpb"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -21,10 +21,11 @@ var log *logrus.Logger
 
 // Server serve RPCs.
 type Server struct {
-	cfg  *config.Mds
-	g    *grpc.Server
-	swim *swim.Server
-	db   *mysql.MySQL
+	cfg   *config.Mds
+	store *store.Store
+	g     *grpc.Server
+	swim  *swim.Server
+	db    *mysql.MySQL
 }
 
 // New creates a rpc server object.
@@ -44,6 +45,10 @@ func New(cfg *config.Mds) (*Server, error) {
 			},
 		),
 	}
+
+	// Create new raft store.
+	cfg.Raft.BindAddr = cfg.ServerAddr + ":" + cfg.ServerPort
+	s.store = store.New(&cfg.Raft, &cfg.Security)
 
 	// Check security option and prepare grpc server.
 	creds, err := credentials.NewServerTLSFromFile(
@@ -74,23 +79,28 @@ func New(cfg *config.Mds) (*Server, error) {
 
 // Start starts to listen and serve RPCs.
 func (s *Server) Start() error {
-	// Try to grab a free port which will serve gRPC.
-	ln, err := net.Listen("tcp", net.JoinHostPort(s.cfg.ServerAddr, s.cfg.ServerPort))
-	if err != nil {
+	if err := s.store.Open(true); err != nil {
 		return err
 	}
+	log.Info("raft started successfully")
 
-	// Starts gRPC service.
-	gc := make(chan error, 1)
-	go func() {
-		if err = s.g.Serve(ln); err != nil {
-			gc <- err
-		}
-	}()
+	// // Try to grab a free port which will serve gRPC.
+	// ln, err := net.Listen("tcp", net.JoinHostPort(s.cfg.ServerAddr, s.cfg.ServerPort))
+	// if err != nil {
+	// 	return err
+	// }
 
-	// Starts swim service.
-	sc := make(chan swim.PingError, 1)
-	go s.swim.Serve(sc)
+	// // Starts gRPC service.
+	// gc := make(chan error, 1)
+	// go func() {
+	// 	if err = s.g.Serve(ln); err != nil {
+	// 		gc <- err
+	// 	}
+	// }()
+
+	// // Starts swim service.
+	// sc := make(chan swim.PingError, 1)
+	// go s.swim.Serve(sc)
 
 	// Make channel for Ctrl-C or other terminate signal is received.
 	sigc := make(chan os.Signal, 1)
@@ -98,14 +108,14 @@ func (s *Server) Start() error {
 
 	for {
 		select {
-		case err := <-gc:
-			log.Error(err)
-		case err := <-sc:
-			log.WithFields(logrus.Fields{
-				"server":       "swim",
-				"message type": err.Type,
-				"destID":       err.DestID,
-			}).Error(err.Err)
+		// case err := <-gc:
+		// 	log.Error(err)
+		// case err := <-sc:
+		// 	log.WithFields(logrus.Fields{
+		// 		"server":       "swim",
+		// 		"message type": err.Type,
+		// 		"destID":       err.DestID,
+		// 	}).Error(err.Err)
 		case <-sigc:
 			log.Info("Received stop signal from OS")
 			return s.stop()

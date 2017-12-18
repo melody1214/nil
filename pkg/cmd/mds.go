@@ -42,6 +42,7 @@ func init() {
 	mdsCmd.Flags().StringVarP(&mdscfg.Raft.LocalClusterRegion, "raft-local-cluster-region", "", config.Get("raft.local_cluster_region"), "region name of the local cluster")
 	mdsCmd.Flags().StringVarP(&mdscfg.Raft.GlobalClusterAddr, "raft-global-cluster-addr", "", config.Get("raft.global_cluster_addr"), "global raft cluster end point")
 	mdsCmd.Flags().StringVarP(&mdscfg.Raft.ClusterJoin, "raft-cluster-join", "", config.Get("raft.cluster_join"), "join an existing raft cluster")
+	mdsCmd.Flags().StringVarP(&mdscfg.Raft.RaftDir, "raft-dir", "", config.Get("raft.raft_dir"), "directory path of raft log store")
 	mdsCmd.Flags().StringVarP(&mdscfg.Raft.ElectionTimeout, "raft-election-timeout", "", config.Get("raft.election_timeout"), "raft election timeout")
 
 	mdsCmd.Flags().StringVarP(&mdscfg.Security.CertsDir, "secure-certs-dir", "", config.Get("security.certs_dir"), "directory path of secure configuration files")

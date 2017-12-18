@@ -2,6 +2,11 @@ package config
 
 // Raft holds info required to set a raft server.
 type Raft struct {
+	// BindAddr is the mds tcp address for raft binding.
+	BindAddr string
+	// RaftDir is the path of log store directory.
+	RaftDir string
+
 	// LocalClusterRigion is the region name of the local cluster.
 	LocalClusterRegion string
 	// LocalClusterAddr is the endpoint address of the local cluster.
