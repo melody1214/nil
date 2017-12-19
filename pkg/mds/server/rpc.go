@@ -53,7 +53,7 @@ func (s *Server) handleConn(conn net.Conn) {
 	buf := make([]byte, 1)
 	if _, err := conn.Read(buf); err != nil {
 		if err != io.EOF {
-			log.Error("failed to read a rpc header byte: %v", err)
+			log.Errorf("failed to read a rpc header byte: %v", err)
 		}
 		return
 	}
@@ -65,11 +65,12 @@ func (s *Server) handleConn(conn net.Conn) {
 	case rpcSwim:
 
 	case rpcMeta:
+		s.handleMetaConn(conn)
 
 	case rpcAdmin:
 
 	default:
-		log.Error("unknown rpc header: %v", buf[0])
+		log.Errorf("unknown rpc header: %v", buf[0])
 		return
 	}
 }

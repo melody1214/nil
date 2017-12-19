@@ -19,6 +19,7 @@ var log *logrus.Logger
 type Server struct {
 	cfg   *config.Mds
 	rtl   *RaftTransportLayer
+	mtl   *MetaTransportLayer
 	store *store.Store
 	db    *mysql.MySQL
 }
@@ -32,12 +33,15 @@ func New(cfg *config.Mds) (*Server, error) {
 	}
 
 	// Create new raft store.
-	raftAddr, err := net.ResolveTCPAddr("tcp", cfg.Raft.LocalClusterAddr)
+	localAddr, err := net.ResolveTCPAddr("tcp", cfg.Raft.LocalClusterAddr)
 	if err != nil {
 		return nil, err
 	}
-	s.rtl = newRaftTransportLayer(raftAddr)
+	s.rtl = newRaftTransportLayer(localAddr)
 	s.store = store.New(&cfg.Raft, &cfg.Security, s.rtl)
+
+	// Create a transport layer of meta data operations.
+	s.mtl = newMetaTransportLayer(localAddr)
 
 	// Connect and initiate to mysql server.
 	db, err := mysql.New(s.cfg)
