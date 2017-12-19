@@ -46,9 +46,8 @@ func New(raftCfg *config.Raft, secuCfg *config.Security) *Store {
 	}
 }
 
-// Open opens the store. If enableSingle is set, and there are no existing peers,
-// then this node becomes the first node, and therefore leader, of the cluster.
-func (s *Store) Open(enableSingle bool) error {
+// Open opens the store.
+func (s *Store) Open() error {
 	// Setup Raft configuration.
 	config := raft.DefaultConfig()
 	config.LocalID = raft.ServerID(s.raftCfg.LocalClusterRegion)
@@ -60,7 +59,7 @@ func (s *Store) Open(enableSingle bool) error {
 	os.MkdirAll(s.raftCfg.RaftDir, 0700)
 
 	// Setup Raft communication
-	addr, err := net.ResolveTCPAddr("tcp", s.raftCfg.BindAddr)
+	addr, err := net.ResolveTCPAddr("tcp", s.raftCfg.LocalClusterAddr)
 	if err != nil {
 		return errors.Wrap(err, "open raft: failed to resolve tcp address")
 	}
@@ -88,7 +87,9 @@ func (s *Store) Open(enableSingle bool) error {
 	}
 	s.raft = ra
 
-	if enableSingle {
+	// If LocalClusterAddr is same with GlobalClusterAddr then this node
+	// becomes the first node, and therefore leader of the cluster.
+	if s.raftCfg.LocalClusterAddr == s.raftCfg.GlobalClusterAddr {
 		configuration := raft.Configuration{
 			Servers: []raft.Server{
 				raft.Server{

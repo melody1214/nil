@@ -79,7 +79,7 @@ func New(cfg *config.Mds) (*Server, error) {
 
 // Start starts to listen and serve RPCs.
 func (s *Server) Start() error {
-	if err := s.store.Open(true); err != nil {
+	if err := s.store.Open(); err != nil {
 		return err
 	}
 	log.Info("raft started successfully")
