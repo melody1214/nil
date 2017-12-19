@@ -14,13 +14,16 @@ func (s *Server) initHandler() {
 
 	// Register raft handler.
 	s.registerRaftHandler(m)
-	// Register s3 handler.
-	s.registerS3Handler(m)
+	// // Register s3 handler.
+	// s.registerS3Handler(m)
 
 	s.srv.Handler = m
 }
 
 func (s *Server) registerRaftHandler(router *mux.Router) {
+	router.MatcherFunc(func(r *http.Request, rm *mux.RouteMatch) bool {
+		return true
+	}).HeadersRegexp("Content-type", "application/raft").HandlerFunc(s.raftServeHTTP)
 }
 
 func (s *Server) registerS3Handler(router *mux.Router) {
@@ -45,11 +48,14 @@ func (s *Server) registerS3Handler(router *mux.Router) {
 }
 
 func (s *Server) raftServeHTTP(w http.ResponseWriter, r *http.Request) {
-	mds, err := s.mdsMap.Get()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	fmt.Println("AAA")
+
+	mds := s.cfg.FirstMds
+	// mds, err := s.mdsMap.Get()
+	// if err != nil {
+	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+	// 	return
+	// }
 
 	rpURL, err := url.Parse("https://" + mds)
 	if err != nil {
@@ -66,51 +72,51 @@ func (s *Server) raftServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) s3MakeBucket(w http.ResponseWriter, r *http.Request) {
-	_, err := s.mdsMap.Get()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	// _, err := s.mdsMap.Get()
+	// if err != nil {
+	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+	// 	return
+	// }
 
 	fmt.Fprintf(w, "%v", r)
 }
 
 func (s *Server) s3RemoveBucket(w http.ResponseWriter, r *http.Request) {
-	_, err := s.mdsMap.Get()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	// _, err := s.mdsMap.Get()
+	// if err != nil {
+	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+	// 	return
+	// }
 
 	fmt.Fprintf(w, "%v", r)
 }
 
 func (s *Server) s3PutObject(w http.ResponseWriter, r *http.Request) {
-	_, err := s.mdsMap.Get()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	// _, err := s.mdsMap.Get()
+	// if err != nil {
+	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+	// 	return
+	// }
 
 	fmt.Fprintf(w, "%v", r)
 }
 
 func (s *Server) s3GetObject(w http.ResponseWriter, r *http.Request) {
-	_, err := s.mdsMap.Get()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	// _, err := s.mdsMap.Get()
+	// if err != nil {
+	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+	// 	return
+	// }
 
 	fmt.Fprintf(w, "%v", r)
 }
 
 func (s *Server) s3DeleteObject(w http.ResponseWriter, r *http.Request) {
-	_, err := s.mdsMap.Get()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	// _, err := s.mdsMap.Get()
+	// if err != nil {
+	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+	// 	return
+	// }
 
 	fmt.Fprintf(w, "%v", r)
 }

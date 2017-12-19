@@ -1,7 +1,10 @@
 package store
 
 import (
-	"net"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
@@ -34,15 +37,19 @@ type Store struct {
 	// Raft consensus mechanism.
 	raft *raft.Raft
 
+	// Custom transport layer that can encrypts RPCs.
+	transport raft.StreamLayer
+
 	// Protect the fields in the Server struct.
 	mu sync.RWMutex
 }
 
 // New creates a Store object.
-func New(raftCfg *config.Raft, secuCfg *config.Security) *Store {
+func New(raftCfg *config.Raft, secuCfg *config.Security, transport raft.StreamLayer) *Store {
 	return &Store{
-		raftCfg: raftCfg,
-		secuCfg: secuCfg,
+		raftCfg:   raftCfg,
+		secuCfg:   secuCfg,
+		transport: transport,
 	}
 }
 
@@ -59,14 +66,7 @@ func (s *Store) Open() error {
 	os.MkdirAll(s.raftCfg.RaftDir, 0700)
 
 	// Setup Raft communication
-	addr, err := net.ResolveTCPAddr("tcp", s.raftCfg.LocalClusterAddr)
-	if err != nil {
-		return errors.Wrap(err, "open raft: failed to resolve tcp address")
-	}
-	transport, err := raft.NewTCPTransport(s.raftCfg.BindAddr, addr, maxPool, timeout, mlog.GetLogger().Writer())
-	if err != nil {
-		return errors.Wrap(err, "open raft: failed to make new tcp transport")
-	}
+	transport := raft.NewNetworkTransport(s.transport, maxPool, timeout, mlog.GetLogger().Writer())
 
 	// Create the snapshot store. This allows the Raft to truncate the log.
 	snapshots, err := raft.NewFileSnapshotStore(s.raftCfg.RaftDir, retainSnapshotCount, mlog.GetLogger().Writer())
@@ -99,7 +99,48 @@ func (s *Store) Open() error {
 			},
 		}
 		ra.BootstrapCluster(configuration)
+	} else {
+		// Join to the existing raft cluster.
+		if err := s.join(s.raftCfg.GlobalClusterAddr,
+			s.raftCfg.LocalClusterAddr,
+			s.raftCfg.LocalClusterRegion); err != nil {
+			return errors.Wrap(err, "open raft: failed to join existing cluster")
+		}
 	}
+
+	return nil
+}
+
+// Join joins a node, identified by nodeID and located at addr, to this store.
+// The node must be ready to respond to Raft communications at that address.
+func (s *Store) Join(nodeID, addr string) error {
+	mlog.GetLogger().Infof("received join request for remote node %s at %s", nodeID, addr)
+
+	f := s.raft.AddVoter(raft.ServerID(nodeID), raft.ServerAddress(addr), 0, 0)
+	if f.Error() != nil {
+		return f.Error()
+	}
+	mlog.GetLogger().Infof("node %s at %s joined successfully", nodeID, addr)
+	return nil
+}
+
+// join joins into the existing cluster, located at joinAddr.
+// The joinAddr node must the leader state node.
+func (s *Store) join(joinAddr, raftAddr, nodeID string) error {
+	b, err := json.Marshal(map[string]string{"addr": raftAddr, "id": nodeID})
+	if err != nil {
+		return err
+	}
+
+	resp, err := http.Post(
+		fmt.Sprintf("https://%s/join", joinAddr),
+		"application/raft",
+		bytes.NewReader(b),
+	)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
 
 	return nil
 }

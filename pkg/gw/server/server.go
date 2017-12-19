@@ -9,7 +9,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/chanyoung/nil/pkg/gw/mdsmap"
 	"github.com/chanyoung/nil/pkg/security"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
@@ -20,20 +19,20 @@ var log *logrus.Logger
 
 // Server handles clients requests.
 type Server struct {
-	cfg    *config.Gw
-	mdsMap *mdsmap.MdsMap
-	srv    *http.Server
+	cfg *config.Gw
+	// mdsMap *mdsmap.MdsMap
+	srv *http.Server
 }
 
 // New creates a server object.
 func New(cfg *config.Gw) (*Server, error) {
 	log = mlog.GetLogger()
 
-	// Make mds map.
-	mm, err := mdsmap.New(&cfg.Security)
-	if err != nil {
-		return nil, err
-	}
+	// // Make mds map.
+	// mm, err := mdsmap.New(&cfg.Security)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	// Get TLS config.
 	var tlsCfg *tls.Config
@@ -42,8 +41,8 @@ func New(cfg *config.Gw) (*Server, error) {
 	}
 
 	srv := &Server{
-		cfg:    cfg,
-		mdsMap: mm,
+		cfg: cfg,
+		// mdsMap: mm,
 
 		srv: &http.Server{
 			Addr:           net.JoinHostPort(cfg.ServerAddr, cfg.ServerPort),
@@ -60,10 +59,10 @@ func New(cfg *config.Gw) (*Server, error) {
 
 // Start starts to listen and serve requests.
 func (s *Server) Start() error {
-	// Filling mds map information.
-	if err := s.mdsMap.Start(s.cfg.FirstMds); err != nil {
-		return err
-	}
+	// // Filling mds map information.
+	// if err := s.mdsMap.Start(s.cfg.FirstMds); err != nil {
+	// 	return err
+	// }
 
 	// Http server runs and return error through the httpc channel.
 	httpc := make(chan error)
