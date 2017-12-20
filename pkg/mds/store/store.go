@@ -1,10 +1,6 @@
 package store
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
@@ -99,13 +95,6 @@ func (s *Store) Open() error {
 			},
 		}
 		ra.BootstrapCluster(configuration)
-	} else {
-		// Join to the existing raft cluster.
-		if err := s.join(s.raftCfg.GlobalClusterAddr,
-			s.raftCfg.LocalClusterAddr,
-			s.raftCfg.LocalClusterRegion); err != nil {
-			return errors.Wrap(err, "open raft: failed to join existing cluster")
-		}
 	}
 
 	return nil
@@ -121,26 +110,5 @@ func (s *Store) Join(nodeID, addr string) error {
 		return f.Error()
 	}
 	mlog.GetLogger().Infof("node %s at %s joined successfully", nodeID, addr)
-	return nil
-}
-
-// join joins into the existing cluster, located at joinAddr.
-// The joinAddr node must the leader state node.
-func (s *Store) join(joinAddr, raftAddr, nodeID string) error {
-	b, err := json.Marshal(map[string]string{"addr": raftAddr, "id": nodeID})
-	if err != nil {
-		return err
-	}
-
-	resp, err := http.Post(
-		fmt.Sprintf("https://%s/join", joinAddr),
-		"application/raft",
-		bytes.NewReader(b),
-	)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
 	return nil
 }

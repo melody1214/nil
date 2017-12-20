@@ -22,41 +22,41 @@ type RaftTransportLayer struct {
 }
 
 func newRaftTransportLayer(advertise net.Addr) *RaftTransportLayer {
-	rtl := &RaftTransportLayer{
+	l := &RaftTransportLayer{
 		addr:    advertise,
 		connCh:  make(chan net.Conn),
 		closeCh: make(chan struct{}),
 	}
-	return rtl
+	return l
 }
 
 // Addr returns the address of the raft transport layer.
-func (rtl *RaftTransportLayer) Addr() net.Addr {
-	return rtl.addr
+func (l *RaftTransportLayer) Addr() net.Addr {
+	return l.addr
 }
 
 // Accept waits and accepts the connection.
-func (rtl *RaftTransportLayer) Accept() (net.Conn, error) {
+func (l *RaftTransportLayer) Accept() (net.Conn, error) {
 	select {
-	case conn := <-rtl.connCh:
+	case conn := <-l.connCh:
 		return conn, nil
-	case <-rtl.closeCh:
+	case <-l.closeCh:
 		return nil, errors.New("raft transport layer closed")
 	}
 }
 
 // Close closes the raft transport layer.
-func (rtl *RaftTransportLayer) Close() error {
-	old := atomic.SwapUint32(&rtl.closed, closed)
+func (l *RaftTransportLayer) Close() error {
+	old := atomic.SwapUint32(&l.closed, closed)
 	if old != closed {
-		close(rtl.closeCh)
+		close(l.closeCh)
 	}
 
 	return nil
 }
 
 // Dial dials to the given address and returns a new network connection.
-func (rtl *RaftTransportLayer) Dial(addr raft.ServerAddress, timeout time.Duration) (net.Conn, error) {
+func (l *RaftTransportLayer) Dial(addr raft.ServerAddress, timeout time.Duration) (net.Conn, error) {
 	dialer := &net.Dialer{Timeout: timeout}
 
 	config := security.DefaultTLSConfig()
@@ -67,7 +67,7 @@ func (rtl *RaftTransportLayer) Dial(addr raft.ServerAddress, timeout time.Durati
 	}
 
 	// Write RPC header.
-	_, err = conn.Write([]byte{byte(rpcRaft)})
+	_, err = conn.Write([]byte{byte(TrRaft)})
 	if err != nil {
 		conn.Close()
 		return nil, err
@@ -76,5 +76,5 @@ func (rtl *RaftTransportLayer) Dial(addr raft.ServerAddress, timeout time.Durati
 }
 
 func (s *Server) handleRaftConn(conn net.Conn) {
-	s.rtl.connCh <- conn
+	s.raftTr.connCh <- conn
 }
