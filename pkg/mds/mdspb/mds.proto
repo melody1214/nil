@@ -22,7 +22,17 @@ message AddUserResponse {
     string secretKey = 2;
 }
 
+message JoinRaftRequest {
+    string nodeID   = 1;
+    string raftAddr = 2;
+}
+
+message JoinRaftResponse {
+    
+}
+
 service Mds {
     rpc GetClusterMap (GetClusterMapRequest) returns (GetClusterMapResponse) {}
     rpc AddUser (AddUserRequest) returns (AddUserResponse) {}
+    rpc JoinRaft (JoinRaftRequest) returns (JoinRaftResponse) {}
 }
