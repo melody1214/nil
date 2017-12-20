@@ -69,6 +69,6 @@ func (s *Server) handleConn(conn net.Conn) {
 		s.handleRaftConn(conn)
 
 	default:
-		s.handleHTTPConn(conn)
+		s.handleHTTPConn(conn, buf[0])
 	}
 }

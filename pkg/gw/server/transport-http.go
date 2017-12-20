@@ -52,7 +52,6 @@ func (l *httpTransportLayer) Close() error {
 
 func (s *Server) handleHTTPConn(conn net.Conn, signByte byte) {
 	s.httpTr.connCh <- newNilConn(conn, signByte)
-	// s.httpTr.connCh <- conn
 }
 
 type nilConn struct {

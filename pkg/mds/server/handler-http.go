@@ -6,12 +6,8 @@ import (
 	"net/http"
 )
 
-func (s *Server) gRPCStart() error {
-	return nil
-}
-
-func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	s.handleJoin(w, r)
+func (s *Server) registerHTTPHandler() {
+	s.httpMux.NewRoute().HeadersRegexp("Content-type", "application/raft").HandlerFunc(s.handleJoin)
 }
 
 func (s *Server) handleJoin(w http.ResponseWriter, r *http.Request) {

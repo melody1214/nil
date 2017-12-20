@@ -15,6 +15,7 @@ import (
 	"github.com/chanyoung/nil/pkg/mds/store"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
+	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -28,6 +29,7 @@ type Server struct {
 	raftTr *RaftTransportLayer
 
 	httpTr  *HTTPTransportLayer
+	httpMux *mux.Router
 	httpSrv *http.Server
 
 	store *store.Store
@@ -44,30 +46,33 @@ func New(cfg *config.Mds) (*Server, error) {
 		return nil, err
 	}
 
-	s := &Server{
-		cfg:    cfg,
-		raftTr: newRaftTransportLayer(localAddr),
-		httpTr: newHTTPTransportLayer(localAddr),
+	srv := &Server{
+		cfg:     cfg,
+		raftTr:  newRaftTransportLayer(localAddr),
+		httpMux: mux.NewRouter(),
+		httpTr:  newHTTPTransportLayer(localAddr),
 	}
 
-	s.httpSrv = &http.Server{
-		Handler:        s,
+	srv.registerHTTPHandler()
+
+	srv.httpSrv = &http.Server{
+		Handler:        srv.httpMux,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
 
 	// Create new raft store.
-	s.store = store.New(&cfg.Raft, &cfg.Security, s.raftTr)
+	srv.store = store.New(&cfg.Raft, &cfg.Security, srv.raftTr)
 
 	// Connect and initiate to mysql server.
-	db, err := mysql.New(s.cfg)
+	db, err := mysql.New(srv.cfg)
 	if err != nil {
 		return nil, err
 	}
-	s.db = db
+	srv.db = db
 
-	return s, nil
+	return srv, nil
 }
 
 // Start starts to listen and serve RPCs.
