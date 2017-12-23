@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/gorilla/mux"
@@ -20,9 +21,12 @@ var log *logrus.Logger
 type Server struct {
 	cfg *config.Gw
 
-	httpSrv *http.Server
-	httpMux *mux.Router
-	httpTr  *httpTransportLayer
+	nilMux   *nilmux.NilMux
+	nilLayer *nilmux.Layer
+
+	httpMux   *mux.Router
+	httpLayer *nilmux.Layer
+	httpSrv   *http.Server
 }
 
 // New creates a server object.
@@ -30,19 +34,39 @@ func New(cfg *config.Gw) (*Server, error) {
 	log = mlog.GetLogger()
 
 	// Resolve gateway addres.
-	addr, err := net.ResolveTCPAddr("tcp", cfg.ServerAddr+":"+cfg.ServerPort)
+	addr := cfg.ServerAddr + ":" + cfg.ServerPort
+	resolvedAddr, err := net.ResolveTCPAddr("tcp", cfg.ServerAddr+":"+cfg.ServerPort)
 	if err != nil {
 		return nil, err
 	}
 
 	srv := &Server{
-		cfg:     cfg,
-		httpTr:  newHTTPTransportLayer(addr),
-		httpMux: mux.NewRouter(),
+		cfg: cfg,
 	}
 
-	srv.registerHTTPHandler()
+	// Create a rpc layer.
+	rpcTypeBytes := []byte{
+		0x01, // rpcRaft
+		0x02, // rpcNil
+	}
+	srv.nilLayer = nilmux.NewLayer(rpcTypeBytes, resolvedAddr, true)
 
+	// Create a http layer.
+	httpBytes := []byte{
+		0x44, // 'D' of DELETE
+		0x47, // 'G' of GET
+		0x50, // 'P' of POST, PUT
+	}
+	srv.httpLayer = nilmux.NewLayer(httpBytes, resolvedAddr, false)
+
+	// Create a mux and register layers.
+	srv.nilMux = nilmux.NewNilMux(addr, &cfg.Security)
+	srv.nilMux.RegisterLayer(srv.nilLayer)
+	srv.nilMux.RegisterLayer(srv.httpLayer)
+
+	// Create a http server.
+	srv.httpMux = mux.NewRouter()
+	srv.registerS3Handler(srv.httpMux)
 	srv.httpSrv = &http.Server{
 		Handler:        srv.httpMux,
 		ReadTimeout:    10 * time.Second,
@@ -55,11 +79,9 @@ func New(cfg *config.Gw) (*Server, error) {
 
 // Start starts to listen and serve requests.
 func (s *Server) Start() error {
-	go s.listenAndServeTLS()
-	go s.httpSrv.Serve(s.httpTr)
-
-	// Http server runs and return error through the httpc channel.
-	httpc := make(chan error)
+	go s.nilMux.ListenAndServeTLS()
+	go s.serveNil(s.nilLayer)
+	go s.httpSrv.Serve(s.httpLayer)
 
 	// Make channel for Ctrl-C or other terminate signal is received.
 	sigc := make(chan os.Signal, 1)
@@ -69,9 +91,6 @@ func (s *Server) Start() error {
 		select {
 		case <-sigc:
 			log.Info("Received stop signal from OS")
-			return s.stop()
-		case err := <-httpc:
-			log.Error(err)
 			return s.stop()
 		}
 	}

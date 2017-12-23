@@ -1,11 +1,8 @@
 package server
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
 	"net"
-	"net/http"
+	"net/rpc"
 	"os"
 	"os/signal"
 	"syscall"
@@ -13,9 +10,9 @@ import (
 
 	"github.com/chanyoung/nil/pkg/mds/mysql"
 	"github.com/chanyoung/nil/pkg/mds/store"
+	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
-	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -26,11 +23,13 @@ var log *logrus.Logger
 type Server struct {
 	cfg *config.Mds
 
-	raftTr *RaftTransportLayer
+	nilMux        *nilmux.NilMux
+	nilLayer      *nilmux.Layer
+	nilRPCSrv     *rpc.Server
+	NilRPCHandler *NilRPCHandler
 
-	httpTr  *HTTPTransportLayer
-	httpMux *mux.Router
-	httpSrv *http.Server
+	raftTransportLayer *raftTransportLayer
+	raftLayer          *nilmux.Layer
 
 	store *store.Store
 	db    *mysql.MySQL
@@ -40,30 +39,46 @@ type Server struct {
 func New(cfg *config.Mds) (*Server, error) {
 	log = mlog.GetLogger()
 
-	// Create transport layers.
-	localAddr, err := net.ResolveTCPAddr("tcp", cfg.Raft.LocalClusterAddr)
+	// Resolve gateway addres.
+	addr := cfg.ServerAddr + ":" + cfg.ServerPort
+	resolvedAddr, err := net.ResolveTCPAddr("tcp", cfg.ServerAddr+":"+cfg.ServerPort)
 	if err != nil {
 		return nil, err
 	}
 
 	srv := &Server{
-		cfg:     cfg,
-		raftTr:  newRaftTransportLayer(localAddr),
-		httpMux: mux.NewRouter(),
-		httpTr:  newHTTPTransportLayer(localAddr),
+		cfg: cfg,
 	}
 
-	srv.registerHTTPHandler()
-
-	srv.httpSrv = &http.Server{
-		Handler:        srv.httpMux,
-		ReadTimeout:    10 * time.Second,
-		WriteTimeout:   10 * time.Second,
-		MaxHeaderBytes: 1 << 20,
+	// Create a rpc layer.
+	rpcTypeBytes := []byte{
+		0x02, // rpcNil
 	}
+	srv.nilLayer = nilmux.NewLayer(rpcTypeBytes, resolvedAddr, false)
+
+	// Create a raft layer.
+	raftTypeBytes := []byte{
+		0x01, // rpcRaft
+	}
+	srv.raftLayer = nilmux.NewLayer(raftTypeBytes, resolvedAddr, false)
+	srv.raftTransportLayer = newRaftTransportLayer(srv.raftLayer)
+
+	// Create a mux and register layers.
+	srv.nilMux = nilmux.NewNilMux(addr, &cfg.Security)
+	srv.nilMux.RegisterLayer(srv.nilLayer)
+	srv.nilMux.RegisterLayer(srv.raftLayer)
 
 	// Create new raft store.
-	srv.store = store.New(&cfg.Raft, &cfg.Security, srv.raftTr)
+	// srv.store = store.New(&cfg.Raft, &cfg.Security, srv.raftTr)
+	srv.store = store.New(&cfg.Raft, &cfg.Security, srv.raftTransportLayer)
+
+	// // Create nil RPC server.
+	// srv.nilRPC = newNilRPC(srv)
+	srv.nilRPCSrv = rpc.NewServer()
+	srv.NilRPCHandler = newNilRPCHandler(srv)
+	if err := srv.nilRPCSrv.Register(srv.NilRPCHandler); err != nil {
+		return nil, err
+	}
 
 	// Connect and initiate to mysql server.
 	db, err := mysql.New(srv.cfg)
@@ -78,8 +93,8 @@ func New(cfg *config.Mds) (*Server, error) {
 // Start starts to listen and serve RPCs.
 func (s *Server) Start() error {
 	// Start tcp listen and serve.
-	go s.listenAndServeTLS()
-	go s.httpSrv.Serve(s.httpTr)
+	go s.nilMux.ListenAndServeTLS()
+	go s.serveNilRPC(s.nilLayer)
 
 	// Start raft service.
 	if err := s.store.Open(); err != nil {
@@ -120,21 +135,19 @@ func (s *Server) stop() error {
 // join joins into the existing cluster, located at joinAddr.
 // The joinAddr node must the leader state node.
 func (s *Server) join(joinAddr, raftAddr, nodeID string) error {
-	b, err := json.Marshal(map[string]string{"addr": raftAddr, "id": nodeID})
+	conn, err := dialNilRPC(joinAddr, time.Duration(2*time.Second))
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 
-	hc := s.httpTr.GetHTTPClient()
-	resp, err := hc.Post(
-		fmt.Sprintf("http://%s/join", joinAddr),
-		"application/raft",
-		bytes.NewReader(b),
-	)
-	if err != nil {
-		return err
+	req := &JoinRequest{
+		RaftAddr: raftAddr,
+		NodeID:   nodeID,
 	}
-	defer resp.Body.Close()
 
-	return nil
+	res := &JoinResponse{}
+
+	cli := rpc.NewClient(conn)
+	return cli.Call("NilRPCHandler.HandleJoin", req, res)
 }
