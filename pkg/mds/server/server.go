@@ -26,7 +26,7 @@ type Server struct {
 	nilMux        *nilmux.NilMux
 	nilLayer      *nilmux.Layer
 	nilRPCSrv     *rpc.Server
-	NilRPCHandler *NilRPCHandler
+	NilRPCHandler NilRPCHandler
 
 	raftTransportLayer *raftTransportLayer
 	raftLayer          *nilmux.Layer
@@ -73,9 +73,8 @@ func New(cfg *config.Mds) (*Server, error) {
 	srv.store = store.New(&cfg.Raft, &cfg.Security, srv.raftTransportLayer)
 
 	// // Create nil RPC server.
-	// srv.nilRPC = newNilRPC(srv)
 	srv.nilRPCSrv = rpc.NewServer()
-	srv.NilRPCHandler = newNilRPCHandler(srv)
+	srv.newNilRPCHandler()
 	if err := srv.nilRPCSrv.Register(srv.NilRPCHandler); err != nil {
 		return nil, err
 	}
@@ -149,5 +148,5 @@ func (s *Server) join(joinAddr, raftAddr, nodeID string) error {
 	res := &JoinResponse{}
 
 	cli := rpc.NewClient(conn)
-	return cli.Call("NilRPCHandler.HandleJoin", req, res)
+	return cli.Call("Server.Join", req, res)
 }

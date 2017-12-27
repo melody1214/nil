@@ -10,6 +10,10 @@ import (
 	"github.com/chanyoung/nil/pkg/security"
 )
 
+func (s *Server) newNilRPCHandler() {
+	s.NilRPCHandler = s
+}
+
 func (s *Server) serveNilRPC(l *nilmux.Layer) {
 	for {
 		conn, err := l.Accept()
@@ -42,6 +46,21 @@ func dialNilRPC(addr string, timeout time.Duration) (net.Conn, error) {
 	return conn, err
 }
 
+// NilRPCHandler is the interface of mds rpc commands.
+type NilRPCHandler interface {
+	// Join joins the mds node into the cluster.
+	Join(req *JoinRequest, res *JoinResponse) error
+}
+
+// Join joins the mds node into the cluster.
+func (s *Server) Join(req *JoinRequest, res *JoinResponse) error {
+	if req.RaftAddr == "" || req.NodeID == "" {
+		return fmt.Errorf("not enough arguments: %+v", req)
+	}
+
+	return s.store.Join(req.NodeID, req.RaftAddr)
+}
+
 // JoinRequest includes an information for joining a new node into the raft clsuter.
 // RaftAddr: address of the requested node.
 // NodeID: ID of the requested node.
@@ -52,24 +71,3 @@ type JoinRequest struct {
 
 // JoinResponse is a NilRPC response message to join an existing cluster.
 type JoinResponse struct{}
-
-// NilRPCHandler implements the handlers for NilRPC requests.
-type NilRPCHandler struct {
-	// *rpc.Server
-	s *Server
-}
-
-func newNilRPCHandler(s *Server) *NilRPCHandler {
-	return &NilRPCHandler{
-		s: s,
-	}
-}
-
-// HandleJoin handles a raft cluster join request from remote.
-func (n *NilRPCHandler) HandleJoin(req *JoinRequest, res *JoinResponse) error {
-	if req.RaftAddr == "" || req.NodeID == "" {
-		return fmt.Errorf("not enough arguments: %+v", req)
-	}
-
-	return n.s.store.Join(req.NodeID, req.RaftAddr)
-}
