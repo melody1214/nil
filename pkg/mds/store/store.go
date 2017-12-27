@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/chanyoung/nil/pkg/mds/mysql"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/hashicorp/raft"
@@ -27,11 +28,13 @@ const (
 // managed only in local cluster by mysql replication.
 type Store struct {
 	// Configuration.
-	raftCfg *config.Raft
-	secuCfg *config.Security
+	cfg *config.Mds
 
 	// Raft consensus mechanism.
 	raft *raft.Raft
+
+	// Mysql store.
+	db *mysql.MySQL
 
 	// Custom transport layer that can encrypts RPCs.
 	transport raft.StreamLayer
@@ -40,38 +43,49 @@ type Store struct {
 	mu sync.RWMutex
 }
 
+type command struct {
+	Op    string `json:"op,omitempty"`
+	Query string `json:"query,omitempty"`
+}
+
 // New creates a Store object.
-func New(raftCfg *config.Raft, secuCfg *config.Security, transport raft.StreamLayer) *Store {
+func New(cfg *config.Mds, transport raft.StreamLayer) *Store {
 	return &Store{
-		raftCfg:   raftCfg,
-		secuCfg:   secuCfg,
+		cfg:       cfg,
 		transport: transport,
 	}
 }
 
 // Open opens the store.
 func (s *Store) Open() error {
+	// Connect and initiate to mysql server.
+	db, err := mysql.New(s.cfg)
+	if err != nil {
+		return err
+	}
+	s.db = db
+
 	// Setup Raft configuration.
 	config := raft.DefaultConfig()
-	config.LocalID = raft.ServerID(s.raftCfg.LocalClusterRegion)
+	config.LocalID = raft.ServerID(s.cfg.Raft.LocalClusterRegion)
 
 	// Create Raft log store directory.
-	if s.raftCfg.RaftDir == "" {
+	if s.cfg.Raft.RaftDir == "" {
 		return errors.New("open raft: no raft storage directory specified")
 	}
-	os.MkdirAll(s.raftCfg.RaftDir, 0700)
+	os.MkdirAll(s.cfg.Raft.RaftDir, 0700)
 
 	// Setup Raft communication
 	transport := raft.NewNetworkTransport(s.transport, maxPool, timeout, mlog.GetLogger().Writer())
 
 	// Create the snapshot store. This allows the Raft to truncate the log.
-	snapshots, err := raft.NewFileSnapshotStore(s.raftCfg.RaftDir, retainSnapshotCount, mlog.GetLogger().Writer())
+	snapshots, err := raft.NewFileSnapshotStore(s.cfg.Raft.RaftDir, retainSnapshotCount, mlog.GetLogger().Writer())
 	if err != nil {
 		return errors.Wrap(err, "open raft: failed to make new snapshot store")
 	}
 
 	// Create the log store and stable store.
-	logStore, err := raftboltdb.NewBoltStore(filepath.Join(s.raftCfg.RaftDir, "raft.db"))
+	logStore, err := raftboltdb.NewBoltStore(filepath.Join(s.cfg.Raft.RaftDir, "raft.db"))
 	if err != nil {
 		return errors.Wrap(err, "open raft: failed to make new boltdb store")
 	}
@@ -85,7 +99,7 @@ func (s *Store) Open() error {
 
 	// If LocalClusterAddr is same with GlobalClusterAddr then this node
 	// becomes the first node, and therefore leader of the cluster.
-	if s.raftCfg.LocalClusterAddr == s.raftCfg.GlobalClusterAddr {
+	if s.cfg.Raft.LocalClusterAddr == s.cfg.Raft.GlobalClusterAddr {
 		configuration := raft.Configuration{
 			Servers: []raft.Server{
 				raft.Server{
@@ -100,15 +114,31 @@ func (s *Store) Open() error {
 	return nil
 }
 
+// Close cleans up the store.
+func (s *Store) Close() {
+	// Close mysql connection.
+	s.db.Close()
+	s.raft.Shutdown()
+}
+
 // Join joins a node, identified by nodeID and located at addr, to this store.
 // The node must be ready to respond to Raft communications at that address.
 func (s *Store) Join(nodeID, addr string) error {
 	mlog.GetLogger().Infof("received join request for remote node %s at %s", nodeID, addr)
 
+	if s.raft.State() != raft.Leader {
+		return errors.New("not leader")
+	}
+
 	f := s.raft.AddVoter(raft.ServerID(nodeID), raft.ServerAddress(addr), 0, 0)
 	if f.Error() != nil {
 		return f.Error()
 	}
+
+	if err := s.db.AddRegion(nodeID, addr); err != nil {
+		return err
+	}
+
 	mlog.GetLogger().Infof("node %s at %s joined successfully", nodeID, addr)
 	return nil
 }

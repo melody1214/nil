@@ -8,7 +8,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/chanyoung/nil/pkg/mds/mysql"
 	"github.com/chanyoung/nil/pkg/mds/store"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -32,7 +31,6 @@ type Server struct {
 	raftLayer          *nilmux.Layer
 
 	store *store.Store
-	db    *mysql.MySQL
 }
 
 // New creates a rpc server object.
@@ -69,22 +67,14 @@ func New(cfg *config.Mds) (*Server, error) {
 	srv.nilMux.RegisterLayer(srv.raftLayer)
 
 	// Create new raft store.
-	// srv.store = store.New(&cfg.Raft, &cfg.Security, srv.raftTr)
-	srv.store = store.New(&cfg.Raft, &cfg.Security, srv.raftTransportLayer)
+	srv.store = store.New(cfg, srv.raftTransportLayer)
 
-	// // Create nil RPC server.
+	// Create nil RPC server.
 	srv.nilRPCSrv = rpc.NewServer()
 	srv.newNilRPCHandler()
 	if err := srv.nilRPCSrv.Register(srv.NilRPCHandler); err != nil {
 		return nil, err
 	}
-
-	// Connect and initiate to mysql server.
-	db, err := mysql.New(srv.cfg)
-	if err != nil {
-		return nil, err
-	}
-	srv.db = db
 
 	return srv, nil
 }
@@ -125,8 +115,8 @@ func (s *Server) Start() error {
 
 // stop cleans up the services and shut down the server.
 func (s *Server) stop() error {
-	// Close mysql connection.
-	s.db.Close()
+	// Close store.
+	s.store.Close()
 
 	return nil
 }
