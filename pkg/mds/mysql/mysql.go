@@ -58,20 +58,7 @@ func (m *MySQL) init() error {
 	return nil
 }
 
-// AddRegion inserts a new region into the region table.
-func (m *MySQL) AddRegion(region, addr string) error {
-	_, err := m.db.Exec(
-		`
-		INSERT INTO region (region_name, end_point)
-		SELECT * FROM (SELECT ? AS rn, ? AS ep) AS tmp
-		WHERE NOT EXISTS ( 
-			SELECT region_name FROM region WHERE region_name = ?
-		) LIMIT 1;
-		`,
-		m.cfg.Raft.LocalClusterRegion,
-		m.cfg.Raft.LocalClusterAddr,
-		m.cfg.Raft.LocalClusterRegion,
-	)
-
-	return err
+// Execute executes query.
+func (m *MySQL) Execute(query string) (sql.Result, error) {
+	return m.db.Exec(query)
 }

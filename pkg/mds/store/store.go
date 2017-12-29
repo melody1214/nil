@@ -43,11 +43,6 @@ type Store struct {
 	mu sync.RWMutex
 }
 
-type command struct {
-	Op    string `json:"op,omitempty"`
-	Query string `json:"query,omitempty"`
-}
-
 // New creates a Store object.
 func New(cfg *config.Mds, transport raft.StreamLayer) *Store {
 	return &Store{
@@ -109,6 +104,16 @@ func (s *Store) Open() error {
 			},
 		}
 		ra.BootstrapCluster(configuration)
+
+		// Waiting until become raft leader.
+		for s.raft.State() != raft.Leader {
+			time.Sleep(10 * time.Millisecond)
+		}
+		// Add my region.
+		return s.addRegion(
+			s.cfg.Raft.LocalClusterRegion,
+			s.cfg.Raft.LocalClusterAddr,
+		)
 	}
 
 	return nil
@@ -135,7 +140,7 @@ func (s *Store) Join(nodeID, addr string) error {
 		return f.Error()
 	}
 
-	if err := s.db.AddRegion(nodeID, addr); err != nil {
+	if err := s.addRegion(nodeID, addr); err != nil {
 		return err
 	}
 
