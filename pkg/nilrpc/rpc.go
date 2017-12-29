@@ -31,6 +31,17 @@ type JoinRequest struct {
 // JoinResponse is a NilRPC response message to join an existing cluster.
 type JoinResponse struct{}
 
+// AddUserRequest requests to create a new user with the given name.
+type AddUserRequest struct {
+	Name string
+}
+
+// AddUserResponse response AddUserRequest with the AccessKey and SecretKey.
+type AddUserResponse struct {
+	AccessKey string
+	SecretKey string
+}
+
 // Dial dials with the given rpc type connection to the address.
 func Dial(addr string, rpcType RPCType, timeout time.Duration) (net.Conn, error) {
 	dialer := &net.Dialer{Timeout: timeout}

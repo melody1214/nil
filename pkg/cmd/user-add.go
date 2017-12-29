@@ -1,15 +1,14 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"log"
-	"net"
+	"net/rpc"
+	"time"
 
-	"github.com/chanyoung/nil/pkg/mds/mdspb"
+	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
 )
 
 var userAddCmd = &cobra.Command{
@@ -31,22 +30,22 @@ var userAddCmd = &cobra.Command{
 func userAddRun(cmd *cobra.Command, args []string) {
 	name := args[0]
 
-	cc, err := grpc.Dial(net.JoinHostPort(mdscfg.ServerAddr, mdscfg.ServerPort), grpc.WithInsecure())
+	conn, err := nilrpc.Dial(mdscfg.ServerAddr+":"+mdscfg.ServerPort, nilrpc.RPCNil, time.Duration(2*time.Second))
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer conn.Close()
 
-	cli := mdspb.NewMdsClient(cc)
+	req := &nilrpc.AddUserRequest{Name: name}
+	res := &nilrpc.AddUserResponse{}
 
-	res, err := cli.AddUser(context.Background(), &mdspb.AddUserRequest{
-		Name: name,
-	})
-	if err != nil {
+	cli := rpc.NewClient(conn)
+	if err := cli.Call("Server.AddUser", req, res); err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Println(res.GetAccessKey())
-	fmt.Println(res.GetSecretKey())
+	fmt.Println(res.AccessKey)
+	fmt.Println(res.SecretKey)
 }
 
 func init() {
