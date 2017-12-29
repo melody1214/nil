@@ -1,12 +1,11 @@
 package server
 
 import (
-	"crypto/tls"
 	"net"
 	"time"
 
 	"github.com/chanyoung/nil/pkg/nilmux"
-	"github.com/chanyoung/nil/pkg/security"
+	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/hashicorp/raft"
 )
 
@@ -19,22 +18,5 @@ func newRaftTransportLayer(l *nilmux.Layer) *raftTransportLayer {
 }
 
 func (l *raftTransportLayer) Dial(addr raft.ServerAddress, timeout time.Duration) (net.Conn, error) {
-	dialer := &net.Dialer{Timeout: timeout}
-
-	config := security.DefaultTLSConfig()
-
-	conn, err := tls.DialWithDialer(dialer, "tcp", string(addr), config)
-	if err != nil {
-		return nil, err
-	}
-
-	// Write RPC header.
-	_, err = conn.Write([]byte{
-		0x01, // rpcRaft
-	})
-	if err != nil {
-		conn.Close()
-		return nil, err
-	}
-	return conn, err
+	return nilrpc.Dial(string(addr), nilrpc.RPCRaft, timeout)
 }

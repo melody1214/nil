@@ -10,6 +10,7 @@ import (
 
 	"github.com/chanyoung/nil/pkg/mds/store"
 	"github.com/chanyoung/nil/pkg/nilmux"
+	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/pkg/errors"
@@ -124,18 +125,18 @@ func (s *Server) stop() error {
 // join joins into the existing cluster, located at joinAddr.
 // The joinAddr node must the leader state node.
 func (s *Server) join(joinAddr, raftAddr, nodeID string) error {
-	conn, err := dialNilRPC(joinAddr, time.Duration(2*time.Second))
+	conn, err := nilrpc.Dial(joinAddr, nilrpc.RPCNil, time.Duration(2*time.Second))
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
-	req := &JoinRequest{
+	req := &nilrpc.JoinRequest{
 		RaftAddr: raftAddr,
 		NodeID:   nodeID,
 	}
 
-	res := &JoinResponse{}
+	res := &nilrpc.JoinResponse{}
 
 	cli := rpc.NewClient(conn)
 	return cli.Call("Server.Join", req, res)
