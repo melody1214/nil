@@ -19,6 +19,7 @@ var logger *logrus.Logger
 // Listen for tls tcp connection and handle it.
 type NilMux struct {
 	addr    string
+	ln      net.Listener
 	layers  []*Layer
 	secuCfg *config.Security
 }
@@ -34,9 +35,32 @@ func NewNilMux(addr string, secuCfg *config.Security) *NilMux {
 	}
 }
 
+// Address returns the listening address.
+func (m *NilMux) Address() net.Addr {
+	return m.ln.Addr()
+}
+
 // RegisterLayer regiters a layer to the NilMux.
 func (m *NilMux) RegisterLayer(l *Layer) {
 	m.layers = append(m.layers, l)
+}
+
+// Close closes the listener.
+func (m *NilMux) Close() error {
+	// Close real net.Listener first.
+	// This will not accept more connections.
+	if err := m.ln.Close(); err != nil {
+		return err
+	}
+
+	// Close all registered layers.
+	for _, l := range m.layers {
+		if err := l.Close(); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // ListenAndServeTLS open a tls socket and route all incoming tcp connections.
@@ -64,7 +88,10 @@ func (m *NilMux) ListenAndServeTLS() error {
 }
 
 func (m *NilMux) serve(ln net.Listener) error {
-	defer ln.Close()
+	if m.ln != nil {
+		m.ln.Close()
+	}
+	m.ln = ln
 
 	for {
 		conn, err := ln.Accept()

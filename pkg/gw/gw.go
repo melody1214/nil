@@ -65,9 +65,7 @@ func (g *Gw) Start() {
 	if err != nil {
 		log.Error(err)
 	}
-}
 
-func (g *Gw) stop() {
-	// Clean up gateway works.
+	// Program is shutdown.
 	log.Info("Stop gateway")
 }

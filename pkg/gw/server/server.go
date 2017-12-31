@@ -98,5 +98,11 @@ func (s *Server) Start() error {
 
 // stop cleans up the services and shut down the server.
 func (s *Server) stop() error {
-	return nil
+	// nilMux will closes listener and all the registered layers.
+	if err := s.nilMux.Close(); err != nil {
+		return err
+	}
+
+	// Close the http server.
+	return s.httpSrv.Close()
 }
