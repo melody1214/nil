@@ -30,6 +30,9 @@ type NilRPCHandler interface {
 
 	// AddUser adds a new user with the given name.
 	AddUser(req *nilrpc.AddUserRequest, res *nilrpc.AddUserResponse) error
+
+	// GetClusterMap returns a current local cluster map.
+	GetClusterMap(req *nilrpc.GetClusterMapRequest, res *nilrpc.GetClusterMapResponse) error
 }
 
 // Join joins the mds node into the cluster.
@@ -62,5 +65,11 @@ func (s *Server) AddUser(req *nilrpc.AddUserRequest, res *nilrpc.AddUserResponse
 	res.AccessKey = ak.AccessKey()
 	res.SecretKey = ak.SecretKey()
 
+	return nil
+}
+
+// GetClusterMap returns a current local cluster map.
+func (s *Server) GetClusterMap(req *nilrpc.GetClusterMapRequest, res *nilrpc.GetClusterMapResponse) error {
+	res.Members = s.swimSrv.GetMap()
 	return nil
 }

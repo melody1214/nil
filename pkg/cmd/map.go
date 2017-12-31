@@ -3,15 +3,12 @@ package cmd
 import (
 	"fmt"
 	"log"
-	"net"
+	"net/rpc"
+	"time"
 
-	"github.com/chanyoung/nil/pkg/mds/mdspb"
-	"github.com/chanyoung/nil/pkg/swim/swimpb"
+	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
 var mapCmd = &cobra.Command{
@@ -28,34 +25,28 @@ var (
 )
 
 func mapRun(cmd *cobra.Command, args []string) {
-	creds, err := credentials.NewClientTLSFromFile(
-		cert,
-		"localhost",
-	)
+	conn, err := nilrpc.Dial(bind+":"+port, nilrpc.RPCNil, time.Duration(2*time.Second))
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer conn.Close()
 
-	cc, err := grpc.Dial(net.JoinHostPort(bind, port), grpc.WithTransportCredentials(creds))
-	if err != nil {
+	req := &nilrpc.GetClusterMapRequest{}
+	res := &nilrpc.GetClusterMapResponse{}
+
+	cli := rpc.NewClient(conn)
+	if err := cli.Call("Server.GetClusterMap", req, res); err != nil {
 		log.Fatal(err)
 	}
 
-	cli := mdspb.NewMdsClient(cc)
-
-	res, err := cli.GetClusterMap(context.Background(), &mdspb.GetClusterMapRequest{})
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	for _, node := range res.GetMemlist() {
+	for _, node := range res.Members {
 		fmt.Printf(
 			"| %4s | %s | %s:%s | %7s | Incarnation: %d |\n",
-			swimpb.MemberType_name[int32(node.GetType())],
-			node.GetUuid(),
-			node.GetAddr(), node.GetPort(),
-			swimpb.Status_name[int32(node.GetStatus())],
-			node.GetIncarnation(),
+			node.Type.String(),
+			node.UUID,
+			node.Addr, node.Port,
+			node.Status.String(),
+			node.Incarnation,
 		)
 	}
 }

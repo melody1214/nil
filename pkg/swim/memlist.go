@@ -2,23 +2,21 @@ package swim
 
 import (
 	"sync"
-
-	"github.com/chanyoung/nil/pkg/swim/swimpb"
 )
 
 type memList struct {
-	list map[string]*swimpb.Member
+	list map[string]*Member
 	sync.Mutex
 }
 
 func newMemList() *memList {
 	return &memList{
-		list: make(map[string]*swimpb.Member),
+		list: make(map[string]*Member),
 	}
 }
 
 // get returns copied object of the given id.
-func (ml *memList) get(id string) *swimpb.Member {
+func (ml *memList) get(id string) *Member {
 	ml.Lock()
 	defer ml.Unlock()
 
@@ -27,25 +25,25 @@ func (ml *memList) get(id string) *swimpb.Member {
 		return m
 	}
 
-	cp := &swimpb.Member{}
+	cp := &Member{}
 	*cp = *m
 	return cp
 }
 
 // set compares the given member object is newer than mine.
 // If newer than mine, then update it.
-func (ml *memList) set(m *swimpb.Member) {
+func (ml *memList) set(m *Member) {
 	ml.Lock()
 	defer ml.Unlock()
 
-	if compare(ml.list[m.Uuid], m) {
-		ml.list[m.Uuid] = m
+	if compare(ml.list[m.UUID], m) {
+		ml.list[m.UUID] = m
 	}
 }
 
 // Fetch fetches 'n' random members from the member list.
 // Fetch all items if n <= 0.
-func (ml *memList) fetch(n int) []*swimpb.Member {
+func (ml *memList) fetch(n int) []*Member {
 	ml.Lock()
 	defer ml.Unlock()
 
@@ -53,13 +51,13 @@ func (ml *memList) fetch(n int) []*swimpb.Member {
 		n = len(ml.list)
 	}
 
-	fetched := make([]*swimpb.Member, n)
+	fetched := make([]*Member, n)
 	for _, v := range ml.list {
 		if n--; n < 0 {
 			break
 		}
 
-		cv := &swimpb.Member{}
+		cv := &Member{}
 		*cv = *v
 		fetched[n] = cv
 	}

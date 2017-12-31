@@ -13,7 +13,7 @@ type Swim struct {
 	// Port is the port number of this swim node.
 	Port string
 	// Type represents this swim node is MDS or OSD.
-	Type string
+	Type int
 
 	// Security config.
 	Security Security

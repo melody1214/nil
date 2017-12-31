@@ -11,6 +11,7 @@ import (
 	"github.com/chanyoung/nil/pkg/mds/store"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/nilrpc"
+	"github.com/chanyoung/nil/pkg/swim"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/pkg/errors"
@@ -30,6 +31,10 @@ type Server struct {
 
 	raftTransportLayer *raftTransportLayer
 	raftLayer          *nilmux.Layer
+
+	swimTransportLayer *swimTransportLayer
+	swimLayer          *nilmux.Layer
+	swimSrv            *swim.Server
 
 	store *store.Store
 }
@@ -62,10 +67,31 @@ func New(cfg *config.Mds) (*Server, error) {
 	srv.raftLayer = nilmux.NewLayer(raftTypeBytes, resolvedAddr, false)
 	srv.raftTransportLayer = newRaftTransportLayer(srv.raftLayer)
 
+	swimTypeBytes := []byte{
+		0x03, // rpcSwim
+	}
+	srv.swimLayer = nilmux.NewLayer(swimTypeBytes, resolvedAddr, false)
+	srv.swimTransportLayer = newSwimTransportLayer(srv.swimLayer)
+	srv.swimSrv, err = swim.NewServer(
+		&config.Swim{
+			ClusterJoinAddr: "localhost:51000",
+			ID:              cfg.ID,
+			Host:            cfg.ServerAddr,
+			Port:            cfg.ServerPort,
+			Type:            int(swim.MDS),
+			Security:        cfg.Security,
+		},
+		srv.swimTransportLayer,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	// Create a mux and register layers.
 	srv.nilMux = nilmux.NewNilMux(addr, &cfg.Security)
 	srv.nilMux.RegisterLayer(srv.nilLayer)
 	srv.nilMux.RegisterLayer(srv.raftLayer)
+	srv.nilMux.RegisterLayer(srv.swimLayer)
 
 	// Create new raft store.
 	srv.store = store.New(cfg, srv.raftTransportLayer)
@@ -101,12 +127,22 @@ func (s *Server) Start() error {
 		}
 	}
 
+	// Starts swim service.
+	sc := make(chan swim.PingError, 1)
+	go s.swimSrv.Serve(sc)
+
 	// Make channel for Ctrl-C or other terminate signal is received.
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
 
 	for {
 		select {
+		case err := <-sc:
+			log.WithFields(logrus.Fields{
+				"server":       "swim",
+				"message type": err.Type,
+				"destID":       err.DestID,
+			}).Error(err.Err)
 		case <-sigc:
 			log.Info("Received stop signal from OS")
 			return s.stop()

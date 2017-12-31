@@ -2,40 +2,35 @@ package swim
 
 import (
 	"net"
+	"net/rpc"
 	"sync"
-
-	"github.com/chanyoung/nil/pkg/swim/swimpb"
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
 // Ping handles received ping message and returns ack.
-func (s *Server) Ping(ctx context.Context, in *swimpb.PingMessage) (out *swimpb.Ack, err error) {
-	out = &swimpb.Ack{}
-
-	for _, m := range in.GetMemlist() {
+func (s *Server) Ping(req *Message, res *Ack) (err error) {
+	for _, m := range req.Members {
 		// set overrides membership list with the given member if the conditions meet.
 		s.meml.set(m)
 	}
 
-	switch in.GetType() {
-	case swimpb.MessageType_PING:
-		return out, nil
+	switch req.Type {
+	case Ping:
+		return nil
 
-	case swimpb.MessageType_BROADCAST:
+	case Broadcast:
 		s.broadcast()
-		return out, nil
+		return nil
 
-	case swimpb.MessageType_PINGREQUEST:
-		meml := in.GetMemlist()
+	case PingRequest:
+		meml := req.Members
 		if len(meml) == 0 {
-			return out, ErrNotFound
+			return ErrNotFound
 		}
-		return s.sendPing(ctx, net.JoinHostPort(meml[0].Addr, meml[0].Port), in)
+		res, err = s.sendPing(net.JoinHostPort(meml[0].Addr, meml[0].Port), req)
+		return err
 
 	default:
-		return out, nil
+		return nil
 	}
 }
 
@@ -43,25 +38,22 @@ func (s *Server) Ping(ctx context.Context, in *swimpb.PingMessage) (out *swimpb.
 func (s *Server) ping(pec chan PingError) {
 	fetched := s.meml.fetch(1)
 	// Send ping only the target is not faulty.
-	if fetched[0].Status == swimpb.Status_FAULTY {
+	if fetched[0].Status == Faulty {
 		return
 	}
 
 	// Make ping message.
-	p := &swimpb.PingMessage{
-		Type:    swimpb.MessageType_PING,
-		Memlist: s.meml.fetch(0),
+	p := &Message{
+		Type:    Ping,
+		Members: s.meml.fetch(0),
 	}
 
 	// Sends ping message to the target.
-	ctx, cancel := context.WithTimeout(context.Background(), pingExpire)
-	defer cancel()
-
-	_, err := s.sendPing(ctx, net.JoinHostPort(fetched[0].Addr, fetched[0].Port), p)
+	_, err := s.sendPing(net.JoinHostPort(fetched[0].Addr, fetched[0].Port), p)
 	if err != nil {
 		pec <- PingError{
-			Type:   swimpb.MessageType_PING,
-			DestID: fetched[0].Uuid,
+			Type:   Ping,
+			DestID: fetched[0].UUID,
 			Err:    err,
 		}
 		return
@@ -77,13 +69,13 @@ func (s *Server) pingRequest(dstID string, pec chan PingError) {
 	dst := s.meml.get(dstID)
 	if dst == nil {
 		pec <- PingError{
-			Type:   swimpb.MessageType_PINGREQUEST,
+			Type:   PingRequest,
 			DestID: dstID,
 			Err:    ErrNotFound,
 		}
 		return
 	}
-	content := make([]*swimpb.Member, 1)
+	content := make([]*Member, 1)
 	content[0] = dst
 
 	fetched := s.meml.fetch(0)
@@ -92,27 +84,24 @@ func (s *Server) pingRequest(dstID string, pec chan PingError) {
 			break
 		}
 
-		if m.Status != swimpb.Status_ALIVE {
+		if m.Status != Alive {
 			continue
 		}
 
-		if m.Uuid == s.cfg.ID {
+		if m.UUID == s.cfg.ID {
 			continue
 		}
 
-		p := &swimpb.PingMessage{
-			Type:    swimpb.MessageType_PINGREQUEST,
-			Memlist: content,
+		p := &Message{
+			Type:    PingRequest,
+			Members: content,
 		}
 
 		wg.Add(1)
-		go func(addr string, ping *swimpb.PingMessage) {
+		go func(addr string, ping *Message) {
 			defer wg.Done()
 
-			ctx, cancel := context.WithTimeout(context.Background(), pingExpire)
-			defer cancel()
-
-			_, err := s.sendPing(ctx, addr, ping)
+			_, err := s.sendPing(addr, ping)
 			if err == nil {
 				alive = true
 			}
@@ -129,28 +118,22 @@ func (s *Server) pingRequest(dstID string, pec chan PingError) {
 	}
 
 	pec <- PingError{
-		Type:   swimpb.MessageType_PINGREQUEST,
+		Type:   PingRequest,
 		DestID: dstID,
 		Err:    ErrPingReq,
 	}
 }
 
 // sendPing creates gRPC client and send ping by using it.
-func (s *Server) sendPing(ctx context.Context, addr string, ping *swimpb.PingMessage) (ack *swimpb.Ack, err error) {
-	creds, err := credentials.NewClientTLSFromFile(
-		s.cfg.Security.CertsDir+"/"+s.cfg.Security.RootCAPem,
-		"localhost",
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(creds))
+func (s *Server) sendPing(addr string, ping *Message) (ack *Ack, err error) {
+	conn, err := s.trans.Dial(addr, pingExpire)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 
-	c := swimpb.NewSwimClient(conn)
-	return c.Ping(ctx, ping)
+	res := &Ack{}
+
+	cli := rpc.NewClient(conn)
+	return res, cli.Call("Server.Ping", ping, res)
 }

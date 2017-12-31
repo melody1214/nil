@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/chanyoung/nil/pkg/security"
+	"github.com/chanyoung/nil/pkg/swim"
 )
 
 // RPCType is the first byte of connection and it implies the type of the RPC.
@@ -40,6 +41,14 @@ type AddUserRequest struct {
 type AddUserResponse struct {
 	AccessKey string
 	SecretKey string
+}
+
+// GetClusterMapRequest requests to get current local cluster map.
+type GetClusterMapRequest struct{}
+
+// GetClusterMapResponse contains a current local cluster members.
+type GetClusterMapResponse struct {
+	Members []*swim.Member
 }
 
 // Dial dials with the given rpc type connection to the address.

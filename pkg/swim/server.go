@@ -1,10 +1,12 @@
 package swim
 
 import (
+	"log"
+	"net/rpc"
+	"runtime"
 	"sync/atomic"
 	"time"
 
-	"github.com/chanyoung/nil/pkg/swim/swimpb"
 	"github.com/chanyoung/nil/pkg/util/config"
 )
 
@@ -13,33 +15,46 @@ import (
 // and send gossip message periodically and disseminates the
 // status of the member if the status is changed.
 type Server struct {
-	cfg     *config.Swim
-	meml    *memList
+	cfg  *config.Swim
+	meml *memList
+
+	trans      Transport
+	rpcSrv     *rpc.Server
+	RPCHandler RPCHandler
+
 	stop    chan chan error
 	stopped uint32
 }
 
 // NewServer creates swim server object.
-func NewServer(cfg *config.Swim) *Server {
+func NewServer(cfg *config.Swim, trans Transport) (*Server, error) {
 	memList := newMemList()
 
 	// Make member myself and add to the list.
-	me := &swimpb.Member{
-		Uuid:        cfg.ID,
-		Type:        swimpb.MemberType(swimpb.MemberType_value[cfg.Type]),
+	me := &Member{
+		UUID:        cfg.ID,
 		Addr:        cfg.Host,
 		Port:        cfg.Port,
-		Status:      swimpb.Status_ALIVE,
+		Status:      Alive,
+		Type:        MemberType(cfg.Type),
 		Incarnation: 0,
 	}
 	memList.set(me)
 
-	return &Server{
+	s := &Server{
 		cfg:     cfg,
 		meml:    memList,
+		trans:   trans,
+		rpcSrv:  rpc.NewServer(),
 		stop:    make(chan chan error, 1),
 		stopped: uint32(1),
 	}
+	s.registerRPCHandler()
+	if err := s.rpcSrv.Register(s.RPCHandler); err != nil {
+		return nil, err
+	}
+
+	return s, nil
 }
 
 // Serve starts gossiping.
@@ -48,6 +63,18 @@ func (s *Server) Serve(c chan PingError) {
 		c <- PingError{Err: ErrRunning}
 		return
 	}
+
+	go func() {
+		for {
+			conn, err := s.trans.Accept()
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			go s.rpcSrv.ServeConn(conn)
+		}
+	}()
+	runtime.Gosched()
 
 	// Try to join the membership.
 	// If failed, sends error message thru channel and stop serving.
@@ -101,6 +128,10 @@ func (s *Server) Stop() error {
 }
 
 // GetMap returns cluster map.
-func (s *Server) GetMap() []*swimpb.Member {
+func (s *Server) GetMap() []*Member {
 	return s.meml.fetch(0)
+}
+
+func (s *Server) registerRPCHandler() {
+	s.RPCHandler = s
 }
