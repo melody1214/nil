@@ -30,6 +30,7 @@ type NilRPCHandler interface {
 
 	// AddUser adds a new user with the given name.
 	AddUser(req *nilrpc.AddUserRequest, res *nilrpc.AddUserResponse) error
+	AuthUser(req *nilrpc.AuthUserRequest, res *nilrpc.AuthUserResponse) error
 
 	// GetClusterMap returns a current local cluster map.
 	GetClusterMap(req *nilrpc.GetClusterMapRequest, res *nilrpc.GetClusterMapResponse) error
@@ -65,6 +66,11 @@ func (s *Server) AddUser(req *nilrpc.AddUserRequest, res *nilrpc.AddUserResponse
 	res.AccessKey = ak.AccessKey()
 	res.SecretKey = ak.SecretKey()
 
+	return nil
+}
+
+// AuthUser checks to match the given access key and secret key.
+func (s *Server) AuthUser(req *nilrpc.AuthUserRequest, res *nilrpc.AuthUserResponse) error {
 	return nil
 }
 

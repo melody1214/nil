@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/chanyoung/nil/pkg/kv"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
@@ -27,6 +28,8 @@ type Server struct {
 	httpMux   *mux.Router
 	httpLayer *nilmux.Layer
 	httpSrv   *http.Server
+
+	authCache kv.DB
 }
 
 // New creates a server object.
@@ -41,7 +44,8 @@ func New(cfg *config.Gw) (*Server, error) {
 	}
 
 	srv := &Server{
-		cfg: cfg,
+		cfg:       cfg,
+		authCache: kv.New(),
 	}
 
 	// Create a rpc layer.
@@ -57,7 +61,7 @@ func New(cfg *config.Gw) (*Server, error) {
 		0x47, // 'G' of GET
 		0x50, // 'P' of POST, PUT
 	}
-	srv.httpLayer = nilmux.NewLayer(httpBytes, resolvedAddr, false)
+	srv.httpLayer = nilmux.NewLayer(httpBytes, resolvedAddr, true)
 
 	// Create a mux and register layers.
 	srv.nilMux = nilmux.NewNilMux(addr, &cfg.Security)
