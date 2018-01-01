@@ -1,6 +1,8 @@
 package server
 
 import (
+	"bytes"
+	"encoding/xml"
 	"fmt"
 	"net/http"
 
@@ -29,7 +31,29 @@ func (s *Server) registerS3Handler(router *mux.Router) {
 }
 
 func (s *Server) s3MakeBucket(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "%v", r)
+	// Sample response.
+	type SampleResponse struct {
+		Code      string
+		Error     string
+		Message   string
+		RequestId string
+		Resource  string
+	}
+
+	res := SampleResponse{
+		Code:    "InvalidAccessKeyId",
+		Message: "The AWS access key Id you provided does not exist in our records.",
+	}
+	var encodedRes bytes.Buffer
+	encodedRes.WriteString(xml.Header)
+	e := xml.NewEncoder(&encodedRes)
+	e.Encode(res)
+	w.Header().Set("Content-Type", "application/xml")
+	w.WriteHeader(http.StatusForbidden)
+	w.Write(encodedRes.Bytes())
+	w.(http.Flusher).Flush()
+
+	// fmt.Fprintf(w, "%v", r)
 }
 
 func (s *Server) s3RemoveBucket(w http.ResponseWriter, r *http.Request) {
