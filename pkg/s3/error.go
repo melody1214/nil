@@ -28,7 +28,6 @@ type ErrorContent struct {
 
 // Response returns a Error response message with the given arguments.
 func (c *ErrorContent) Response(resource, requestId string) Error {
-	// return ErrorResponse{
 	return Error{
 		Code:      c.Code,
 		Message:   c.Description,
@@ -67,7 +66,7 @@ const (
 	ErrInvalidObjectState
 	ErrInvalidPayer
 	ErrInvalidRange
-	ErrInvalidRequestHMAC
+	ErrInvalidRequestSignVersion
 	ErrInvalidSecurity
 	ErrInvalidStorageClass
 	ErrInvalidToken
@@ -149,9 +148,9 @@ var errorContents = map[ErrorCode]ErrorContent{
 		Description: "The specified location constraint is not valid. For more information about regions, see How to Select a Region for Your Buckets.",
 		HTTPCode:    http.StatusBadRequest,
 	},
-	ErrInvalidRequestHMAC: {
+	ErrInvalidRequestSignVersion: {
 		Code:        "InvalidRequest",
-		Description: "Please use AWS4-HMAC-SHA256.",
+		Description: "The authorization mechanism you have provided is not supported. Please use AWS4-HMAC-SHA256.",
 		HTTPCode:    http.StatusBadRequest,
 	},
 	ErrInvalidURI: {

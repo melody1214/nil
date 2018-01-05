@@ -30,7 +30,9 @@ func (s *Server) registerS3Handler(router *mux.Router) {
 }
 
 func (s *Server) s3MakeBucket(w http.ResponseWriter, r *http.Request) {
-	err := s3.GetErrorContent(s3.ErrInvalidAccessKeyId)
+	fmt.Printf("%+v\n", r)
+
+	err := s3.GetErrorContent(s3.ErrInvalidRequestSignVersion)
 	response := err.Response(r.RequestURI, "")
 	response.Write(w, err.HTTPCode)
 }
