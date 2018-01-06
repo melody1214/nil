@@ -38,6 +38,11 @@ func (s *Store) PublishCommand(op, query string) (result sql.Result, err error) 
 	return r.result, r.err
 }
 
+// QueryRow executes a query that is expected to return at most one row.
+func (s *Store) QueryRow(query string, args ...interface{}) *sql.Row {
+	return s.db.QueryRow(query, args...)
+}
+
 func (s *Store) addRegion(region, addr string) error {
 	q := fmt.Sprintf(
 		`

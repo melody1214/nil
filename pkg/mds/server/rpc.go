@@ -1,6 +1,7 @@
 package server
 
 import (
+	"database/sql"
 	"fmt"
 
 	"github.com/chanyoung/nil/pkg/nilmux"
@@ -30,7 +31,7 @@ type NilRPCHandler interface {
 
 	// AddUser adds a new user with the given name.
 	AddUser(req *nilrpc.AddUserRequest, res *nilrpc.AddUserResponse) error
-	AuthUser(req *nilrpc.AuthUserRequest, res *nilrpc.AuthUserResponse) error
+	GetCredential(req *nilrpc.GetCredentialRequest, res *nilrpc.GetCredentialResponse) error
 
 	// GetClusterMap returns a current local cluster map.
 	GetClusterMap(req *nilrpc.GetClusterMapRequest, res *nilrpc.GetClusterMapResponse) error
@@ -69,8 +70,29 @@ func (s *Server) AddUser(req *nilrpc.AddUserRequest, res *nilrpc.AddUserResponse
 	return nil
 }
 
-// AuthUser checks to match the given access key and secret key.
-func (s *Server) AuthUser(req *nilrpc.AuthUserRequest, res *nilrpc.AuthUserResponse) error {
+// GetCredential returns matching secret key with the given access key.
+func (s *Server) GetCredential(req *nilrpc.GetCredentialRequest, res *nilrpc.GetCredentialResponse) error {
+	q := fmt.Sprintf(
+		`
+		SELECT
+			secret_key
+		FROM
+			user
+		WHERE
+			access_key = '%s'
+		`, req.AccessKey,
+	)
+
+	res.AccessKey = req.AccessKey
+	err := s.store.QueryRow(q).Scan(&res.SecretKey)
+	if err == nil {
+		res.Exist = true
+	} else if err == sql.ErrNoRows {
+		res.Exist = false
+	} else {
+		return err
+	}
+
 	return nil
 }
 

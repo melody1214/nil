@@ -43,14 +43,17 @@ type AddUserResponse struct {
 	SecretKey string
 }
 
-// AuthUserRequest requests authentication with a pair of access key and secret key.
-type AuthUserRequest struct {
+// GetCredentialRequest requests a credential for the given access key.
+type GetCredentialRequest struct {
+	AccessKey string
+}
+
+// GetCredentialResponse response the credential.
+type GetCredentialResponse struct {
+	Exist     bool
 	AccessKey string
 	SecretKey string
 }
-
-// AuthUserResponse response the authentication result.
-type AuthUserResponse struct{}
 
 // GetClusterMapRequest requests to get current local cluster map.
 type GetClusterMapRequest struct{}

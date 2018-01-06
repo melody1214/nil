@@ -62,3 +62,8 @@ func (m *MySQL) init() error {
 func (m *MySQL) Execute(query string) (sql.Result, error) {
 	return m.db.Exec(query)
 }
+
+// QueryRow executes a query that is expected to return at most one row.
+func (m *MySQL) QueryRow(query string, args ...interface{}) *sql.Row {
+	return m.db.QueryRow(query, args...)
+}

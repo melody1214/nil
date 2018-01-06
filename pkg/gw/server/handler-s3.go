@@ -30,11 +30,9 @@ func (s *Server) registerS3Handler(router *mux.Router) {
 }
 
 func (s *Server) s3MakeBucket(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("%+v\n", r)
-
-	err := s3.GetErrorContent(s3.ErrInvalidRequestSignVersion)
-	response := err.Response(r.RequestURI, "")
-	response.Write(w, err.HTTPCode)
+	if err := s.authRequest(r); err != s3.ErrNone {
+		s3.SendError(w, err, r.RequestURI, "")
+	}
 }
 
 func (s *Server) s3RemoveBucket(w http.ResponseWriter, r *http.Request) {

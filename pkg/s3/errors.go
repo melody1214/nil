@@ -14,33 +14,19 @@ type Error struct {
 	RequestId string
 }
 
-// Write writes error response.
-func (r *Error) Write(w http.ResponseWriter, httpCode int) {
-	writeResponse(w, r, httpCode)
-}
-
-// ErrorContent is the contents of error codes.
-type ErrorContent struct {
+// ErrorInfo contains the information for error codes.
+type ErrorInfo struct {
 	Code        string
 	Description string
 	HTTPCode    int
-}
-
-// Response returns a Error response message with the given arguments.
-func (c *ErrorContent) Response(resource, requestId string) Error {
-	return Error{
-		Code:      c.Code,
-		Message:   c.Description,
-		Resource:  resource,
-		RequestId: requestId,
-	}
 }
 
 // ErrorCode lists from Amazon S3
 type ErrorCode int
 
 const (
-	ErrAccessDenied = iota
+	ErrNone = iota
+	ErrAccessDenied
 	ErrAccountProblem
 	ErrBadDigest
 	ErrBucketAlreadyExists
@@ -107,7 +93,7 @@ const (
 	ErrUserKeyMustBeSpecified
 )
 
-var errorContents = map[ErrorCode]ErrorContent{
+var errorInfos = map[ErrorCode]ErrorInfo{
 	ErrAccessDenied: {
 		Code:        "AccessDenied",
 		Description: "Access denied.",
@@ -163,6 +149,11 @@ var errorContents = map[ErrorCode]ErrorContent{
 		Description: "Your key is too long.",
 		HTTPCode:    http.StatusBadRequest,
 	},
+	ErrMissingSecurityHeader: {
+		Code:        "MissingSecurityHeader",
+		Description: "Your request is missing a required header.",
+		HTTPCode:    http.StatusBadRequest,
+	},
 	ErrNoSuchBucket: {
 		Code:        "NoSuchBucket",
 		Description: "The specified key does not exist.",
@@ -190,8 +181,22 @@ var errorContents = map[ErrorCode]ErrorContent{
 	},
 }
 
-// GetErrorContent returns a content structure for the S3 error code.
+// SendError writes error response to the given http.responseWriter.
+func SendError(w http.ResponseWriter, code ErrorCode, resource, requestId string) {
+	e := GetErrorInfo(code)
+
+	response := Error{
+		Code:      e.Code,
+		Message:   e.Description,
+		Resource:  resource,
+		RequestId: requestId,
+	}
+
+	writeResponse(w, response, e.HTTPCode)
+}
+
+// GetErrorInfo returns a information structure for the S3 error code.
 // It returns the empty structure if the code is unknown.
-func GetErrorContent(code ErrorCode) ErrorContent {
-	return errorContents[code]
+func GetErrorInfo(code ErrorCode) ErrorInfo {
+	return errorInfos[code]
 }
