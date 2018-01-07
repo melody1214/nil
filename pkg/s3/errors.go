@@ -54,6 +54,7 @@ const (
 	ErrInvalidRange
 	ErrInvalidRequestSignVersion
 	ErrInvalidSecurity
+	ErrInvalidSignatureFormat
 	ErrInvalidStorageClass
 	ErrInvalidToken
 	ErrInvalidURI
@@ -128,6 +129,11 @@ var errorInfos = map[ErrorCode]ErrorInfo{
 		Code:        "InvalidBucketState",
 		Description: "The request is not valid with the current state of the bucket.",
 		HTTPCode:    http.StatusConflict,
+	},
+	ErrInvalidSignatureFormat: {
+		Code:        "InvalidSignatureFormat",
+		Description: "The provided signature format is incorrect.",
+		HTTPCode:    http.StatusBadRequest,
 	},
 	ErrInvalidLocationConstraint: {
 		Code:        "InvalidLocationConstraint",
