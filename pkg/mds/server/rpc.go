@@ -32,6 +32,7 @@ type NilRPCHandler interface {
 	// AddUser adds a new user with the given name.
 	AddUser(req *nilrpc.AddUserRequest, res *nilrpc.AddUserResponse) error
 	GetCredential(req *nilrpc.GetCredentialRequest, res *nilrpc.GetCredentialResponse) error
+	AddBucket(req *nilrpc.AddBucketRequest, res *nilrpc.AddBucketResponse) error
 
 	// GetClusterMap returns a current local cluster map.
 	GetClusterMap(req *nilrpc.GetClusterMapRequest, res *nilrpc.GetClusterMapResponse) error
@@ -93,6 +94,11 @@ func (s *Server) GetCredential(req *nilrpc.GetCredentialRequest, res *nilrpc.Get
 		return err
 	}
 
+	return nil
+}
+
+// AddBucket creates a bucket with the given name.
+func (s *Server) AddBucket(req *nilrpc.AddBucketRequest, res *nilrpc.AddBucketResponse) error {
 	return nil
 }
 

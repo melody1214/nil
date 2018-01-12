@@ -11,28 +11,28 @@ import (
 	"github.com/chanyoung/nil/pkg/s3"
 )
 
-func (s *Server) authRequest(r *http.Request) s3.ErrorCode {
+func (s *Server) authRequest(r *http.Request) (accessKey string, err s3.ErrorCode) {
 	// Get authentication string from header.
 	authString := r.Header.Get("Authorization")
 
 	// Check the sign version is supported.
 	if err := s3.ValidateSignVersion(authString); err != s3.ErrNone {
-		return err
+		return "", err
 	}
 
 	// Parse auth string.
 	authArgs, err := s3.ParseSignV4(authString)
 	if err != s3.ErrNone {
-		return err
+		return "", err
 	}
 
 	// Make key.
-	accessKey := authArgs.Credential.AccessKey
+	accessKey = authArgs.Credential.AccessKey
 	secretKey, e := s.getSecretKey(accessKey)
 	if e != nil {
-		return s3.ErrInternalError
+		return accessKey, s3.ErrInternalError
 	} else if secretKey == "" {
-		return s3.ErrInvalidAccessKeyId
+		return accessKey, s3.ErrInvalidAccessKeyId
 	}
 
 	// Task 1: Create a Canonical Request for Signature Version 4.
@@ -62,10 +62,10 @@ func (s *Server) authRequest(r *http.Request) s3.ErrorCode {
 
 	derivedSignature := s3.GenSignature(signatureKey, stringToSign)
 	if authArgs.Signature != derivedSignature {
-		return s3.ErrSignatureDoesNotMatch
+		return accessKey, s3.ErrSignatureDoesNotMatch
 	}
 
-	return s3.ErrNone
+	return accessKey, s3.ErrNone
 }
 
 func (s *Server) getSecretKey(accessKey string) (string, error) {

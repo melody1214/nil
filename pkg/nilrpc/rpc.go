@@ -55,6 +55,15 @@ type GetCredentialResponse struct {
 	SecretKey string
 }
 
+// AddBucketRequest requests to create bucket for given name and user.
+type AddBucketRequest struct {
+	BucketName string
+	AccessKey  string
+}
+
+// AddBucketResponse responses the result of addBucket.
+type AddBucketResponse struct{}
+
 // GetClusterMapRequest requests to get current local cluster map.
 type GetClusterMapRequest struct{}
 

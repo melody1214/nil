@@ -3,7 +3,11 @@ package server
 import (
 	"fmt"
 	"net/http"
+	"net/rpc"
+	"strings"
+	"time"
 
+	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/s3"
 	"github.com/gorilla/mux"
 )
@@ -30,8 +34,29 @@ func (s *Server) registerS3Handler(router *mux.Router) {
 }
 
 func (s *Server) s3MakeBucket(w http.ResponseWriter, r *http.Request) {
-	if err := s.authRequest(r); err != s3.ErrNone {
-		s3.SendError(w, err, r.RequestURI, "")
+	accessKey, s3Err := s.authRequest(r)
+	if s3Err != s3.ErrNone {
+		s3.SendError(w, s3Err, r.RequestURI, "")
+	}
+
+	bucketName := strings.Trim(r.RequestURI, "/")
+
+	conn, err := nilrpc.Dial(s.cfg.FirstMds, nilrpc.RPCNil, time.Duration(2*time.Second))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	defer conn.Close()
+
+	req := &nilrpc.AddBucketRequest{
+		AccessKey:  accessKey,
+		BucketName: bucketName,
+	}
+	res := &nilrpc.AddBucketResponse{}
+	fmt.Printf("%v\n", req)
+
+	cli := rpc.NewClient(conn)
+	if err := cli.Call("Server.AddBucket", req, res); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 }
 
