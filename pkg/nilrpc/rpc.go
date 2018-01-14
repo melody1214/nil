@@ -5,6 +5,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/chanyoung/nil/pkg/s3"
 	"github.com/chanyoung/nil/pkg/security"
 	"github.com/chanyoung/nil/pkg/swim"
 )
@@ -62,7 +63,9 @@ type AddBucketRequest struct {
 }
 
 // AddBucketResponse responses the result of addBucket.
-type AddBucketResponse struct{}
+type AddBucketResponse struct {
+	S3ErrCode s3.ErrorCode
+}
 
 // GetClusterMapRequest requests to get current local cluster map.
 type GetClusterMapRequest struct{}

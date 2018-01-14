@@ -6,7 +6,9 @@ import (
 
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/nilrpc"
+	"github.com/chanyoung/nil/pkg/s3"
 	"github.com/chanyoung/nil/pkg/security"
+	"github.com/go-sql-driver/mysql"
 )
 
 func (s *Server) newNilRPCHandler() {
@@ -99,6 +101,35 @@ func (s *Server) GetCredential(req *nilrpc.GetCredentialRequest, res *nilrpc.Get
 
 // AddBucket creates a bucket with the given name.
 func (s *Server) AddBucket(req *nilrpc.AddBucketRequest, res *nilrpc.AddBucketResponse) error {
+	q := fmt.Sprintf(
+		`
+		INSERT INTO bucket (bucket_name, user_id, region_id)
+		SELECT '%s', u.user_id, r.region_id
+		FROM user u, region r
+		WHERE u.access_key = '%s' and r.region_name = '%s';
+		`, req.BucketName, req.AccessKey, s.cfg.Raft.LocalClusterRegion,
+	)
+
+	_, err := s.store.PublishCommand("execute", q)
+	// No error occured while adding the bucket.
+	if err == nil {
+		res.S3ErrCode = s3.ErrNone
+		return nil
+	}
+	// Error occured.
+	mysqlError, ok := err.(*mysql.MySQLError)
+	if !ok {
+		// Not mysql error occured, return itself.
+		return err
+	}
+
+	// Mysql error occured. Classify it and sending the corresponding s3 error code.
+	switch mysqlError.Number {
+	case 1062:
+		res.S3ErrCode = s3.ErrBucketAlreadyExists
+	default:
+		res.S3ErrCode = s3.ErrInternalError
+	}
 	return nil
 }
 

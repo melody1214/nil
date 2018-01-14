@@ -26,6 +26,7 @@ var generateSQLBase = []string{
 			user_id bigint unsigned NOT NULL,
 			region_id int unsigned NOT NULL,
 			PRIMARY KEY (bucket_id),
+			UNIQUE KEY (bucket_name, region_id),
 			FOREIGN KEY (user_id) REFERENCES user (user_id),
 			FOREIGN KEY (region_id) REFERENCES region (region_id)
 		) ENGINE=InnoDB DEFAULT CHARSET=ascii

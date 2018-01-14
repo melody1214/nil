@@ -34,29 +34,39 @@ func (s *Server) registerS3Handler(router *mux.Router) {
 }
 
 func (s *Server) s3MakeBucket(w http.ResponseWriter, r *http.Request) {
+	// Extract access key along with user authentication.
 	accessKey, s3Err := s.authRequest(r)
 	if s3Err != s3.ErrNone {
 		s3.SendError(w, s3Err, r.RequestURI, "")
 	}
 
+	// Extract bucket name.
+	// ex) /bucketname/ -> bucketname
 	bucketName := strings.Trim(r.RequestURI, "/")
 
+	// Dialing to mds for making rpc connection.
 	conn, err := nilrpc.Dial(s.cfg.FirstMds, nilrpc.RPCNil, time.Duration(2*time.Second))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		s3.SendError(w, s3.ErrInternalError, r.RequestURI, "")
+		return
 	}
 	defer conn.Close()
 
+	// Fill the request and prepare response object.
 	req := &nilrpc.AddBucketRequest{
 		AccessKey:  accessKey,
 		BucketName: bucketName,
 	}
 	res := &nilrpc.AddBucketResponse{}
-	fmt.Printf("%v\n", req)
 
+	// Call 'AddBucket' procedure and handling errors.
 	cli := rpc.NewClient(conn)
 	if err := cli.Call("Server.AddBucket", req, res); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		// Not mysql error, unknown error.
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	} else if res.S3ErrCode != s3.ErrNone {
+		// Kind of mysql error, mds would change it to s3.ErrorCode.
+		s3.SendError(w, res.S3ErrCode, r.RequestURI, "")
 	}
 }
 
