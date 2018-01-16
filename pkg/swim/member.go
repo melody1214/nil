@@ -24,32 +24,11 @@ func (s *Status) String() string {
 	return "Unknown"
 }
 
-// MemberType indicates the type of the swim member node.
-type MemberType int
-
-const (
-	// MDS : mds node
-	MDS MemberType = 0
-	// OSD : osd node
-	OSD = 1
-)
-
-// String converts integer member type to string.
-func (m *MemberType) String() string {
-	if *m == MDS {
-		return "MDS"
-	} else if *m == OSD {
-		return "OSD"
-	}
-	return "Unknown"
-}
-
 // Member contains the node information about swim node.
 type Member struct {
-	UUID        string
-	Type        MemberType
-	Addr        string
-	Port        string
+	ID          ServerID
+	Address     ServerAddress
+	Type        ServerType
 	Status      Status
 	Incarnation uint32
 }

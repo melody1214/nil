@@ -5,18 +5,18 @@ import (
 )
 
 type memList struct {
-	list map[string]*Member
+	list map[ServerID]*Member
 	sync.Mutex
 }
 
 func newMemList() *memList {
 	return &memList{
-		list: make(map[string]*Member),
+		list: make(map[ServerID]*Member),
 	}
 }
 
 // get returns copied object of the given id.
-func (ml *memList) get(id string) *Member {
+func (ml *memList) get(id ServerID) *Member {
 	ml.Lock()
 	defer ml.Unlock()
 
@@ -36,8 +36,8 @@ func (ml *memList) set(m *Member) {
 	ml.Lock()
 	defer ml.Unlock()
 
-	if compare(ml.list[m.UUID], m) {
-		ml.list[m.UUID] = m
+	if compare(ml.list[m.ID], m) {
+		ml.list[m.ID] = m
 	}
 }
 

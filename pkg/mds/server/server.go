@@ -72,15 +72,14 @@ func New(cfg *config.Mds) (*Server, error) {
 	}
 	srv.swimLayer = nilmux.NewLayer(swimTypeBytes, resolvedAddr, false)
 	srv.swimTransportLayer = newSwimTransportLayer(srv.swimLayer)
+
+	swimConf := swim.DefaultConfig()
+	swimConf.ID = swim.ServerID(cfg.ID)
+	swimConf.Address = swim.ServerAddress(cfg.ServerAddr + ":" + cfg.ServerPort)
+	swimConf.Type = swim.MDS
+
 	srv.swimSrv, err = swim.NewServer(
-		&config.Swim{
-			ClusterJoinAddr: "localhost:51000",
-			ID:              cfg.ID,
-			Host:            cfg.ServerAddr,
-			Port:            cfg.ServerPort,
-			Type:            int(swim.MDS),
-			Security:        cfg.Security,
-		},
+		swimConf,
 		srv.swimTransportLayer,
 	)
 	if err != nil {

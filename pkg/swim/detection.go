@@ -1,7 +1,6 @@
 package swim
 
 import (
-	"net"
 	"net/rpc"
 	"sync"
 )
@@ -26,7 +25,7 @@ func (s *Server) Ping(req *Message, res *Ack) (err error) {
 		if len(meml) == 0 {
 			return ErrNotFound
 		}
-		res, err = s.sendPing(net.JoinHostPort(meml[0].Addr, meml[0].Port), req)
+		res, err = s.sendPing(meml[0].Address, req)
 		return err
 
 	default:
@@ -49,11 +48,11 @@ func (s *Server) ping(pec chan PingError) {
 	}
 
 	// Sends ping message to the target.
-	_, err := s.sendPing(net.JoinHostPort(fetched[0].Addr, fetched[0].Port), p)
+	_, err := s.sendPing(fetched[0].Address, p)
 	if err != nil {
 		pec <- PingError{
 			Type:   Ping,
-			DestID: fetched[0].UUID,
+			DestID: fetched[0].ID,
 			Err:    err,
 		}
 		return
@@ -61,7 +60,7 @@ func (s *Server) ping(pec chan PingError) {
 }
 
 // pingRequest picks 'k' random member and requests them to send ping 'dstID' indirectly.
-func (s *Server) pingRequest(dstID string, pec chan PingError) {
+func (s *Server) pingRequest(dstID ServerID, pec chan PingError) {
 	k := 3                // Number of requests.
 	alive := false        // Result of requests.
 	var wg sync.WaitGroup // Wait for all requests are finished.
@@ -88,7 +87,7 @@ func (s *Server) pingRequest(dstID string, pec chan PingError) {
 			continue
 		}
 
-		if m.UUID == s.cfg.ID {
+		if m.ID == s.conf.ID {
 			continue
 		}
 
@@ -98,14 +97,14 @@ func (s *Server) pingRequest(dstID string, pec chan PingError) {
 		}
 
 		wg.Add(1)
-		go func(addr string, ping *Message) {
+		go func(addr ServerAddress, ping *Message) {
 			defer wg.Done()
 
 			_, err := s.sendPing(addr, ping)
 			if err == nil {
 				alive = true
 			}
-		}(net.JoinHostPort(m.Addr, m.Port), p)
+		}(m.Address, p)
 
 		k--
 	}
@@ -125,8 +124,8 @@ func (s *Server) pingRequest(dstID string, pec chan PingError) {
 }
 
 // sendPing creates gRPC client and send ping by using it.
-func (s *Server) sendPing(addr string, ping *Message) (ack *Ack, err error) {
-	conn, err := s.trans.Dial(addr, pingExpire)
+func (s *Server) sendPing(addr ServerAddress, ping *Message) (ack *Ack, err error) {
+	conn, err := s.trans.Dial(string(addr), s.conf.PingExpire)
 	if err != nil {
 		return nil, err
 	}

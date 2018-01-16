@@ -6,8 +6,6 @@ import (
 	"runtime"
 	"sync/atomic"
 	"time"
-
-	"github.com/chanyoung/nil/pkg/util/config"
 )
 
 // Server maintains an list of connected peers and handles
@@ -15,7 +13,7 @@ import (
 // and send gossip message periodically and disseminates the
 // status of the member if the status is changed.
 type Server struct {
-	cfg  *config.Swim
+	conf Config
 	meml *memList
 
 	trans      Transport
@@ -27,22 +25,25 @@ type Server struct {
 }
 
 // NewServer creates swim server object.
-func NewServer(cfg *config.Swim, trans Transport) (*Server, error) {
+func NewServer(conf *Config, trans Transport) (*Server, error) {
+	if err := validateConfig(conf); err != nil {
+		return nil, err
+	}
+
 	memList := newMemList()
 
 	// Make member myself and add to the list.
 	me := &Member{
-		UUID:        cfg.ID,
-		Addr:        cfg.Host,
-		Port:        cfg.Port,
+		ID:          conf.ID,
+		Address:     conf.Address,
+		Type:        conf.Type,
 		Status:      Alive,
-		Type:        MemberType(cfg.Type),
 		Incarnation: 0,
 	}
 	memList.set(me)
 
 	s := &Server{
-		cfg:     cfg,
+		conf:    *conf,
 		meml:    memList,
 		trans:   trans,
 		rpcSrv:  rpc.NewServer(),
@@ -87,7 +88,7 @@ func (s *Server) Serve(c chan PingError) {
 	pec := make(chan PingError, 1)
 
 	// ticker gives signal periodically to send a ping.
-	ticker := time.NewTicker(pingPeriod)
+	ticker := time.NewTicker(s.conf.PingPeriod)
 	for {
 		select {
 		case exit := <-s.stop:

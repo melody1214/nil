@@ -41,10 +41,10 @@ func mapRun(cmd *cobra.Command, args []string) {
 
 	for _, node := range res.Members {
 		fmt.Printf(
-			"| %4s | %s | %s:%s | %7s | Incarnation: %d |\n",
+			"| %4s | %s | %s | %7s | Incarnation: %d |\n",
 			node.Type.String(),
-			node.UUID,
-			node.Addr, node.Port,
+			node.ID,
+			node.Address,
 			node.Status.String(),
 			node.Incarnation,
 		)

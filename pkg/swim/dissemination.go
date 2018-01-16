@@ -1,46 +1,43 @@
 package swim
 
 import (
-	"net"
 	"runtime"
 )
 
 // Join tries to join the membership.
 func (s *Server) join() error {
 	// Test code. Coordinator address.
-	coordinator := s.cfg.ClusterJoinAddr
-
-	return s.askBroadcast(coordinator, s.meml.fetch(0))
+	return s.askBroadcast(s.conf.Coordinator, s.meml.fetch(0))
 }
 
 // Leave tries to send leaving message to all members.
 func (s *Server) leave() error {
-	return s.disseminate(s.cfg.ID, Faulty)
+	return s.disseminate(s.conf.ID, Faulty)
 }
 
 // Alive tries to send alive message to all members.
-func (s *Server) alive(id string) error {
+func (s *Server) alive(id ServerID) error {
 	return s.disseminate(id, Alive)
 }
 
 // Suspect tries to send suspect message to all members.
-func (s *Server) suspect(id string) error {
+func (s *Server) suspect(id ServerID) error {
 	return s.disseminate(id, Suspect)
 }
 
 // Faulty tries to send faulty message to all members.
-func (s *Server) faulty(id string) error {
+func (s *Server) faulty(id ServerID) error {
 	return s.disseminate(id, Faulty)
 }
 
 // Disseminate changes the status and asks broadcast it to other healthy node.
-func (s *Server) disseminate(id string, status Status) error {
+func (s *Server) disseminate(id ServerID, status Status) error {
 	// Change status.
 	m := s.meml.get(id)
 	m.Status = status
 
 	// If changing my status, then increase incarnation number.
-	if s.cfg.ID == id {
+	if s.conf.ID == id {
 		m.Incarnation++
 	}
 
@@ -56,7 +53,7 @@ func (s *Server) disseminate(id string, status Status) error {
 	var gossiper *Member
 	for _, m := range meml {
 		// Gossiper would be healthy and not myself.
-		if m.UUID != s.cfg.ID && m.Status == Alive {
+		if m.ID != s.conf.ID && m.Status == Alive {
 			gossiper = m
 			break
 		}
@@ -68,11 +65,11 @@ func (s *Server) disseminate(id string, status Status) error {
 		return nil
 	}
 
-	return s.askBroadcast(net.JoinHostPort(gossiper.Addr, gossiper.Port), content)
+	return s.askBroadcast(gossiper.Address, content)
 }
 
 // askBroadcast asks broadcasting message to gossiper node.
-func (s *Server) askBroadcast(gossiper string, meml []*Member) error {
+func (s *Server) askBroadcast(gossiper ServerAddress, meml []*Member) error {
 	ping := &Message{
 		Type:    Broadcast,
 		Members: meml,
@@ -96,7 +93,7 @@ func (s *Server) broadcast() {
 			Members: ml,
 		}
 
-		go s.sendPing(net.JoinHostPort(m.Addr, m.Port), p)
+		go s.sendPing(m.Address, p)
 	}
 	runtime.Gosched()
 }
