@@ -6,8 +6,8 @@ import (
 
 // Join tries to join the membership.
 func (s *Server) join() error {
-	// Test code. Coordinator address.
-	return s.askBroadcast(s.conf.Coordinator, s.meml.fetch(0))
+	_, err := s.send(Join, s.conf.Coordinator, &Message{s.meml.fetch(0)})
+	return err
 }
 
 // Leave tries to send leaving message to all members.
@@ -47,30 +47,10 @@ func (s *Server) disseminate(id ServerID, status Status) error {
 	// Update information.
 	s.meml.set(m)
 
-	// Prepare ping message content.
-	content := make([]Member, 1)
-	content[0] = m
+	// Send to all.
+	s.broadcast()
 
-	// Choose gossiper.
-	gossiper := s.meml.fetch(1, withNotFaulty(), withNotSuspect(), withNotMyself())
-
-	// I'm the only survivor of this membership.
-	// There is no member who is able to gossip my message.
-	if len(gossiper) < 1 {
-		return nil
-	}
-
-	return s.askBroadcast(gossiper[0].Address, content)
-}
-
-// askBroadcast asks broadcasting message to gossiper node.
-func (s *Server) askBroadcast(gossiper ServerAddress, meml []Member) error {
-	ping := &Message{
-		Members: meml,
-	}
-
-	_, err := s.send(Broadcast, gossiper, ping)
-	return err
+	return nil
 }
 
 // broadcast sends ping message to all.

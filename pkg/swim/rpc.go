@@ -4,7 +4,7 @@ package swim
 type RPCHandler interface {
 	Ping(req *Message, res *Ack) error
 	PingRequest(req *Message, res *Ack) error
-	Broadcast(req *Message, res *Ack) error
+	Join(req *Message, res *Ack) error
 }
 
 // MethodName indicates what procedure will be called.
@@ -15,8 +15,8 @@ const (
 	Ping MethodName = iota
 	// PingRequest : request ping
 	PingRequest
-	// Broadcast : request boradcasting
-	Broadcast
+	// Join : request joining
+	Join
 )
 
 const rpcPrefix string = "Server"
@@ -27,8 +27,8 @@ func (m MethodName) String() string {
 		return rpcPrefix + "." + "Ping"
 	case PingRequest:
 		return rpcPrefix + "." + "PingRequest"
-	case Broadcast:
-		return rpcPrefix + "." + "Broadcast"
+	case Join:
+		return rpcPrefix + "." + "Join"
 	default:
 		return "unknown"
 	}

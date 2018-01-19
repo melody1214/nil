@@ -19,7 +19,8 @@ func (s *Server) PingRequest(req *Message, res *Ack) (err error) {
 	return err
 }
 
-func (s *Server) Broadcast(req *Message, res *Ack) (err error) {
+// Join handles join request from new node.
+func (s *Server) Join(req *Message, res *Ack) (err error) {
 	s.updateMemberList(req.Members)
 
 	s.broadcast()
