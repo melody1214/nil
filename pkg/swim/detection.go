@@ -5,50 +5,19 @@ import (
 	"sync"
 )
 
-// Ping handles received ping message and returns ack.
-func (s *Server) Ping(req *Message, res *Ack) (err error) {
-	for _, m := range req.Members {
-		// set overrides membership list with the given member if the conditions meet.
-		s.meml.set(m)
-	}
-
-	switch req.Type {
-	case Ping:
-		return nil
-
-	case Broadcast:
-		s.broadcast()
-		return nil
-
-	case PingRequest:
-		meml := req.Members
-		if len(meml) == 0 {
-			return ErrNotFound
-		}
-		res, err = s.sendPing(meml[0].Address, req)
-		return err
-
-	default:
-		return nil
-	}
-}
-
 // ping sends periodical ping and sends the result through the channel 'pec'.
 func (s *Server) ping(pec chan PingError) {
-	fetched := s.meml.fetch(1)
-	// Send ping only the target is not faulty.
-	if fetched[0].Status == Faulty {
+	fetched := s.meml.fetch(1, withNotFaulty(), withNotMyself())
+	// Swim cluster has no healthy node.
+	if len(fetched) < 1 {
 		return
 	}
 
 	// Make ping message.
-	p := &Message{
-		Type:    Ping,
-		Members: s.meml.fetch(0),
-	}
+	p := &Message{Members: s.meml.fetch(0)}
 
 	// Sends ping message to the target.
-	_, err := s.sendPing(fetched[0].Address, p)
+	_, err := s.send(Ping, fetched[0].Address, p)
 	if err != nil {
 		pec <- PingError{
 			Type:   Ping,
@@ -65,8 +34,8 @@ func (s *Server) pingRequest(dstID ServerID, pec chan PingError) {
 	alive := false        // Result of requests.
 	var wg sync.WaitGroup // Wait for all requests are finished.
 
-	dst := s.meml.get(dstID)
-	if dst == nil {
+	dst, ok := s.meml.get(dstID)
+	if !ok {
 		pec <- PingError{
 			Type:   PingRequest,
 			DestID: dstID,
@@ -74,25 +43,16 @@ func (s *Server) pingRequest(dstID ServerID, pec chan PingError) {
 		}
 		return
 	}
-	content := make([]*Member, 1)
+	content := make([]Member, 1)
 	content[0] = dst
 
-	fetched := s.meml.fetch(0)
+	fetched := s.meml.fetch(0, withNotFaulty(), withNotSuspect(), withNotMyself())
 	for _, m := range fetched {
 		if k == 0 {
 			break
 		}
 
-		if m.Status != Alive {
-			continue
-		}
-
-		if m.ID == s.conf.ID {
-			continue
-		}
-
 		p := &Message{
-			Type:    PingRequest,
 			Members: content,
 		}
 
@@ -100,7 +60,7 @@ func (s *Server) pingRequest(dstID ServerID, pec chan PingError) {
 		go func(addr ServerAddress, ping *Message) {
 			defer wg.Done()
 
-			_, err := s.sendPing(addr, ping)
+			_, err := s.send(PingRequest, addr, ping)
 			if err == nil {
 				alive = true
 			}
@@ -123,8 +83,8 @@ func (s *Server) pingRequest(dstID ServerID, pec chan PingError) {
 	}
 }
 
-// sendPing creates gRPC client and send ping by using it.
-func (s *Server) sendPing(addr ServerAddress, ping *Message) (ack *Ack, err error) {
+// send creates gRPC client and send ping by using it.
+func (s *Server) send(method MethodName, addr ServerAddress, msg *Message) (ack *Ack, err error) {
 	conn, err := s.trans.Dial(string(addr), s.conf.PingExpire)
 	if err != nil {
 		return nil, err
@@ -134,5 +94,5 @@ func (s *Server) sendPing(addr ServerAddress, ping *Message) (ack *Ack, err erro
 	res := &Ack{}
 
 	cli := rpc.NewClient(conn)
-	return res, cli.Call("Server.Ping", ping, res)
+	return res, cli.Call(method.String(), msg, res)
 }

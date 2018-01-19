@@ -17,7 +17,7 @@ var (
 
 // PingError contains specific error information which occurred in swim server.
 type PingError struct {
-	Type   MessageType
+	Type   MethodName
 	DestID ServerID
 	Err    error
 }

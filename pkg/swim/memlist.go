@@ -5,62 +5,119 @@ import (
 )
 
 type memList struct {
-	list map[ServerID]*Member
+	myID ServerID
+
+	list map[ServerID]Member
 	sync.Mutex
 }
 
-func newMemList() *memList {
+func newMemList(myID ServerID) *memList {
 	return &memList{
-		list: make(map[ServerID]*Member),
+		myID: myID,
+		list: make(map[ServerID]Member),
 	}
 }
 
-// get returns copied object of the given id.
-func (ml *memList) get(id ServerID) *Member {
+// get returns member structure of the given id.
+func (ml *memList) get(id ServerID) (m Member, ok bool) {
 	ml.Lock()
 	defer ml.Unlock()
 
-	m := ml.list[id]
-	if m == nil {
-		return m
-	}
-
-	cp := &Member{}
-	*cp = *m
-	return cp
+	m, ok = ml.list[id]
+	return
 }
 
 // set compares the given member object is newer than mine.
 // If newer than mine, then update it.
-func (ml *memList) set(m *Member) {
+func (ml *memList) set(new Member) {
 	ml.Lock()
 	defer ml.Unlock()
 
-	if compare(ml.list[m.ID], m) {
-		ml.list[m.ID] = m
+	old, ok := ml.list[new.ID]
+	// New member always add into the member list.
+	if !ok {
+		ml.list[new.ID] = new
+	}
+
+	if compare(old, new) {
+		ml.list[new.ID] = new
 	}
 }
 
 // Fetch fetches 'n' random members from the member list.
-// Fetch all items if n <= 0.
-func (ml *memList) fetch(n int) []*Member {
+// Fetch all items if n < 1.
+func (ml *memList) fetch(n int, opts ...fetchOption) []Member {
 	ml.Lock()
 	defer ml.Unlock()
 
-	if n <= 0 {
+	var fopts fetchOptions
+	for _, opt := range opts {
+		opt(&fopts)
+	}
+
+	if n < 1 {
 		n = len(ml.list)
 	}
 
-	fetched := make([]*Member, n)
-	for _, v := range ml.list {
-		if n--; n < 0 {
-			break
+	fetched := make([]Member, 0, n)
+	for _, m := range ml.list {
+		if fopts.notAlive && m.Status == Alive {
+			continue
+		}
+		if fopts.notSuspect && m.Status == Suspect {
+			continue
+		}
+		if fopts.notFaulty && m.Status == Faulty {
+			continue
+		}
+		if fopts.notMyself && m.ID == ml.myID {
+			continue
 		}
 
-		cv := &Member{}
-		*cv = *v
-		fetched[n] = cv
+		fetched = append(fetched, m)
+		if len(fetched) == n {
+			break
+		}
 	}
 
 	return fetched
+}
+
+// fetchOptions configure a fetch call.
+type fetchOptions struct {
+	notAlive   bool
+	notSuspect bool
+	notFaulty  bool
+	notMyself  bool
+}
+
+// fetchOption configures how we fetch the members.
+type fetchOption func(*fetchOptions)
+
+// withNotAlive returns a fetchOption which fetches except alive members.
+func withNotAlive() fetchOption {
+	return func(o *fetchOptions) {
+		o.notAlive = true
+	}
+}
+
+// withNotSuspect returns a fetchOption which fetches except suspect members.
+func withNotSuspect() fetchOption {
+	return func(o *fetchOptions) {
+		o.notSuspect = true
+	}
+}
+
+// withNotFaulty returns a fetchOption which fetches except faulty members.
+func withNotFaulty() fetchOption {
+	return func(o *fetchOptions) {
+		o.notFaulty = true
+	}
+}
+
+// withNotMyself returns a fetchOption which fetches except me.
+func withNotMyself() fetchOption {
+	return func(o *fetchOptions) {
+		o.notMyself = true
+	}
 }

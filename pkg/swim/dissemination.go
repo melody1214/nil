@@ -33,9 +33,12 @@ func (s *Server) faulty(id ServerID) error {
 // Disseminate changes the status and asks broadcast it to other healthy node.
 func (s *Server) disseminate(id ServerID, status Status) error {
 	// Change status.
-	m := s.meml.get(id)
-	m.Status = status
+	m, ok := s.meml.get(id)
+	if !ok {
+		return ErrNotFound
+	}
 
+	m.Status = status
 	// If changing my status, then increase incarnation number.
 	if s.conf.ID == id {
 		m.Incarnation++
@@ -45,55 +48,38 @@ func (s *Server) disseminate(id ServerID, status Status) error {
 	s.meml.set(m)
 
 	// Prepare ping message content.
-	content := make([]*Member, 1)
+	content := make([]Member, 1)
 	content[0] = m
 
 	// Choose gossiper.
-	meml := s.meml.fetch(0)
-	var gossiper *Member
-	for _, m := range meml {
-		// Gossiper would be healthy and not myself.
-		if m.ID != s.conf.ID && m.Status == Alive {
-			gossiper = m
-			break
-		}
-	}
+	gossiper := s.meml.fetch(1, withNotFaulty(), withNotSuspect(), withNotMyself())
 
 	// I'm the only survivor of this membership.
 	// There is no member who is able to gossip my message.
-	if gossiper == nil {
+	if len(gossiper) < 1 {
 		return nil
 	}
 
-	return s.askBroadcast(gossiper.Address, content)
+	return s.askBroadcast(gossiper[0].Address, content)
 }
 
 // askBroadcast asks broadcasting message to gossiper node.
-func (s *Server) askBroadcast(gossiper ServerAddress, meml []*Member) error {
+func (s *Server) askBroadcast(gossiper ServerAddress, meml []Member) error {
 	ping := &Message{
-		Type:    Broadcast,
 		Members: meml,
 	}
 
-	_, err := s.sendPing(gossiper, ping)
+	_, err := s.send(Broadcast, gossiper, ping)
 	return err
 }
 
 // broadcast sends ping message to all.
 func (s *Server) broadcast() {
-	ml := s.meml.fetch(0)
+	ml := s.meml.fetch(0, withNotFaulty(), withNotSuspect())
 
 	for _, m := range ml {
-		if m.Status == Faulty {
-			continue
-		}
-
-		p := &Message{
-			Type:    Ping,
-			Members: ml,
-		}
-
-		go s.sendPing(m.Address, p)
+		p := &Message{Members: ml}
+		go s.send(Ping, m.Address, p)
 	}
 	runtime.Gosched()
 }

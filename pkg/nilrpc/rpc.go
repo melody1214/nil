@@ -72,7 +72,7 @@ type GetClusterMapRequest struct{}
 
 // GetClusterMapResponse contains a current local cluster members.
 type GetClusterMapResponse struct {
-	Members []*swim.Member
+	Members []swim.Member
 }
 
 // Dial dials with the given rpc type connection to the address.

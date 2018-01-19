@@ -59,8 +59,8 @@ type Config struct {
 // DefaultConfig returns a config with the default time settings.
 func DefaultConfig() *Config {
 	return &Config{
-		PingPeriod:  5 * time.Second,
-		PingExpire:  5 * time.Second,
+		PingPeriod:  2000 * time.Millisecond,
+		PingExpire:  500 * time.Millisecond,
 		Coordinator: "localhost:51000",
 	}
 }

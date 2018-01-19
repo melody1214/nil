@@ -30,10 +30,10 @@ func NewServer(conf *Config, trans Transport) (*Server, error) {
 		return nil, err
 	}
 
-	memList := newMemList()
+	memList := newMemList(conf.ID)
 
 	// Make member myself and add to the list.
-	me := &Member{
+	me := Member{
 		ID:          conf.ID,
 		Address:     conf.Address,
 		Type:        conf.Type,
@@ -65,16 +65,7 @@ func (s *Server) Serve(c chan PingError) {
 		return
 	}
 
-	go func() {
-		for {
-			conn, err := s.trans.Accept()
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			go s.rpcSrv.ServeConn(conn)
-		}
-	}()
+	go s.serve()
 	runtime.Gosched()
 
 	// Try to join the membership.
@@ -106,14 +97,6 @@ func (s *Server) Serve(c chan PingError) {
 	}
 }
 
-func (s *Server) canStart() bool {
-	return atomic.SwapUint32(&s.stopped, uint32(0)) == 1
-}
-
-func (s *Server) isStopped() bool {
-	return atomic.LoadUint32(&s.stopped) == 1
-}
-
 // Stop will stop the swim server and cleaning up.
 func (s *Server) Stop() error {
 	if s.isStopped() {
@@ -129,10 +112,29 @@ func (s *Server) Stop() error {
 }
 
 // GetMap returns cluster map.
-func (s *Server) GetMap() []*Member {
+func (s *Server) GetMap() []Member {
 	return s.meml.fetch(0)
 }
 
 func (s *Server) registerRPCHandler() {
 	s.RPCHandler = s
+}
+
+func (s *Server) canStart() bool {
+	return atomic.SwapUint32(&s.stopped, uint32(0)) == 1
+}
+
+func (s *Server) isStopped() bool {
+	return atomic.LoadUint32(&s.stopped) == 1
+}
+
+func (s *Server) serve() {
+	for {
+		conn, err := s.trans.Accept()
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		go s.rpcSrv.ServeConn(conn)
+	}
 }
