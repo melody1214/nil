@@ -2,6 +2,7 @@ package swim
 
 import (
 	"sync"
+	"syscall"
 )
 
 type memList struct {
@@ -37,6 +38,22 @@ func (ml *memList) set(new Member) {
 	// New member always add into the member list.
 	if !ok {
 		ml.list[new.ID] = new
+	}
+
+	// Update information about myself.
+	if ml.myID == new.ID {
+		// If some other nodes tell I am suspect state,
+		if new.Status == Suspect && old.Incarnation <= new.Incarnation {
+			old.Status = Alive
+			old.Incarnation++
+			ml.list[new.ID] = old
+		}
+
+		// I'm faulty node.
+		// Must stop the system even if I'm alive.
+		if new.Status == Faulty {
+			syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+		}
 	}
 
 	if compare(old, new) {

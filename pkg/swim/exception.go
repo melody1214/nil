@@ -2,6 +2,7 @@ package swim
 
 import (
 	"errors"
+	"time"
 )
 
 var (
@@ -27,6 +28,10 @@ func (s *Server) handleErr(pe PingError, pec chan PingError) {
 	switch pe.Type {
 	case Ping:
 		s.suspect(pe.DestID)
+
+		// Keep suspect state for 1minute.
+		time.Sleep(1 * time.Minute)
+
 		go s.pingRequest(pe.DestID, pec)
 	case PingRequest:
 		s.faulty(pe.DestID)
