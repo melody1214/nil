@@ -1,4 +1,10 @@
 {
+    "gw": {
+        "addr": "localhost",
+        "port": "50000",
+        "first_mds": "localhost:51000",
+        "log_location": "stderr"
+    },
     "mds": {
         "addr": "localhost",
         "port": "51000",
@@ -11,10 +17,10 @@
 
         "log_location": "stderr"
     },
-    "gw": {
+    "osd": {
         "addr": "localhost",
-        "port": "50000",
-        "first_mds": "localhost:51000",
+        "port": "52000",
+
         "log_location": "stderr"
     },
     "swim": {
