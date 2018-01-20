@@ -3,7 +3,7 @@ package osd
 import (
 	"errors"
 
-	"github.com/chanyoung/nil/pkg/rest"
+	"github.com/chanyoung/nil/pkg/osd/server"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/chanyoung/nil/pkg/util/uuid"
@@ -17,9 +17,8 @@ type Osd struct {
 	// Unique id of osd.
 	id string
 
-	cfg *config.Osd
-
-	restServer *rest.Server
+	cfg    *config.Osd
+	server *server.Server
 }
 
 // New creates a osd object.
@@ -40,10 +39,15 @@ func New(cfg *config.Osd) (*Osd, error) {
 	cfg.ID = uuid.Gen()
 	log.WithField("uuid", cfg.ID).Info("Generating OSD UUID succeeded")
 
+	s, err := server.New(cfg)
+	if err != nil {
+		return nil, err
+	}
+
 	o := &Osd{
-		id:         cfg.ID,
-		cfg:        cfg,
-		restServer: rest.NewServer(),
+		id:     cfg.ID,
+		cfg:    cfg,
+		server: s,
 	}
 
 	return o, nil
@@ -51,19 +55,14 @@ func New(cfg *config.Osd) (*Osd, error) {
 
 // Start starts the osd.
 func (o *Osd) Start() {
-	// if err := o.restServer.Start(); err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// // Wait until Ctrl-C or other terminate signal is received.
-	// sc := make(chan os.Signal, 1)
-	// signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
-	// <-sc
-
-	// o.stop()
+	log.Info("Start OSD service ...")
+	err := o.server.Start()
+	if err != nil {
+		log.Error(err)
+	}
 }
 
 func (o *Osd) stop() {
 	// Clean up osd works.
-	// log.Println("stop osd")
+	log.Info("Stop OSD")
 }
