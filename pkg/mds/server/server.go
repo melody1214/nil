@@ -29,10 +29,10 @@ type Server struct {
 	nilRPCSrv     *rpc.Server
 	NilRPCHandler NilRPCHandler
 
-	raftTransportLayer *raftTransportLayer
+	raftTransportLayer *nilmux.RaftTransportLayer
 	raftLayer          *nilmux.Layer
 
-	swimTransportLayer *swimTransportLayer
+	swimTransportLayer *nilmux.SwimTransportLayer
 	swimLayer          *nilmux.Layer
 	swimSrv            *swim.Server
 
@@ -65,13 +65,13 @@ func New(cfg *config.Mds) (*Server, error) {
 		0x01, // rpcRaft
 	}
 	srv.raftLayer = nilmux.NewLayer(raftTypeBytes, resolvedAddr, false)
-	srv.raftTransportLayer = newRaftTransportLayer(srv.raftLayer)
+	srv.raftTransportLayer = nilmux.NewRaftTransportLayer(srv.raftLayer)
 
 	swimTypeBytes := []byte{
 		0x03, // rpcSwim
 	}
 	srv.swimLayer = nilmux.NewLayer(swimTypeBytes, resolvedAddr, false)
-	srv.swimTransportLayer = newSwimTransportLayer(srv.swimLayer)
+	srv.swimTransportLayer = nilmux.NewSwimTransportLayer(srv.swimLayer)
 
 	swimConf := swim.DefaultConfig()
 	swimConf.ID = swim.ServerID(cfg.ID)
