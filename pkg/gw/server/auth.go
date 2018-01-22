@@ -84,7 +84,7 @@ func (s *Server) getSecretKey(accessKey string) (string, error) {
 	res := &nilrpc.GetCredentialResponse{}
 
 	cli := rpc.NewClient(conn)
-	if err := cli.Call("Server.GetCredential", req, res); err != nil {
+	if err := cli.Call(nilrpc.GetCredential.String(), req, res); err != nil {
 		return "", err
 	}
 

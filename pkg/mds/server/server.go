@@ -97,8 +97,10 @@ func New(cfg *config.Mds) (*Server, error) {
 
 	// Create nil RPC server.
 	srv.nilRPCSrv = rpc.NewServer()
-	srv.newNilRPCHandler()
-	if err := srv.nilRPCSrv.Register(srv.NilRPCHandler); err != nil {
+	if err := srv.registerNilRPCHandler(); err != nil {
+		return nil, err
+	}
+	if err := srv.nilRPCSrv.RegisterName(nilrpc.MDSRPCPrefix, srv.NilRPCHandler); err != nil {
 		return nil, err
 	}
 
@@ -174,5 +176,10 @@ func (s *Server) join(joinAddr, raftAddr, nodeID string) error {
 	res := &nilrpc.JoinResponse{}
 
 	cli := rpc.NewClient(conn)
-	return cli.Call("Server.Join", req, res)
+	return cli.Call(nilrpc.Join.String(), req, res)
+}
+
+func (s *Server) registerNilRPCHandler() (err error) {
+	s.NilRPCHandler, err = newNilRPCHandler(s)
+	return
 }

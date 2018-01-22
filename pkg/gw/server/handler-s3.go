@@ -61,7 +61,7 @@ func (s *Server) s3MakeBucket(w http.ResponseWriter, r *http.Request) {
 
 	// Call 'AddBucket' procedure and handling errors.
 	cli := rpc.NewClient(conn)
-	if err := cli.Call("Server.AddBucket", req, res); err != nil {
+	if err := cli.Call(nilrpc.AddBucket.String(), req, res); err != nil {
 		// Not mysql error, unknown error.
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	} else if res.S3ErrCode != s3.ErrNone {

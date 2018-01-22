@@ -10,6 +10,46 @@ import (
 	"github.com/chanyoung/nil/pkg/swim"
 )
 
+// MDSRPCPrefix is the prefix for calling mds rpc methods.
+const MDSRPCPrefix = "MDS"
+
+// OSDRPCPrefix is the prefix for calling osd rpc methods.
+const OSDRPCPrefix = "OSD"
+
+// MethodName indicates what procedure will be called.
+type MethodName int
+
+const (
+	// MDS methods.
+	Join MethodName = iota
+	AddUser
+	GetCredential
+	AddBucket
+	GetClusterMap
+
+	// OSD methods.
+	Hello
+)
+
+func (m MethodName) String() string {
+	switch m {
+	case Join:
+		return MDSRPCPrefix + "." + "Join"
+	case AddUser:
+		return MDSRPCPrefix + "." + "AddUser"
+	case GetCredential:
+		return MDSRPCPrefix + "." + "GetCredential"
+	case AddBucket:
+		return MDSRPCPrefix + "." + "AddBucket"
+	case GetClusterMap:
+		return MDSRPCPrefix + "." + "GetClusterMap"
+	case Hello:
+		return OSDRPCPrefix + "." + "Hello"
+	default:
+		return "unknown"
+	}
+}
+
 // RPCType is the first byte of connection and it implies the type of the RPC.
 type RPCType byte
 

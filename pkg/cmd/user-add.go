@@ -40,7 +40,7 @@ func userAddRun(cmd *cobra.Command, args []string) {
 	res := &nilrpc.AddUserResponse{}
 
 	cli := rpc.NewClient(conn)
-	if err := cli.Call("Server.AddUser", req, res); err != nil {
+	if err := cli.Call(nilrpc.AddUser.String(), req, res); err != nil {
 		log.Fatal(err)
 	}
 

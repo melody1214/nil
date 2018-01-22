@@ -50,8 +50,10 @@ func NewServer(conf *Config, trans Transport) (*Server, error) {
 		stop:    make(chan chan error, 1),
 		stopped: uint32(1),
 	}
-	s.registerRPCHandler()
-	if err := s.rpcSrv.Register(s.RPCHandler); err != nil {
+	if err := s.registerRPCHandler(); err != nil {
+		return nil, err
+	}
+	if err := s.rpcSrv.RegisterName(rpcPrefix, s.RPCHandler); err != nil {
 		return nil, err
 	}
 
@@ -116,8 +118,9 @@ func (s *Server) GetMap() []Member {
 	return s.meml.fetch(0)
 }
 
-func (s *Server) registerRPCHandler() {
-	s.RPCHandler = s
+func (s *Server) registerRPCHandler() (err error) {
+	s.RPCHandler, err = newRPCHandler(s)
+	return
 }
 
 func (s *Server) canStart() bool {

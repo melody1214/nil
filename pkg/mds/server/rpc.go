@@ -11,8 +11,47 @@ import (
 	"github.com/go-sql-driver/mysql"
 )
 
-func (s *Server) newNilRPCHandler() {
-	s.NilRPCHandler = s
+// Handler has exposed methods for rpc server.
+type Handler struct {
+	s *Server
+}
+
+func newNilRPCHandler(s *Server) (NilRPCHandler, error) {
+	if s == nil {
+		return nil, fmt.Errorf("nil server object")
+	}
+
+	return &Handler{s: s}, nil
+}
+
+// Join is an exposed method of swim rpc service.
+// It simply wraps the server's handleJoin method.
+func (h *Handler) Join(req *nilrpc.JoinRequest, res *nilrpc.JoinResponse) error {
+	return h.s.handleJoin(req, res)
+}
+
+// AddUser is an exposed method of swim rpc service.
+// It simply wraps the server's handleAddUser method.
+func (h *Handler) AddUser(req *nilrpc.AddUserRequest, res *nilrpc.AddUserResponse) error {
+	return h.s.handleAddUser(req, res)
+}
+
+// GetCredential is an exposed method of swim rpc service.
+// It simply wraps the server's handleGetCredential method.
+func (h *Handler) GetCredential(req *nilrpc.GetCredentialRequest, res *nilrpc.GetCredentialResponse) error {
+	return h.s.handleGetCredential(req, res)
+}
+
+// AddBucket is an exposed method of swim rpc service.
+// It simply wraps the server's handleAddBucket method.
+func (h *Handler) AddBucket(req *nilrpc.AddBucketRequest, res *nilrpc.AddBucketResponse) error {
+	return h.s.handleAddBucket(req, res)
+}
+
+// GetClusterMap is an exposed method of swim rpc service.
+// It simply wraps the server's handleGetClusterMap method.
+func (h *Handler) GetClusterMap(req *nilrpc.GetClusterMapRequest, res *nilrpc.GetClusterMapResponse) error {
+	return h.s.handleGetClusterMap(req, res)
 }
 
 func (s *Server) serveNilRPC(l *nilmux.Layer) {
@@ -40,8 +79,8 @@ type NilRPCHandler interface {
 	GetClusterMap(req *nilrpc.GetClusterMapRequest, res *nilrpc.GetClusterMapResponse) error
 }
 
-// Join joins the mds node into the cluster.
-func (s *Server) Join(req *nilrpc.JoinRequest, res *nilrpc.JoinResponse) error {
+// handleJoin joins the mds node into the cluster.
+func (s *Server) handleJoin(req *nilrpc.JoinRequest, res *nilrpc.JoinResponse) error {
 	if req.RaftAddr == "" || req.NodeID == "" {
 		return fmt.Errorf("not enough arguments: %+v", req)
 	}
@@ -49,8 +88,8 @@ func (s *Server) Join(req *nilrpc.JoinRequest, res *nilrpc.JoinResponse) error {
 	return s.store.Join(req.NodeID, req.RaftAddr)
 }
 
-// AddUser adds a new user with the given name.
-func (s *Server) AddUser(req *nilrpc.AddUserRequest, res *nilrpc.AddUserResponse) error {
+// handleAddUser adds a new user with the given name.
+func (s *Server) handleAddUser(req *nilrpc.AddUserRequest, res *nilrpc.AddUserResponse) error {
 	ak := security.NewAPIKey()
 
 	q := fmt.Sprintf(
@@ -73,8 +112,8 @@ func (s *Server) AddUser(req *nilrpc.AddUserRequest, res *nilrpc.AddUserResponse
 	return nil
 }
 
-// GetCredential returns matching secret key with the given access key.
-func (s *Server) GetCredential(req *nilrpc.GetCredentialRequest, res *nilrpc.GetCredentialResponse) error {
+// handleGetCredential returns matching secret key with the given access key.
+func (s *Server) handleGetCredential(req *nilrpc.GetCredentialRequest, res *nilrpc.GetCredentialResponse) error {
 	q := fmt.Sprintf(
 		`
 		SELECT
@@ -99,8 +138,8 @@ func (s *Server) GetCredential(req *nilrpc.GetCredentialRequest, res *nilrpc.Get
 	return nil
 }
 
-// AddBucket creates a bucket with the given name.
-func (s *Server) AddBucket(req *nilrpc.AddBucketRequest, res *nilrpc.AddBucketResponse) error {
+// handleAddBucket creates a bucket with the given name.
+func (s *Server) handleAddBucket(req *nilrpc.AddBucketRequest, res *nilrpc.AddBucketResponse) error {
 	q := fmt.Sprintf(
 		`
 		INSERT INTO bucket (bucket_name, user_id, region_id)
@@ -133,8 +172,8 @@ func (s *Server) AddBucket(req *nilrpc.AddBucketRequest, res *nilrpc.AddBucketRe
 	return nil
 }
 
-// GetClusterMap returns a current local cluster map.
-func (s *Server) GetClusterMap(req *nilrpc.GetClusterMapRequest, res *nilrpc.GetClusterMapResponse) error {
+// handleGetClusterMap returns a current local cluster map.
+func (s *Server) handleGetClusterMap(req *nilrpc.GetClusterMapRequest, res *nilrpc.GetClusterMapResponse) error {
 	res.Members = s.swimSrv.GetMap()
 	return nil
 }

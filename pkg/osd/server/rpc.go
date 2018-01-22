@@ -6,8 +6,22 @@ import (
 	"github.com/chanyoung/nil/pkg/nilmux"
 )
 
-func (s *Server) newNilRPCHandler() {
-	s.NilRPCHandler = s
+// Handler has exposed methods for rpc server.
+type Handler struct {
+	s *Server
+}
+
+func newNilRPCHandler(s *Server) (NilRPCHandler, error) {
+	if s == nil {
+		return nil, fmt.Errorf("nil server object")
+	}
+
+	return &Handler{s: s}, nil
+}
+
+// Hello is for testing rpc.
+func (h *Handler) Hello(req *string, res *string) error {
+	return h.s.handleHello(req, res)
 }
 
 func (s *Server) serveNilRPC(l *nilmux.Layer) {
@@ -26,8 +40,7 @@ type NilRPCHandler interface {
 	Hello(req *string, res *string) error
 }
 
-// Hello is for testing rpc.
-func (s *Server) Hello(req *string, res *string) error {
+func (s *Server) handleHello(req *string, res *string) error {
 	fmt.Println("Hello world")
 	return nil
 }

@@ -19,7 +19,7 @@ const (
 	Join
 )
 
-const rpcPrefix string = "Server"
+const rpcPrefix string = "Swim"
 
 func (m MethodName) String() string {
 	switch m {

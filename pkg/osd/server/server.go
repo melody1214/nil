@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/chanyoung/nil/pkg/nilmux"
+	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/swim"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
@@ -77,8 +78,10 @@ func New(cfg *config.Osd) (*Server, error) {
 
 	// Create nil RPC server.
 	srv.nilRPCSrv = rpc.NewServer()
-	srv.newNilRPCHandler()
-	if err := srv.nilRPCSrv.Register(srv.NilRPCHandler); err != nil {
+	if err := srv.registerNilRPCHandler(); err != nil {
+		return nil, err
+	}
+	if err := srv.nilRPCSrv.RegisterName(nilrpc.OSDRPCPrefix, srv.NilRPCHandler); err != nil {
 		return nil, err
 	}
 
@@ -117,4 +120,9 @@ func (s *Server) Start() error {
 // stop cleans up the services and shut down the server.
 func (s *Server) stop() error {
 	return nil
+}
+
+func (s *Server) registerNilRPCHandler() (err error) {
+	s.NilRPCHandler, err = newNilRPCHandler(s)
+	return
 }
