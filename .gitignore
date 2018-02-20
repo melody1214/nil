@@ -20,3 +20,5 @@ vendor/
 # TLS configurations
 .certs/
 
+# Virtual cluster
+virt/
