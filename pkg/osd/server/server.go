@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/nilrpc"
@@ -61,6 +62,17 @@ func New(cfg *config.Osd) (*Server, error) {
 	swimConf := swim.DefaultConfig()
 	swimConf.ID = swim.ServerID(cfg.ID)
 	swimConf.Address = swim.ServerAddress(cfg.ServerAddr + ":" + cfg.ServerPort)
+	swimConf.Coordinator = swim.ServerAddress(cfg.Swim.CoordinatorAddr)
+	if t, err := time.ParseDuration(cfg.Swim.Period); err != nil {
+		log.Error(err)
+	} else {
+		swimConf.PingPeriod = t
+	}
+	if t, err := time.ParseDuration(cfg.Swim.Expire); err != nil {
+		log.Error(err)
+	} else {
+		swimConf.PingExpire = t
+	}
 	swimConf.Type = swim.OSD
 
 	srv.swimSrv, err = swim.NewServer(

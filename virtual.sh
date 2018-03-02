@@ -120,6 +120,7 @@ function runmds() {
       --raft-local-cluster-addr localhost:$((GWBASEPORT - 1)) \
       --raft-local-cluster-region $region \
       --raft-dir $workdir/raftdir \
+      --swim-coordinator-addr localhost:$MDSBASEPORT \
       -l $workdir/log &
     echo $! >> $PID
 }
@@ -134,6 +135,7 @@ function runds() {
     # Run ds.
     $NIL osd \
       -p $port \
+      --swim-coordinator-addr localhost:$((MDSBASEPORT - 1)) \
       -l $workdir/log &
     echo $! >> $PID
 }

@@ -23,6 +23,8 @@ type Mds struct {
 
 	// Raft config.
 	Raft Raft
+	// Swim config.
+	Swim Swim
 	// Security config.
 	Security Security
 

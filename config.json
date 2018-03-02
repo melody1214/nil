@@ -24,6 +24,8 @@
         "log_location": "stderr"
     },
     "swim": {
+        "coordinator_addr": "localhost:51000",
+
         "period": "5s",
         "expire": "5s"
     },

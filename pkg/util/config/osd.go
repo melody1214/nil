@@ -10,6 +10,8 @@ type Osd struct {
 	// ServerPort is the port of the metadata server.
 	ServerPort string
 
+	// Swim config.
+	Swim Swim
 	// Security config.
 	Security Security
 
