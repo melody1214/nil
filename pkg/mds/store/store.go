@@ -63,6 +63,7 @@ func (s *Store) Open() error {
 	// Setup Raft configuration.
 	config := raft.DefaultConfig()
 	config.LocalID = raft.ServerID(s.cfg.Raft.LocalClusterRegion)
+	config.LogOutput = mlog.GetLogger().Writer()
 
 	// Create Raft log store directory.
 	if s.cfg.Raft.RaftDir == "" {
