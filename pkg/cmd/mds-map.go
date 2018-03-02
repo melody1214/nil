@@ -11,21 +11,21 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var mapCmd = &cobra.Command{
+var mdsMapCmd = &cobra.Command{
 	Use:   "map",
 	Short: "print cluster map",
 	Long:  "print cluster map",
-	Run:   mapRun,
+	Run:   mdsMapRun,
 }
 
 var (
-	bind string
-	port string
-	cert string
+	mdsMapBind string
+	mdsMapPort string
+	mdsMapCert string
 )
 
-func mapRun(cmd *cobra.Command, args []string) {
-	conn, err := nilrpc.Dial(bind+":"+port, nilrpc.RPCNil, time.Duration(2*time.Second))
+func mdsMapRun(cmd *cobra.Command, args []string) {
+	conn, err := nilrpc.Dial(mdsMapBind+":"+mdsMapPort, nilrpc.RPCNil, time.Duration(2*time.Second))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func mapRun(cmd *cobra.Command, args []string) {
 }
 
 func init() {
-	mapCmd.Flags().StringVarP(&bind, "bind", "b", config.Get("mds.addr"), "will ask the mds of this address")
-	mapCmd.Flags().StringVarP(&port, "port", "p", config.Get("mds.port"), "will ask the mds of this port")
-	mapCmd.Flags().StringVarP(&cert, "cert", "c", config.Get("security.certs_dir")+"/"+config.Get("security.rootca_pem"), "will ask the mds of this port")
+	mdsMapCmd.Flags().StringVarP(&mdsMapBind, "bind", "b", config.Get("mds.addr"), "will ask the mds of this address")
+	mdsMapCmd.Flags().StringVarP(&mdsMapPort, "port", "p", config.Get("mds.port"), "will ask the mds of this port")
+	mdsMapCmd.Flags().StringVarP(&mdsMapCert, "cert", "c", config.Get("security.certs_dir")+"/"+config.Get("security.rootca_pem"), "will ask the mds of this port")
 }

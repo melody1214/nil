@@ -4,17 +4,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var userCmd = &cobra.Command{
+var mdsUserCmd = &cobra.Command{
 	Use:   "user",
 	Short: "control user information",
 	Long:  "control user information",
-	Run:   userRun,
+	Run:   mdsUserRun,
 }
 
-func userRun(cmd *cobra.Command, args []string) {
+func mdsUserRun(cmd *cobra.Command, args []string) {
 	cmd.Help()
 }
 
 func init() {
-	userCmd.AddCommand(userAddCmd)
+	mdsUserCmd.AddCommand(mdsUserAddCmd)
 }

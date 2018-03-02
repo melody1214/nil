@@ -20,7 +20,5 @@ func init() {
 	// Add commands.
 	RootCmd.AddCommand(mdsCmd)
 	RootCmd.AddCommand(osdCmd)
-	RootCmd.AddCommand(mapCmd)
 	RootCmd.AddCommand(gwCmd)
-	RootCmd.AddCommand(userCmd)
 }

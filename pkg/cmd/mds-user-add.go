@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var userAddCmd = &cobra.Command{
+var mdsUserAddCmd = &cobra.Command{
 	Use:   "add",
 	Short: "add user [user name]",
 	Long:  "add user [user name]",
@@ -24,10 +24,10 @@ var userAddCmd = &cobra.Command{
 		}
 		return nil
 	},
-	Run: userAddRun,
+	Run: mdsUserAddRun,
 }
 
-func userAddRun(cmd *cobra.Command, args []string) {
+func mdsUserAddRun(cmd *cobra.Command, args []string) {
 	name := args[0]
 
 	conn, err := nilrpc.Dial(mdscfg.ServerAddr+":"+mdscfg.ServerPort, nilrpc.RPCNil, time.Duration(2*time.Second))
@@ -49,6 +49,6 @@ func userAddRun(cmd *cobra.Command, args []string) {
 }
 
 func init() {
-	userAddCmd.Flags().StringVarP(&mdscfg.ServerAddr, "bind", "b", config.Get("mds.addr"), "will ask the mds of this address")
-	userAddCmd.Flags().StringVarP(&mdscfg.ServerPort, "port", "p", config.Get("mds.port"), "will ask the mds of this port")
+	mdsUserAddCmd.Flags().StringVarP(&mdscfg.ServerAddr, "bind", "b", config.Get("mds.addr"), "will ask the mds of this address")
+	mdsUserAddCmd.Flags().StringVarP(&mdscfg.ServerPort, "port", "p", config.Get("mds.port"), "will ask the mds of this port")
 }
