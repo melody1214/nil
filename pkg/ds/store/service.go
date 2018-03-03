@@ -1,6 +1,7 @@
 package store
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"time"
@@ -8,14 +9,16 @@ import (
 
 // Service is the backend store service.
 type Service struct {
+	lvs          map[string]*LV
 	basePath     string
 	requestQueue queue
 }
 
 // NewService returns a new backend store service.
-func NewService(path string) *Service {
+func NewService(basePath string) *Service {
 	return &Service{
-		basePath: path,
+		basePath: basePath,
+		lvs:      map[string]*LV{},
 	}
 }
 
@@ -45,7 +48,13 @@ func (s *Service) handleCall(c *Call) {
 }
 
 func (s *Service) read(c *Call) {
-	f, err := os.Open(s.basePath + "/" + c.oid)
+	lv, ok := s.lvs[c.lv]
+	if !ok {
+		c.err = fmt.Errorf("no such lv: %s", c.lv)
+		return
+	}
+
+	f, err := os.Open(lv.MntPoint + "/" + c.oid)
 	if err != nil {
 		c.err = err
 		return
@@ -56,7 +65,13 @@ func (s *Service) read(c *Call) {
 }
 
 func (s *Service) write(c *Call) {
-	f, err := os.Create(s.basePath + "/" + c.oid)
+	lv, ok := s.lvs[c.lv]
+	if !ok {
+		c.err = fmt.Errorf("no such lv: %s", c.lv)
+		return
+	}
+
+	f, err := os.Create(lv.MntPoint + "/" + c.oid)
 	if err != nil {
 		c.err = err
 		return
@@ -67,5 +82,11 @@ func (s *Service) write(c *Call) {
 }
 
 func (s *Service) delete(c *Call) {
-	c.err = os.Remove(s.basePath + "/" + c.oid)
+	lv, ok := s.lvs[c.lv]
+	if !ok {
+		c.err = fmt.Errorf("no such lv: %s", c.lv)
+		return
+	}
+
+	c.err = os.Remove(lv.MntPoint + "/" + c.oid)
 }

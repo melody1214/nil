@@ -3,7 +3,9 @@ package server
 import (
 	"fmt"
 
+	"github.com/chanyoung/nil/pkg/ds/store"
 	"github.com/chanyoung/nil/pkg/nilmux"
+	"github.com/chanyoung/nil/pkg/nilrpc"
 )
 
 // Handler has exposed methods for rpc server.
@@ -19,9 +21,9 @@ func newNilRPCHandler(s *Server) (NilRPCHandler, error) {
 	return &Handler{s: s}, nil
 }
 
-// Hello is for testing rpc.
-func (h *Handler) Hello(req *string, res *string) error {
-	return h.s.handleHello(req, res)
+// AddVolume adds a new volume with the given device path.
+func (h *Handler) AddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVolumeResponse) error {
+	return h.s.handleAddVolume(req, res)
 }
 
 func (s *Server) serveNilRPC(l *nilmux.Layer) {
@@ -37,10 +39,20 @@ func (s *Server) serveNilRPC(l *nilmux.Layer) {
 
 // NilRPCHandler is the interface of mds rpc commands.
 type NilRPCHandler interface {
-	Hello(req *string, res *string) error
+	AddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVolumeResponse) error
 }
 
-func (s *Server) handleHello(req *string, res *string) error {
-	fmt.Println("Hello world")
+func (s *Server) handleAddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVolumeResponse) error {
+	lv, err := store.NewLV(req.DevicePath)
+	if err != nil {
+		return err
+	}
+
+	log.Infof("%+v", lv)
+
+	// TODO:
+	// 1) Get volume name from mds.
+	// 2) Add lv to the store service.
+
 	return nil
 }

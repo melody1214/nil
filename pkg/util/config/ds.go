@@ -10,6 +10,9 @@ type Ds struct {
 	// ServerPort is the port of the metadata server.
 	ServerPort string
 
+	// WorkDir is a working directory of the ds.
+	WorkDir string
+
 	// Swim config.
 	Swim Swim
 	// Security config.

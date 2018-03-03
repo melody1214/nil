@@ -21,6 +21,8 @@
         "addr": "localhost",
         "port": "52000",
 
+        "work_dir": ".",
+
         "log_location": "stderr"
     },
     "swim": {

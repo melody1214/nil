@@ -49,6 +49,8 @@ func init() {
 	mdsCmd.Flags().StringVarP(&mdscfg.Raft.ElectionTimeout, "raft-election-timeout", "", config.Get("raft.election_timeout"), "raft election timeout")
 
 	mdsCmd.Flags().StringVarP(&mdscfg.Swim.CoordinatorAddr, "swim-coordinator-addr", "", config.Get("swim.coordinator_addr"), "swim coordinator address")
+	mdsCmd.Flags().StringVarP(&mdscfg.Swim.Period, "swim-period", "", config.Get("swim.period"), "swim ping period time")
+	mdsCmd.Flags().StringVarP(&mdscfg.Swim.Expire, "swim-expire", "", config.Get("swim.expire"), "swim ping expire time")
 
 	mdsCmd.Flags().StringVarP(&mdscfg.Security.CertsDir, "secure-certs-dir", "", config.Get("security.certs_dir"), "directory path of secure configuration files")
 	mdsCmd.Flags().StringVarP(&mdscfg.Security.RootCAPem, "secure-rootca-pem", "", config.Get("security.rootca_pem"), "file name of rootCA.pem")

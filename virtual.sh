@@ -46,6 +46,7 @@ function createsdisks() {
     local numdisks="$1"
     local size="$2"
     local workdir="$3"
+    local dsport="$4"
 
     for i in $(eval echo "{1..$numdisks}"); do
         local dev=$workdir/dev$i
@@ -55,15 +56,12 @@ function createsdisks() {
         dd bs=1M count=$size if=/dev/zero of=$dev
         mkfs.xfs $dev
 
-        # Creates a mount point.
-        mkdir -p $dir
-
-        # Mount.
-        mount $dev $dir
+        # Add to ds.
+        $NIL ds volume add $dev -p $dsport
         if [ $? -eq 0 ]; then
-            echo $dir >> $MNT
+            echo $dev >> $MNT
         else
-            echo "Mount $dev to $dir failed."
+            echo "Add $dev to ds failed."
         fi
     done
 }
@@ -95,9 +93,11 @@ function purge() {
     if [ -e $MNT ]; then
         devs=$(cat $MNT)
         for dev in $devs; do
-            umount $dev
+            umount $dev &
         done
     fi
+
+    sleep 1
 
     # Remove virtual cluster directory.
     rm -rf $DIR
@@ -184,14 +184,15 @@ function runds() {
 
     mkdir -p $workdir
 
-    createsdisks "$DISKNUM" "$DISKSIZE" "$workdir"
-
     # Run ds.
     $NIL ds \
       -p $port \
       --swim-coordinator-addr localhost:$((MDSBASEPORT - 1)) \
+      --work-dir $workdir \
       -l $workdir/log &
     echo $! >> $PID
+
+    createsdisks "$DISKNUM" "$DISKSIZE" "$workdir" "$port"
 }
 
 function main() {

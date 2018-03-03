@@ -28,7 +28,7 @@ const (
 	GetClusterMap
 
 	// DS methods.
-	Hello
+	AddVolume
 )
 
 func (m MethodName) String() string {
@@ -43,8 +43,8 @@ func (m MethodName) String() string {
 		return MDSRPCPrefix + "." + "AddBucket"
 	case GetClusterMap:
 		return MDSRPCPrefix + "." + "GetClusterMap"
-	case Hello:
-		return DSRPCPrefix + "." + "Hello"
+	case AddVolume:
+		return DSRPCPrefix + "." + "AddVolume"
 	default:
 		return "unknown"
 	}
@@ -114,6 +114,14 @@ type GetClusterMapRequest struct{}
 type GetClusterMapResponse struct {
 	Members []swim.Member
 }
+
+// AddVolumeRequest requests to add new volume with the given device path.
+type AddVolumeRequest struct {
+	DevicePath string
+}
+
+// AddVolumeResponse is a response message to add volume request.
+type AddVolumeResponse struct{}
 
 // Dial dials with the given rpc type connection to the address.
 func Dial(addr string, rpcType RPCType, timeout time.Duration) (net.Conn, error) {
