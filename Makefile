@@ -30,6 +30,20 @@ GO ?= go
 all:
 	$(GO) build
 
+PROGRAM		:= nil
+CONFIG		:= config.json
+INSTALL		:= install
+INSTALLDIR	:= /etc/$(PROGRAM)
+
+.PHONY: install
+install:
+	$(INSTALL) -d -m 755 $(INSTALLDIR)
+	$(INSTALL) -m 664 $(CONFIG) $(INSTALLDIR)/$(CONFIG)
+
+.PHONY: uninstall
+uninstall:
+	rm -rf $(INSTALLDIR)
+
 .PHONY: clean
 clean:
 	$(GO) clean

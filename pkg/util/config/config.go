@@ -2,7 +2,6 @@ package config
 
 import (
 	"log"
-	"os"
 
 	"github.com/Jeffail/gabs"
 )
@@ -18,8 +17,7 @@ func Get(path string) string {
 }
 
 func init() {
-	// TODO: change to get config file path cleverly.
-	json, err := gabs.ParseJSONFile(os.Getenv("GOPATH") + "/src/github.com/chanyoung/nil/" + configFile)
+	json, err := gabs.ParseJSONFile("/etc/nil/" + configFile)
 	if err != nil {
 		log.Panic(err)
 	}
