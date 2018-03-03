@@ -14,7 +14,7 @@ import (
 const objectBasePath = "/obj/"
 
 // Server serves object with restful API.
-// Each osd has an own rest server.
+// Each ds has an own rest server.
 type Server struct {
 	mux *http.ServeMux
 	kv  kv.DB

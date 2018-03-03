@@ -20,7 +20,7 @@ var log *logrus.Logger
 
 // Server serve user requests and management orders.
 type Server struct {
-	cfg *config.Osd
+	cfg *config.Ds
 
 	nilMux        *nilmux.NilMux
 	nilLayer      *nilmux.Layer
@@ -33,7 +33,7 @@ type Server struct {
 }
 
 // New creates a server object.
-func New(cfg *config.Osd) (*Server, error) {
+func New(cfg *config.Ds) (*Server, error) {
 	log = mlog.GetLogger()
 
 	// Resolve gateway addres.
@@ -73,7 +73,7 @@ func New(cfg *config.Osd) (*Server, error) {
 	} else {
 		swimConf.PingExpire = t
 	}
-	swimConf.Type = swim.OSD
+	swimConf.Type = swim.DS
 
 	srv.swimSrv, err = swim.NewServer(
 		swimConf,
@@ -93,7 +93,7 @@ func New(cfg *config.Osd) (*Server, error) {
 	if err := srv.registerNilRPCHandler(); err != nil {
 		return nil, err
 	}
-	if err := srv.nilRPCSrv.RegisterName(nilrpc.OSDRPCPrefix, srv.NilRPCHandler); err != nil {
+	if err := srv.nilRPCSrv.RegisterName(nilrpc.DSRPCPrefix, srv.NilRPCHandler); err != nil {
 		return nil, err
 	}
 

@@ -1,7 +1,7 @@
 package config
 
-// Osd holds info required to set a object storage daemon.
-type Osd struct {
+// Ds holds info required to set a object storage daemon.
+type Ds struct {
 	// ID is the uuid of the metadata server.
 	ID string
 
@@ -15,7 +15,7 @@ type Osd struct {
 	// Security config.
 	Security Security
 
-	// LogLocation is the file path of osd logging.
+	// LogLocation is the file path of ds logging.
 	// Default output path is stderr.
 	LogLocation string
 }

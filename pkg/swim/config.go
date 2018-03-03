@@ -18,16 +18,16 @@ type ServerType int
 const (
 	// MDS : Metadata server.
 	MDS ServerType = iota
-	// OSD : Object storage daemon.
-	OSD
+	// DS : Disk server.
+	DS
 )
 
 // String returns the string of server type.
 func (s *ServerType) String() string {
 	if *s == MDS {
 		return "MDS"
-	} else if *s == OSD {
-		return "OSD"
+	} else if *s == DS {
+		return "DS"
 	} else {
 		return "Unknown"
 	}
@@ -52,7 +52,7 @@ type Config struct {
 	// which will ask to join the cluster.
 	Coordinator ServerAddress
 
-	// Type indicates this server is MDS or OSD.
+	// Type indicates this server is MDS or DS.
 	Type ServerType
 }
 

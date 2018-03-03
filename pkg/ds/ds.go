@@ -1,9 +1,9 @@
-package osd
+package ds
 
 import (
 	"errors"
 
-	"github.com/chanyoung/nil/pkg/osd/server"
+	"github.com/chanyoung/nil/pkg/ds/server"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/chanyoung/nil/pkg/util/uuid"
@@ -12,17 +12,17 @@ import (
 
 var log *logrus.Logger
 
-// Osd is the object storage daemon.
-type Osd struct {
-	// Unique id of osd.
+// Ds is the object storage daemon.
+type Ds struct {
+	// Unique id of ds.
 	id string
 
-	cfg    *config.Osd
+	cfg    *config.Ds
 	server *server.Server
 }
 
-// New creates a osd object.
-func New(cfg *config.Osd) (*Osd, error) {
+// New creates a ds object.
+func New(cfg *config.Ds) (*Ds, error) {
 	// Setting logger.
 	if err := mlog.Init(cfg.LogLocation); err != nil {
 		return nil, err
@@ -35,16 +35,16 @@ func New(cfg *config.Osd) (*Osd, error) {
 	}
 	log.WithField("location", cfg.LogLocation).Info("Setting logger succeeded")
 
-	// Generate OSD ID.
+	// Generate DS ID.
 	cfg.ID = uuid.Gen()
-	log.WithField("uuid", cfg.ID).Info("Generating OSD UUID succeeded")
+	log.WithField("uuid", cfg.ID).Info("Generating DS UUID succeeded")
 
 	s, err := server.New(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	o := &Osd{
+	o := &Ds{
 		id:     cfg.ID,
 		cfg:    cfg,
 		server: s,
@@ -53,16 +53,16 @@ func New(cfg *config.Osd) (*Osd, error) {
 	return o, nil
 }
 
-// Start starts the osd.
-func (o *Osd) Start() {
-	log.Info("Start OSD service ...")
-	err := o.server.Start()
+// Start starts the ds.
+func (d *Ds) Start() {
+	log.Info("Start DS service ...")
+	err := d.server.Start()
 	if err != nil {
 		log.Error(err)
 	}
 }
 
-func (o *Osd) stop() {
-	// Clean up osd works.
-	log.Info("Stop OSD")
+func (d *Ds) stop() {
+	// Clean up ds works.
+	log.Info("Stop Ds")
 }

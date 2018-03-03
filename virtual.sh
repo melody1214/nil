@@ -187,7 +187,7 @@ function runds() {
     createsdisks "$DISKNUM" "$DISKSIZE" "$workdir"
 
     # Run ds.
-    $NIL osd \
+    $NIL ds \
       -p $port \
       --swim-coordinator-addr localhost:$((MDSBASEPORT - 1)) \
       -l $workdir/log &

@@ -19,6 +19,6 @@ func rootCmdRun(cmd *cobra.Command, args []string) {
 func init() {
 	// Add commands.
 	RootCmd.AddCommand(mdsCmd)
-	RootCmd.AddCommand(osdCmd)
+	RootCmd.AddCommand(dsCmd)
 	RootCmd.AddCommand(gwCmd)
 }

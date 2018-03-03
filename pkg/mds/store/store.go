@@ -69,7 +69,7 @@ func (s *Store) Open() error {
 	if s.cfg.Raft.RaftDir == "" {
 		return errors.New("open raft: no raft storage directory specified")
 	}
-	os.MkdirAll(s.cfg.Raft.RaftDir, 0700)
+	os.MkdirAll(s.cfg.Raft.RaftDir, 0755)
 
 	// Setup Raft communication
 	transport := raft.NewNetworkTransport(s.transport, maxPool, timeout, mlog.GetLogger().Writer())

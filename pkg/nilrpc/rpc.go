@@ -13,8 +13,8 @@ import (
 // MDSRPCPrefix is the prefix for calling mds rpc methods.
 const MDSRPCPrefix = "MDS"
 
-// OSDRPCPrefix is the prefix for calling osd rpc methods.
-const OSDRPCPrefix = "OSD"
+// DSRPCPrefix is the prefix for calling ds rpc methods.
+const DSRPCPrefix = "DS"
 
 // MethodName indicates what procedure will be called.
 type MethodName int
@@ -27,7 +27,7 @@ const (
 	AddBucket
 	GetClusterMap
 
-	// OSD methods.
+	// DS methods.
 	Hello
 )
 
@@ -44,7 +44,7 @@ func (m MethodName) String() string {
 	case GetClusterMap:
 		return MDSRPCPrefix + "." + "GetClusterMap"
 	case Hello:
-		return OSDRPCPrefix + "." + "Hello"
+		return DSRPCPrefix + "." + "Hello"
 	default:
 		return "unknown"
 	}
