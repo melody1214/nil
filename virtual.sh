@@ -1,19 +1,27 @@
 #!/bin/bash
 
 # Run virtual cluster for testing.
-# Make six regions, one mds and nine osds in each.
+# Make six regions, one mds and three ds in each.
 
 set -e
 
 NIL=./nil
 DIR=virt
 PID=$DIR/pid
+MNT=$DIR/mnt
 
 # Region names follow ISO-3166-1
 REGIONS=("KR" "US" "HK" "SG" "JP" "DE")
 GWBASEPORT=50000
 MDSBASEPORT=51000
 DSBASEPORT=52000
+
+# Disk configuration.
+DISKSIZE=100 # megabytes
+DISKNUM=3    # per ds
+
+# Save settings.
+AUTOMOUNT_OPEN=""
 
 usage() {
     echo
@@ -23,6 +31,41 @@ usage() {
     echo "  -s Create mysql user and schema"
     echo "  -h Show this screen"
     echo
+}
+
+function changeset() {
+    AUTOMOUNT_OPEN="$(gsettings get org.gnome.desktop.media-handling automount-open)"
+    gsettings set org.gnome.desktop.media-handling automount-open false
+}
+
+function restore() {
+    gsettings set org.gnome.desktop.media-handling automount-open $AUTOMOUNT_OPEN
+}
+
+function createsdisks() {
+    local numdisks="$1"
+    local size="$2"
+    local workdir="$3"
+
+    for i in $(eval echo "{1..$numdisks}"); do
+        local dev=$workdir/dev$i
+        local dir=$workdir/mnt$i
+
+        # Creates a disk image.
+        dd bs=1M count=$size if=/dev/zero of=$dev
+        mkfs.xfs $dev
+
+        # Creates a mount point.
+        mkdir -p $dir
+
+        # Mount.
+        mount $dev $dir
+        if [ $? -eq 0 ]; then
+            echo $dir >> $MNT
+        else
+            echo "Mount $dev to $dir failed."
+        fi
+    done
 }
 
 function createschema() {
@@ -42,9 +85,17 @@ function createschema() {
 function purge() {
     # Kill all running processes of virtual cluster.
     if [ -e $PID ]; then
-        pids=$(cat $DIR/pid)
+        pids=$(cat $PID)
         for pid in $pids; do
             kill -9 $pid &
+        done
+    fi
+
+    # Unmount all disks in the virtual cluster.
+    if [ -e $MNT ]; then
+        devs=$(cat $MNT)
+        for dev in $devs; do
+            umount $dev
         done
     fi
 
@@ -132,6 +183,9 @@ function runds() {
     local workdir=$DIR/$region/ds$numds
 
     mkdir -p $workdir
+
+    createsdisks "$DISKNUM" "$DISKSIZE" "$workdir"
+
     # Run ds.
     $NIL osd \
       -p $port \
@@ -145,10 +199,22 @@ function main() {
 
     for region in ${REGIONS[@]}; do
         echo "set region $region ..."
-        runregion "$region" 1 1 9
+        runregion "$region" 1 1 3
         sleep 3
     done
 }
+
+# Run as root.
+if [ $UID -ne 0 ]; then
+    exec sudo -- "$0" "$@"
+fi
+
+# Change settings and save it.
+# Restore it when the program is finished.
+changeset
+
+trap restore SIGINT
+trap restore EXIT
 
 while getopts psh o; do
     case $o in
