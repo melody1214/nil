@@ -150,19 +150,19 @@ func (s *Server) handleAddBucket(req *nilrpc.AddBucketRequest, res *nilrpc.AddBu
 	)
 
 	_, err := s.store.PublishCommand("execute", q)
-	// No error occured while adding the bucket.
+	// No error occurred while adding the bucket.
 	if err == nil {
 		res.S3ErrCode = s3.ErrNone
 		return nil
 	}
-	// Error occured.
+	// Error occurred.
 	mysqlError, ok := err.(*mysql.MySQLError)
 	if !ok {
-		// Not mysql error occured, return itself.
+		// Not mysql error occurred, return itself.
 		return err
 	}
 
-	// Mysql error occured. Classify it and sending the corresponding s3 error code.
+	// Mysql error occurred. Classify it and sending the corresponding s3 error code.
 	switch mysqlError.Number {
 	case 1062:
 		res.S3ErrCode = s3.ErrBucketAlreadyExists

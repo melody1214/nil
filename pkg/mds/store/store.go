@@ -21,7 +21,7 @@ const (
 )
 
 // Store is a mysql store, which stores nil meta data.
-// Meta data seperates two types:
+// Meta data separates two types:
 // 1. Global meta data is the cluster information and all changes are
 // made via Raft consensus,
 // 2. Local meta data is the location information of each objects and

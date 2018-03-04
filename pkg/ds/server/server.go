@@ -36,7 +36,7 @@ type Server struct {
 func New(cfg *config.Ds) (*Server, error) {
 	log = mlog.GetLogger()
 
-	// Resolve gateway addres.
+	// Resolve gateway address.
 	addr := cfg.ServerAddr + ":" + cfg.ServerPort
 	resolvedAddr, err := net.ResolveTCPAddr("tcp", cfg.ServerAddr+":"+cfg.ServerPort)
 	if err != nil {
