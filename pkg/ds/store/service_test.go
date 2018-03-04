@@ -74,16 +74,16 @@ func TestServiceAPIs(t *testing.T) {
 		err := call.Do()
 		if err != nil && c.result != nil {
 			if err.Error() != c.result.Error() {
-				t.Errorf("%s %s/%s: expected response %v, got %v", c.op, c.lv, c.oid, c.result, err)
+				t.Errorf("%v %s/%s: expected response %v, got %v", c.op, c.lv, c.oid, c.result, err)
 			}
 			continue
 		} else if err != c.result {
-			t.Errorf("%s %s/%s: expected response %v, got %v", c.op, c.lv, c.oid, c.result, err)
+			t.Errorf("%v %s/%s: expected response %v, got %v", c.op, c.lv, c.oid, c.result, err)
 			continue
 		}
 
 		if c.op == Read && b.String() != c.content {
-			t.Errorf("%s %s/%s: expected data %v, got %v", c.op, c.lv, c.oid, c.content, b.String())
+			t.Errorf("%v %s/%s: expected data %v, got %v", c.op, c.lv, c.oid, c.content, b.String())
 			continue
 		}
 	}
