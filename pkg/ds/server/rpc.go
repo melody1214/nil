@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/chanyoung/nil/pkg/ds/store/volume"
 	"github.com/chanyoung/nil/pkg/nilmux"
@@ -50,7 +51,7 @@ func (s *Server) handleAddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVo
 
 	// TODO:
 	// 1) Get volume name from mds.
-	lv.Name = req.DevicePath
+	lv.Name = filepath.Base(req.DevicePath)
 	lv.MntPoint = "mnt-" + lv.Name
 
 	// 2) Add lv to the store service.

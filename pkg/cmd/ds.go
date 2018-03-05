@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"log"
+	"os"
 
 	"github.com/chanyoung/nil/pkg/ds"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -18,6 +19,10 @@ var dsCmd = &cobra.Command{
 }
 
 func dsRun(cmd *cobra.Command, args []string) {
+	if err := os.Chdir(dsCfg.WorkDir); err != nil {
+		log.Fatal(err)
+	}
+
 	d, err := ds.New(&dsCfg)
 	if err != nil {
 		log.Fatal(err)

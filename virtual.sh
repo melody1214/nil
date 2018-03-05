@@ -7,6 +7,7 @@ set -e
 
 NIL=./nil
 DIR=virt
+CERTSDIR="$(readlink -f .certs)"
 PID=$DIR/pid
 MNT=$DIR/mnt
 
@@ -50,14 +51,13 @@ function createsdisks() {
 
     for i in $(eval echo "{1..$numdisks}"); do
         local dev=$workdir/dev$i
-        local dir=$workdir/mnt$i
 
         # Creates a disk image.
         dd bs=1M count=$size if=/dev/zero of=$dev
         mkfs.xfs $dev
 
         # Add to ds.
-        $NIL ds volume add $dev -p $dsport
+        $NIL ds volume add dev$i -p $dsport
         if [ $? -eq 0 ]; then
             echo $dev >> $MNT
         else
@@ -84,6 +84,15 @@ function purge() {
     # Kill all running processes of virtual cluster.
     if [ -e $PID ]; then
         pids=$(cat $PID)
+        
+        # Sends a stop signal to running processes.
+        for pid in $pids; do
+            kill $pid &
+        done
+
+        sleep 1
+
+        # Sends a kill signal to running processes.
         for pid in $pids; do
             kill -9 $pid &
         done
@@ -151,6 +160,7 @@ function rungw() {
     $NIL gw \
       -p $port \
       --first-mds localhost:$MDSBASEPORT \
+      --secure-certs-dir $CERTSDIR \
       -l $workdir/log &
     echo $! >> $PID
 }
@@ -172,6 +182,7 @@ function runmds() {
       --raft-local-cluster-region $region \
       --raft-dir $workdir/raftdir \
       --swim-coordinator-addr localhost:$MDSBASEPORT \
+      --secure-certs-dir $CERTSDIR \
       -l $workdir/log &
     echo $! >> $PID
 }
@@ -189,7 +200,8 @@ function runds() {
       -p $port \
       --swim-coordinator-addr localhost:$((MDSBASEPORT - 1)) \
       --work-dir $workdir \
-      -l $workdir/log &
+      --secure-certs-dir $CERTSDIR \
+      -l log &
     echo $! >> $PID
 
     createsdisks "$DISKNUM" "$DISKSIZE" "$workdir" "$port"
