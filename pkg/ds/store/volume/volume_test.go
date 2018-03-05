@@ -1,4 +1,4 @@
-package store
+package volume
 
 import (
 	"os"
@@ -8,7 +8,7 @@ import (
 	"github.com/chanyoung/nil/pkg/util/uuid"
 )
 
-func TestNewLV(t *testing.T) {
+func TestNewVol(t *testing.T) {
 	if os.Getuid() != 0 {
 		t.Skip("mount is only allowed for root user")
 	}
@@ -23,13 +23,13 @@ func TestNewLV(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	lv, err := NewLV(img)
+	v, err := NewVol(img)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(lv.MntPoint)
-	defer lv.umount()
+	defer os.RemoveAll(v.MntPoint)
+	defer v.Umount()
 
-	t.Logf("%+v", *lv)
-	t.Logf("Volume usage: %d", lv.usage())
+	t.Logf("%+v", *v)
+	t.Logf("Volume usage: %d", v.Usage())
 }

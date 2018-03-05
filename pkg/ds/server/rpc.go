@@ -3,7 +3,7 @@ package server
 import (
 	"fmt"
 
-	"github.com/chanyoung/nil/pkg/ds/store"
+	"github.com/chanyoung/nil/pkg/ds/store/volume"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 )
@@ -43,7 +43,7 @@ type NilRPCHandler interface {
 }
 
 func (s *Server) handleAddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVolumeResponse) error {
-	lv, err := store.NewLV(req.DevicePath)
+	lv, err := volume.NewVol(req.DevicePath)
 	if err != nil {
 		return err
 	}

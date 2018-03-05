@@ -1,4 +1,4 @@
-package store
+package lvstore
 
 import (
 	"bufio"
@@ -8,6 +8,9 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/chanyoung/nil/pkg/ds/store/request"
+	"github.com/chanyoung/nil/pkg/ds/store/volume"
 )
 
 func TestServiceAPIs(t *testing.T) {
@@ -16,19 +19,23 @@ func TestServiceAPIs(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	os.Mkdir(dir+"/lv1", 0775)
-	lv1 := &LV{
-		Name:     "lv1",
-		MntPoint: dir + "/lv1",
-		Size:     1024,
-		Speed:    High,
+	lv1 := &lv{
+		Vol: &volume.Vol{
+			Name:     "lv1",
+			MntPoint: dir + "/lv1",
+			Size:     1024,
+			Speed:    volume.High,
+		},
 	}
 
 	os.Mkdir(dir+"/lv2", 0775)
-	lv2 := &LV{
-		Name:     "lv2",
-		MntPoint: dir + "/lv2",
-		Size:     1024,
-		Speed:    High,
+	lv2 := &lv{
+		Vol: &volume.Vol{
+			Name:     "lv2",
+			MntPoint: dir + "/lv2",
+			Size:     1024,
+			Speed:    volume.High,
+		},
 	}
 
 	s := NewService(dir)
@@ -39,23 +46,23 @@ func TestServiceAPIs(t *testing.T) {
 	runtime.Gosched()
 
 	testCases := []struct {
-		op      Operation
+		op      request.Operation
 		lv, oid string
 		content string
 		result  error
 	}{
-		{Read, "lv1", "banana", "banana is good\n",
+		{request.Read, "lv1", "banana", "banana is good\n",
 			fmt.Errorf("%s %s: %s", "open", dir+"/lv1/banana", "no such file or directory"),
 		},
-		{Write, "lv1", "banana", "banana is good\n", nil},
-		{Read, "lv1", "banana", "banana is good\n", nil},
-		{Delete, "lv2", "apple", "apple is sweet\n",
+		{request.Write, "lv1", "banana", "banana is good\n", nil},
+		{request.Read, "lv1", "banana", "banana is good\n", nil},
+		{request.Delete, "lv2", "apple", "apple is sweet\n",
 			fmt.Errorf("%s %s: %s", "remove", dir+"/lv2/apple", "no such file or directory"),
 		},
-		{Write, "lv2", "apple", "apple is sweet\n", nil},
-		{Read, "lv2", "apple", "apple is sweet\n", nil},
-		{Delete, "lv2", "apple", "apple is sweet\n", nil},
-		{Read, "lv2", "apple", "apple is sweet\n",
+		{request.Write, "lv2", "apple", "apple is sweet\n", nil},
+		{request.Read, "lv2", "apple", "apple is sweet\n", nil},
+		{request.Delete, "lv2", "apple", "apple is sweet\n", nil},
+		{request.Read, "lv2", "apple", "apple is sweet\n",
 			fmt.Errorf("%s %s: %s", "open", dir+"/lv2/apple", "no such file or directory"),
 		},
 	}
@@ -64,14 +71,17 @@ func TestServiceAPIs(t *testing.T) {
 		var b bytes.Buffer
 		writer := bufio.NewWriter(&b)
 
-		call := s.Call().
-			Operation(c.op).
-			Lv(c.lv).
-			ObjectID(c.oid).
-			InputStream(strings.NewReader(c.content)).
-			OutputStream(writer)
+		r := &request.Request{
+			Op:  c.op,
+			Vol: c.lv,
+			Oid: c.oid,
+			In:  strings.NewReader(c.content),
+			Out: writer,
+		}
 
-		err := call.Do()
+		s.Push(r)
+
+		err := r.Wait()
 		if err != nil && c.result != nil {
 			if err.Error() != c.result.Error() {
 				t.Errorf("%v %s/%s: expected response %v, got %v", c.op, c.lv, c.oid, c.result, err)
@@ -82,7 +92,7 @@ func TestServiceAPIs(t *testing.T) {
 			continue
 		}
 
-		if c.op == Read && b.String() != c.content {
+		if c.op == request.Read && b.String() != c.content {
 			t.Errorf("%v %s/%s: expected data %v, got %v", c.op, c.lv, c.oid, c.content, b.String())
 			continue
 		}
