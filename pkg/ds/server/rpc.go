@@ -48,11 +48,17 @@ func (s *Server) handleAddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVo
 		return err
 	}
 
-	log.Infof("%+v", lv)
-
 	// TODO:
 	// 1) Get volume name from mds.
+	lv.Name = req.DevicePath
+	lv.MntPoint = "mnt-" + lv.Name
+
 	// 2) Add lv to the store service.
+	if err := s.store.AddVolume(lv); err != nil {
+		return err
+	}
+
+	log.Infof("%+v", lv)
 
 	return nil
 }

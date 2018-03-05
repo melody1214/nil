@@ -54,14 +54,7 @@ func NewVol(dev string) (v *Vol, err error) {
 
 	// Creates temporary mount point.
 	v.MntPoint = "tmp" + uuid.Gen()
-	if err = os.Mkdir(v.MntPoint, 0755); err != nil {
-		return nil, err
-	}
 	defer os.RemoveAll(v.MntPoint)
-
-	if v.MntPoint, err = filepath.Abs(v.MntPoint); err != nil {
-		return nil, err
-	}
 
 	// Mount to tmporary mount point.
 	if err = v.Mount(); err != nil {
@@ -92,12 +85,18 @@ func (v *Vol) CheckDevicePath() error {
 }
 
 // Mount mounts the device to the target directory.
-func (v *Vol) Mount() error {
-	output, err := exec.Command("mount", v.Dev, v.MntPoint).CombinedOutput()
-	if err != nil {
-		err = fmt.Errorf("%s: %v", output, err)
+func (v *Vol) Mount() (err error) {
+	os.Mkdir(v.MntPoint, 0775)
+
+	if v.MntPoint, err = filepath.Abs(v.MntPoint); err != nil {
+		return err
 	}
-	return err
+
+	if output, err := exec.Command("mount", v.Dev, v.MntPoint).CombinedOutput(); err != nil {
+		return fmt.Errorf("%s: %v", output, err)
+	}
+
+	return nil
 }
 
 // Umount unmounts the device from the mount point directory.

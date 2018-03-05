@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"net"
 	"net/rpc"
 	"os"
@@ -8,6 +9,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/chanyoung/nil/pkg/ds/store"
+	"github.com/chanyoung/nil/pkg/ds/store/lvstore"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/swim"
@@ -30,6 +33,8 @@ type Server struct {
 	swimTransportLayer *nilmux.SwimTransportLayer
 	swimLayer          *nilmux.Layer
 	swimSrv            *swim.Server
+
+	store store.Service
 }
 
 // New creates a server object.
@@ -97,6 +102,13 @@ func New(cfg *config.Ds) (*Server, error) {
 		return nil, err
 	}
 
+	// Prepare backend store.
+	if cfg.Store == "lv" {
+		srv.store = lvstore.NewService(cfg.WorkDir)
+	} else {
+		return nil, fmt.Errorf("unknown store type: %s", cfg.Store)
+	}
+
 	return srv, nil
 }
 
@@ -131,6 +143,8 @@ func (s *Server) Start() error {
 
 // stop cleans up the services and shut down the server.
 func (s *Server) stop() error {
+	s.store.Stop()
+
 	return nil
 }
 

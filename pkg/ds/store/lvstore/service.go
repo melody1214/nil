@@ -37,6 +37,18 @@ func (s *Service) Run() {
 	}
 }
 
+// Stop supports graceful stop of backend store service.
+func (s *Service) Stop() {
+	// TODO: graceful stop.
+	// Tracking all jobs and wait them until finished.
+
+	// Deletes all volumes in the store.
+	for name, lv := range s.lvs {
+		delete(s.lvs, name)
+		lv.Umount()
+	}
+}
+
 // Push pushes an io request into the scheduling queue.
 func (s *Service) Push(r *request.Request) error {
 	if err := r.Verify(); err != nil {
@@ -51,6 +63,18 @@ func (s *Service) Push(r *request.Request) error {
 
 // AddVolume adds a volume into the lv map.
 func (s *Service) AddVolume(v *volume.Vol) error {
+	if _, ok := s.lvs[v.Name]; ok {
+		return fmt.Errorf("Volume name %s already exists", v.Name)
+	}
+
+	if err := v.Mount(); err != nil {
+		return err
+	}
+
+	s.lvs[v.Name] = &lv{
+		Vol: v,
+	}
+
 	return nil
 }
 

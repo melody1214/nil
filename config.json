@@ -23,6 +23,8 @@
 
         "work_dir": ".",
 
+        "store": "lv",
+
         "log_location": "stderr"
     },
     "swim": {

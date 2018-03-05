@@ -13,6 +13,9 @@ type Ds struct {
 	// WorkDir is a working directory of the ds.
 	WorkDir string
 
+	// Store is the type of backend store.
+	Store string
+
 	// Swim config.
 	Swim Swim
 	// Security config.
