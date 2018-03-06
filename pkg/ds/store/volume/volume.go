@@ -7,8 +7,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"syscall"
-
-	"github.com/chanyoung/nil/pkg/util/uuid"
 )
 
 // Speed represents a disk speed level.
@@ -51,24 +49,6 @@ func NewVol(dev string) (v *Vol, err error) {
 	if err = v.CheckDevicePath(); err != nil {
 		return nil, err
 	}
-
-	// Creates temporary mount point.
-	v.MntPoint = "tmp" + uuid.Gen()
-	defer os.RemoveAll(v.MntPoint)
-
-	// Mount to tmporary mount point.
-	if err = v.Mount(); err != nil {
-		return nil, err
-	}
-	defer v.Umount()
-
-	// Update filesystem stats.
-	if err = v.UpdateStatFs(); err != nil {
-		return nil, err
-	}
-
-	// TODO: Set the disk speed.
-	v.SetSpeed()
 
 	return
 }

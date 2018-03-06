@@ -2,11 +2,13 @@ package server
 
 import (
 	"fmt"
-	"path/filepath"
+	"net/rpc"
+	"time"
 
 	"github.com/chanyoung/nil/pkg/ds/store/volume"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/nilrpc"
+	"github.com/pkg/errors"
 )
 
 // Handler has exposed methods for rpc server.
@@ -49,10 +51,27 @@ func (s *Server) handleAddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVo
 		return err
 	}
 
-	// TODO:
 	// 1) Get volume name from mds.
-	lv.Name = filepath.Base(req.DevicePath)
-	lv.MntPoint = "mnt-" + lv.Name
+	mds, err := s.swimSrv.GetMDS()
+	if err != nil {
+		return errors.Wrap(err, "failed to register volume")
+	}
+	conn, err := nilrpc.Dial(mds, nilrpc.RPCNil, time.Duration(2*time.Second))
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	registerReq := &nilrpc.RegisterVolumeRequest{}
+	registerRes := &nilrpc.RegisterVolumeResponse{}
+
+	cli := rpc.NewClient(conn)
+	if err := cli.Call(nilrpc.RegisterVolume.String(), registerReq, registerRes); err != nil {
+		return err
+	}
+
+	lv.Name = registerRes.ID
+	lv.MntPoint = "vol-" + lv.Name
 
 	// 2) Add lv to the store service.
 	if err := s.store.AddVolume(lv); err != nil {

@@ -1,6 +1,7 @@
 package swim
 
 import (
+	"fmt"
 	"log"
 	"net/rpc"
 	"runtime"
@@ -116,6 +117,18 @@ func (s *Server) Stop() error {
 // GetMap returns cluster map.
 func (s *Server) GetMap() []Member {
 	return s.meml.fetch(0)
+}
+
+// GetMDS returns an address of the MDS server.
+func (s *Server) GetMDS() (string, error) {
+	mems := s.meml.fetch(0)
+	for _, m := range mems {
+		if m.Type == MDS && m.Status == Alive {
+			return string(m.Address), nil
+		}
+	}
+
+	return "", fmt.Errorf("no alive mds in this cluster")
 }
 
 func (s *Server) registerRPCHandler() (err error) {

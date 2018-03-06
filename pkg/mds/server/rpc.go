@@ -3,6 +3,7 @@ package server
 import (
 	"database/sql"
 	"fmt"
+	"strconv"
 
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/nilrpc"
@@ -54,6 +55,11 @@ func (h *Handler) GetClusterMap(req *nilrpc.GetClusterMapRequest, res *nilrpc.Ge
 	return h.s.handleGetClusterMap(req, res)
 }
 
+// RegisterVolume receives a new volume information from ds and register it to the database.
+func (h *Handler) RegisterVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.RegisterVolumeResponse) error {
+	return h.s.handleRegisterVolume(req, res)
+}
+
 func (s *Server) serveNilRPC(l *nilmux.Layer) {
 	for {
 		conn, err := l.Accept()
@@ -77,6 +83,9 @@ type NilRPCHandler interface {
 
 	// GetClusterMap returns a current local cluster map.
 	GetClusterMap(req *nilrpc.GetClusterMapRequest, res *nilrpc.GetClusterMapResponse) error
+
+	// RegisterVolume adds a new volume from ds into the db and returns a registered volume id.
+	RegisterVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.RegisterVolumeResponse) error
 }
 
 // handleJoin joins the mds node into the cluster.
@@ -169,6 +178,19 @@ func (s *Server) handleAddBucket(req *nilrpc.AddBucketRequest, res *nilrpc.AddBu
 	default:
 		res.S3ErrCode = s3.ErrInternalError
 	}
+	return nil
+}
+
+var volIdx int
+
+func (s *Server) handleRegisterVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.RegisterVolumeResponse) error {
+	// If the id field of request is empty, then the ds
+	// tries to get an id of volume.
+	if req.ID == "" {
+		res.ID = strconv.Itoa(volIdx)
+	}
+	volIdx++
+
 	return nil
 }
 

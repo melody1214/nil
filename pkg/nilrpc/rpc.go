@@ -26,6 +26,7 @@ const (
 	GetCredential
 	AddBucket
 	GetClusterMap
+	RegisterVolume
 
 	// DS methods.
 	AddVolume
@@ -43,6 +44,8 @@ func (m MethodName) String() string {
 		return MDSRPCPrefix + "." + "AddBucket"
 	case GetClusterMap:
 		return MDSRPCPrefix + "." + "GetClusterMap"
+	case RegisterVolume:
+		return MDSRPCPrefix + "." + "RegisterVolume"
 	case AddVolume:
 		return DSRPCPrefix + "." + "AddVolume"
 	default:
@@ -113,6 +116,16 @@ type GetClusterMapRequest struct{}
 // GetClusterMapResponse contains a current local cluster members.
 type GetClusterMapResponse struct {
 	Members []swim.Member
+}
+
+// RegisterVolumeRequest contains a new volume information.
+type RegisterVolumeRequest struct {
+	ID string
+}
+
+// RegisterVolumeResponse contains a registered volume id and the results.
+type RegisterVolumeResponse struct {
+	ID string
 }
 
 // AddVolumeRequest requests to add new volume with the given device path.

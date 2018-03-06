@@ -10,6 +10,7 @@ DIR=virt
 CERTSDIR="$(readlink -f .certs)"
 PID=$DIR/pid
 MNT=$DIR/mnt
+PENDINGCMD=$DIR/pending
 
 # Region names follow ISO-3166-1
 REGIONS=("KR" "US" "HK" "SG" "JP" "DE")
@@ -57,12 +58,8 @@ function createsdisks() {
         mkfs.xfs $dev
 
         # Add to ds.
-        $NIL ds volume add dev$i -p $dsport
-        if [ $? -eq 0 ]; then
-            echo $dev >> $MNT
-        else
-            echo "Add $dev to ds failed."
-        fi
+        echo $dev >> $MNT
+        echo $NIL ds volume add dev$i -p $dsport >> $PENDINGCMD
     done
 }
 
@@ -87,14 +84,14 @@ function purge() {
         
         # Sends a stop signal to running processes.
         for pid in $pids; do
-            kill $pid &
+            kill $pid || true
         done
 
         sleep 1
 
         # Sends a kill signal to running processes.
         for pid in $pids; do
-            kill -9 $pid &
+            kill -9 $pid || true
         done
     fi
 
@@ -102,7 +99,7 @@ function purge() {
     if [ -e $MNT ]; then
         devs=$(cat $MNT)
         for dev in $devs; do
-            umount $dev &
+            umount $dev || true
         done
     fi
 
@@ -215,6 +212,17 @@ function main() {
         runregion "$region" 1 1 3
         sleep 3
     done
+
+    # Execute pending command.
+    if [ -e $PENDINGCMD ]; then
+        # Give some time to each cluster member can join the membership.
+        sleep 60
+
+        # Read line by line ...
+        while read cmd; do
+            $($cmd)
+        done < $PENDINGCMD
+    fi
 }
 
 # Run as root.

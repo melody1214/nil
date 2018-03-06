@@ -71,6 +71,14 @@ func (s *Service) AddVolume(v *volume.Vol) error {
 		return err
 	}
 
+	// Update filesystem stats.
+	if err := v.UpdateStatFs(); err != nil {
+		return err
+	}
+
+	// TODO: Set the disk speed.
+	v.SetSpeed()
+
 	s.lvs[v.Name] = &lv{
 		Vol: v,
 	}
