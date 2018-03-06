@@ -65,7 +65,17 @@ func (s *Server) handleJoin(req *Message, res *Ack) (err error) {
 // updateMemberList checks the update condition of each member in the
 // given list. If the conditions are met, then update server's member list.
 func (s *Server) updateMemberList(meml []Member) {
+	updated := false
 	for _, m := range meml {
-		s.meml.set(m)
+		if s.meml.set(m) {
+			updated = true
+		}
+	}
+
+	// Sends a notification that the membership list is updated.
+	if updated {
+		s.c <- PingError{
+			Err: ErrChanged,
+		}
 	}
 }

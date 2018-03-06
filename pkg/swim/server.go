@@ -21,6 +21,7 @@ type Server struct {
 	rpcSrv     *rpc.Server
 	RPCHandler RPCHandler
 
+	c       chan PingError
 	stop    chan chan error
 	stopped uint32
 }
@@ -68,13 +69,16 @@ func (s *Server) Serve(c chan PingError) {
 		return
 	}
 
+	// Set channel to notify errors to caller.
+	s.c = c
+
 	go s.serve()
 	runtime.Gosched()
 
 	// Try to join the membership.
 	// If failed, sends error message thru channel and stop serving.
 	if err := s.join(); err != nil {
-		c <- PingError{Err: err}
+		s.c <- PingError{Err: err}
 		return
 	}
 
@@ -95,7 +99,7 @@ func (s *Server) Serve(c chan PingError) {
 			go s.ping(pec)
 		case pe := <-pec:
 			go s.handleErr(pe, pec)
-			c <- pe
+			s.c <- pe
 		}
 	}
 }

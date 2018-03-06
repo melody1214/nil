@@ -14,6 +14,8 @@ var (
 	ErrNotFound = errors.New("swim: item not found")
 	// ErrPingReq occurs when failed to retrieve ack from ping requests.
 	ErrPingReq = errors.New("swim: failed to retrieve ack from ping requests")
+	// ErrChanged is a special error message when it occurs the membership has changed.
+	ErrChanged = errors.New("swim: membership has changed")
 )
 
 // PingError contains specific error information which occurred in swim server.

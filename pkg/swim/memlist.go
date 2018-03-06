@@ -30,7 +30,7 @@ func (ml *memList) get(id ServerID) (m Member, ok bool) {
 
 // set compares the given member object is newer than mine.
 // If newer than mine, then update it.
-func (ml *memList) set(new Member) {
+func (ml *memList) set(new Member) (changed bool) {
 	ml.Lock()
 	defer ml.Unlock()
 
@@ -38,6 +38,7 @@ func (ml *memList) set(new Member) {
 	// New member always add into the member list.
 	if !ok {
 		ml.list[new.ID] = new
+		changed = true
 	}
 
 	// Update information about myself.
@@ -58,7 +59,10 @@ func (ml *memList) set(new Member) {
 
 	if compare(old, new) {
 		ml.list[new.ID] = new
+		changed = true
 	}
+
+	return
 }
 
 // Fetch fetches 'n' random members from the member list.
