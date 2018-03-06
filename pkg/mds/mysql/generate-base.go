@@ -35,6 +35,8 @@ var generateSQLBase = []string{
 		CREATE TABLE IF NOT EXISTS ds (
 			ds_id bigint unsigned NOT NULL AUTO_INCREMENT,
 			ds_name varchar(32) CHARACTER SET ascii NOT NULL,
+			ds_status varchar(32) CHARACTER SET ascii NOT NULL,
+			ds_address varchar(32) CHARACTER SET ascii NOT NULL,
 			PRIMARY KEY (ds_id),
 			UNIQUE KEY (ds_name)
 		) ENGINE=InnoDB DEFAULT CHARSET=ascii

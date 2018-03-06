@@ -150,11 +150,7 @@ func (s *Server) Start() error {
 	for {
 		select {
 		case err := <-sc:
-			log.WithFields(logrus.Fields{
-				"server":       "swim",
-				"message type": err.Type,
-				"destID":       err.DestID,
-			}).Error(err.Err)
+			s.recover(err)
 		case <-sigc:
 			log.Info("Received stop signal from OS")
 			return s.stop()

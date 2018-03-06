@@ -43,6 +43,11 @@ func (s *Store) QueryRow(query string, args ...interface{}) *sql.Row {
 	return s.db.QueryRow(query, args...)
 }
 
+// Execute executes a query in the local cluster.
+func (s *Store) Execute(query string) (sql.Result, error) {
+	return s.db.Execute(query)
+}
+
 func (s *Store) addRegion(region, addr string) error {
 	q := fmt.Sprintf(
 		`
