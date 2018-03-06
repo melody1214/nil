@@ -83,6 +83,9 @@ func (s *Service) AddVolume(v *volume.Vol) error {
 		Vol: v,
 	}
 
+	// Set volume has running state.
+	v.Status = volume.Active
+
 	return nil
 }
 

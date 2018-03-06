@@ -181,15 +181,54 @@ func (s *Server) handleAddBucket(req *nilrpc.AddBucketRequest, res *nilrpc.AddBu
 	return nil
 }
 
-var volIdx int
-
 func (s *Server) handleRegisterVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.RegisterVolumeResponse) error {
 	// If the id field of request is empty, then the ds
 	// tries to get an id of volume.
 	if req.ID == "" {
-		res.ID = strconv.Itoa(volIdx)
+		return s.insertNewVolume(req, res)
 	}
-	volIdx++
+	return s.updateVolume(req, res)
+}
+
+func (s *Server) updateVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.RegisterVolumeResponse) error {
+	log.Infof("update a member %v", req)
+
+	q := fmt.Sprintf(
+		`
+		UPDATE volume
+		SET volume_status='%s', size='%d', free='%d', used='%d', speed='%s'
+		WHERE volume_id in ('%s')
+		`, req.Status, req.Size, req.Free, req.Used, req.Speed, req.ID,
+	)
+
+	_, err := s.store.Execute(q)
+	if err != nil {
+		log.Error(err)
+	}
+
+	return nil
+}
+
+func (s *Server) insertNewVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.RegisterVolumeResponse) error {
+	log.Infof("insert a new volume %v", req)
+
+	q := fmt.Sprintf(
+		`
+		INSERT INTO volume (ds_id, volume_status, size, free, used, speed)
+		SELECT ds_id, '%s', '%d', '%d', '%d', '%s' FROM ds WHERE ds_name = '%s'
+		`, req.Status, req.Size, req.Free, req.Used, req.Speed, req.Ds,
+	)
+
+	r, err := s.store.Execute(q)
+	if err != nil {
+		return err
+	}
+
+	id, err := r.LastInsertId()
+	if err != nil {
+		return err
+	}
+	res.ID = strconv.FormatInt(id, 10)
 
 	return nil
 }

@@ -44,14 +44,13 @@ var generateSQLBase = []string{
 	`
 		CREATE TABLE IF NOT EXISTS volume (
 			volume_id bigint unsigned NOT NULL AUTO_INCREMENT,
-			volume_name varchar(32) CHARACTER SET ascii NOT NULL,
+			volume_status varchar(32) CHARACTER SET ascii NOT NULL,
 			ds_id bigint unsigned NOT NULL,
 			size int unsigned NOT NULL,
 			free int unsigned NOT NULL,
 			used int unsigned NOT NULL,
 			speed varchar(32) charset ascii NOT NULL,
 			PRIMARY KEY (volume_id),
-			UNIQUE KEY (volume_name),
 			FOREIGN KEY (ds_id) REFERENCES ds (ds_id)
 		) ENGINE=InnoDB DEFAULT CHARSET=ascii
 	`,

@@ -62,7 +62,14 @@ func (s *Server) handleAddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVo
 	}
 	defer conn.Close()
 
-	registerReq := &nilrpc.RegisterVolumeRequest{}
+	registerReq := &nilrpc.RegisterVolumeRequest{
+		Ds:     s.cfg.ID,
+		Size:   lv.Size,
+		Free:   lv.Free,
+		Used:   lv.Used,
+		Speed:  lv.Speed.String(),
+		Status: lv.Status.String(),
+	}
 	registerRes := &nilrpc.RegisterVolumeResponse{}
 
 	cli := rpc.NewClient(conn)
@@ -75,6 +82,18 @@ func (s *Server) handleAddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVo
 
 	// 2) Add lv to the store service.
 	if err := s.store.AddVolume(lv); err != nil {
+		// TODO: remove added volume in the mds.
+		return err
+	}
+
+	registerReq.ID = lv.Name
+	registerReq.Size = lv.Size
+	registerReq.Free = lv.Free
+	registerReq.Used = lv.Used
+	registerReq.Speed = lv.Speed.String()
+	registerReq.Status = lv.Status.String()
+	if err := cli.Call(nilrpc.RegisterVolume.String(), registerReq, registerRes); err != nil {
+		// TODO: remove added volume in the mds and ds.
 		return err
 	}
 

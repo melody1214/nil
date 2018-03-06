@@ -21,6 +21,44 @@ const (
 	High
 )
 
+func (s Speed) String() string {
+	switch s {
+	case Low:
+		return "low"
+	case Mid:
+		return "mid"
+	case High:
+		return "high"
+	default:
+		return "unknown"
+	}
+}
+
+// Status represents a disk status.
+type Status int
+
+const (
+	// Prepared represents the volume is ready to run.
+	Prepared Status = iota
+	// Active represents the volume is now running.
+	Active
+	// Failed represents the volume has some problems and stopped now.
+	Failed
+)
+
+func (s Status) String() string {
+	switch s {
+	case Prepared:
+		return "prepared"
+	case Active:
+		return "active"
+	case Failed:
+		return "failed"
+	default:
+		return "unknown"
+	}
+}
+
 // Vol contains information about the volume.
 type Vol struct {
 	Name     string
@@ -30,6 +68,7 @@ type Vol struct {
 	Free     uint64
 	Used     uint64
 	Speed    Speed
+	Status   Status
 }
 
 // NewVol collects information about the volume with the given
@@ -42,7 +81,8 @@ func NewVol(dev string) (v *Vol, err error) {
 
 	// Creates the LV with the given device path.
 	v = &Vol{
-		Dev: dev,
+		Dev:    dev,
+		Status: Prepared,
 	}
 
 	// Checks the given device path is valid.

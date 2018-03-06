@@ -120,7 +120,13 @@ type GetClusterMapResponse struct {
 
 // RegisterVolumeRequest contains a new volume information.
 type RegisterVolumeRequest struct {
-	ID string
+	ID     string
+	Ds     string
+	Size   uint64
+	Free   uint64
+	Used   uint64
+	Speed  string
+	Status string
 }
 
 // RegisterVolumeResponse contains a registered volume id and the results.
