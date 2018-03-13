@@ -6,14 +6,11 @@ It is maintained by per node: mds, ds and gw.
 ## Use cases
 
 ```
-// Create new cluster map with the known mds address.
-clusterMap := cmap.New(mdsAddr)
-
 // Get the latest cluster map.
-clusterMap.GetLatest()
+clusterMap = cmap.GetLatest()
 
-// Store cluster map into the disk.
-clusterMap.Store()
+// Get the latest cluster map from the given mds address.
+clusterMap = cmap.GetLatest(mdsAddr)
 
 // Create search call.
 searchCall := clusterMap.SearchCall()
