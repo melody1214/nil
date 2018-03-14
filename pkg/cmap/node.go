@@ -54,22 +54,7 @@ func (s Status) String() string {
 
 // Node is the member of cluster.
 type Node struct {
-	addr string
-	t    Type
-	s    Status
-}
-
-// Address returns the node address.
-func (n *Node) Address() string {
-	return n.addr
-}
-
-// Type returns the node type.
-func (n *Node) Type() Type {
-	return n.t
-}
-
-// Status returns the node status.
-func (n *Node) Status() Status {
-	return n.s
+	Addr string `xml:"address"`
+	Type Type   `xml:"type"`
+	Stat Status `xml:"status"`
 }

@@ -32,7 +32,8 @@ func getMdsAddr() (string, error) {
 
 // CMap is a cluster map which includes the information about nodes.
 type CMap struct {
-	outDated bool
+	OutDated bool   `xml:"outdated"`
+	Nodes    []Node `xml:"node"`
 }
 
 // SearchCall returns a new search call.
