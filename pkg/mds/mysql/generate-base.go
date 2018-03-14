@@ -32,26 +32,27 @@ var generateSQLBase = []string{
 		) ENGINE=InnoDB DEFAULT CHARSET=ascii
 	`,
 	`
-		CREATE TABLE IF NOT EXISTS ds (
-			ds_id bigint unsigned NOT NULL AUTO_INCREMENT,
-			ds_name varchar(32) CHARACTER SET ascii NOT NULL,
-			ds_status varchar(32) CHARACTER SET ascii NOT NULL,
-			ds_address varchar(32) CHARACTER SET ascii NOT NULL,
-			PRIMARY KEY (ds_id),
-			UNIQUE KEY (ds_name)
+		CREATE TABLE IF NOT EXISTS node (
+			node_id bigint unsigned NOT NULL AUTO_INCREMENT,
+			node_name varchar(32) CHARACTER SET ascii NOT NULL,
+			node_type varchar(32) CHARACTER SET ascii NOT NULL,
+			node_status varchar(32) CHARACTER SET ascii NOT NULL,
+			node_address varchar(32) CHARACTER SET ascii NOT NULL,
+			PRIMARY KEY (node_id),
+			UNIQUE KEY (node_name)
 		) ENGINE=InnoDB DEFAULT CHARSET=ascii
 	`,
 	`
 		CREATE TABLE IF NOT EXISTS volume (
 			volume_id bigint unsigned NOT NULL AUTO_INCREMENT,
 			volume_status varchar(32) CHARACTER SET ascii NOT NULL,
-			ds_id bigint unsigned NOT NULL,
+			node_id bigint unsigned NOT NULL,
 			size int unsigned NOT NULL,
 			free int unsigned NOT NULL,
 			used int unsigned NOT NULL,
 			speed varchar(32) charset ascii NOT NULL,
 			PRIMARY KEY (volume_id),
-			FOREIGN KEY (ds_id) REFERENCES ds (ds_id)
+			FOREIGN KEY (node_id) REFERENCES node (node_id)
 		) ENGINE=InnoDB DEFAULT CHARSET=ascii
 	`,
 }

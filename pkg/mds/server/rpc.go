@@ -215,8 +215,8 @@ func (s *Server) insertNewVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.
 
 	q := fmt.Sprintf(
 		`
-		INSERT INTO volume (ds_id, volume_status, size, free, used, speed)
-		SELECT ds_id, '%s', '%d', '%d', '%d', '%s' FROM ds WHERE ds_name = '%s'
+		INSERT INTO volume (node_id, volume_status, size, free, used, speed)
+		SELECT node_id, '%s', '%d', '%d', '%d', '%s' FROM node WHERE node_name = '%s'
 		`, req.Status, req.Size, req.Free, req.Used, req.Speed, req.Ds,
 	)
 

@@ -32,7 +32,7 @@ func (s *Server) updateMembership() {
 	membership := s.swimSrv.GetMap()
 	for _, m := range membership {
 		// Currently we only cares ds.
-		if m.Type == swim.DS {
+		if m.Type == swim.DS || m.Type == swim.MDS {
 			s.doUpdateMembership(m)
 		}
 	}
@@ -42,12 +42,12 @@ func (s *Server) doUpdateMembership(m swim.Member) {
 	q := fmt.Sprintf(
 		`
 		SELECT
-			ds_status,
-			ds_address
+			node_status,
+			node_address
 		FROM
-			ds
+			node
 		WHERE
-			ds_name = '%s'
+			node_name = '%s'
 		`, m.ID,
 	)
 
@@ -72,9 +72,9 @@ func (s *Server) insertNewMember(m swim.Member) {
 
 	q := fmt.Sprintf(
 		`
-		INSERT INTO ds (ds_name, ds_status, ds_address)
-		VALUES ('%s', '%s', '%s')
-		`, string(m.ID), m.Status.String(), string(m.Address),
+		INSERT INTO node (node_name, node_type, node_status, node_address)
+		VALUES ('%s', '%s', '%s', '%s')
+		`, string(m.ID), m.Type.String(), m.Status.String(), string(m.Address),
 	)
 
 	_, err := s.store.Execute(q)
@@ -88,9 +88,9 @@ func (s *Server) updateMember(m swim.Member) {
 
 	q := fmt.Sprintf(
 		`
-		UPDATE ds
-		SET ds_status='%s', ds_address='%s'
-		WHERE ds_name in ('%s')
+		UPDATE node
+		SET node_status='%s', node_address='%s'
+		WHERE node_name in ('%s')
 		`, m.Status.String(), string(m.Address), string(m.ID),
 	)
 
