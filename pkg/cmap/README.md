@@ -12,6 +12,9 @@ clusterMap = cmap.GetLatest()
 // Get the latest cluster map from the given mds address.
 clusterMap = cmap.GetLatest(mdsAddr)
 
+// Get the human readable string of cluster map.
+fmt.Println(clusterMap.HumanReadable())
+
 // Create search call.
 searchCall := clusterMap.SearchCall()
 

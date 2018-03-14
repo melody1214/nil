@@ -5,9 +5,9 @@ import (
 	"net"
 	"time"
 
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/s3"
 	"github.com/chanyoung/nil/pkg/security"
-	"github.com/chanyoung/nil/pkg/swim"
 )
 
 // MDSRPCPrefix is the prefix for calling mds rpc methods.
@@ -115,7 +115,7 @@ type GetClusterMapRequest struct{}
 
 // GetClusterMapResponse contains a current local cluster members.
 type GetClusterMapResponse struct {
-	Members []swim.Member
+	ClusterMap cmap.CMap
 }
 
 // RegisterVolumeRequest contains a new volume information.

@@ -39,16 +39,7 @@ func mdsMapRun(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	for _, node := range res.Members {
-		fmt.Printf(
-			"| %4s | %s | %s | %7s | Incarnation: %d |\n",
-			node.Type.String(),
-			node.ID,
-			node.Address,
-			node.Status.String(),
-			node.Incarnation,
-		)
-	}
+	fmt.Println(res.ClusterMap.HumanReadable())
 }
 
 func init() {
