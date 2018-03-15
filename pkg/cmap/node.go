@@ -1,52 +1,44 @@
 package cmap
 
 // Type is the type of the node.
-type Type int
+type Type string
 
 const (
 	// MDS : metadata server node.
-	MDS Type = iota
+	MDS Type = "MDS"
 	// DS : data server node.
-	DS
+	DS = "DS"
 	// GW : gateway node.
-	GW
+	GW = "GW"
 )
 
 // String returns a string of the node type.
 func (t Type) String() string {
 	switch t {
-	case MDS:
-		return "MDS"
-	case DS:
-		return "DS"
-	case GW:
-		return "GW"
+	case MDS, DS, GW:
+		return string(t)
 	default:
 		return "unknown"
 	}
 }
 
 // Status is the status of the node.
-type Status int
+type Status string
 
 const (
 	// Alive : healthy node
-	Alive Status = iota
+	Alive Status = "Alive"
 	// Suspect : maybe faulty
-	Suspect
+	Suspect = "Suspect"
 	// Faulty : faulty
-	Faulty
+	Faulty = "Faulty"
 )
 
 // String returns a string of the node status.
 func (s Status) String() string {
 	switch s {
-	case Alive:
-		return "Alive"
-	case Suspect:
-		return "Suspect"
-	case Faulty:
-		return "Faulty"
+	case Alive, Suspect, Faulty:
+		return string(s)
 	default:
 		return "unknown"
 	}

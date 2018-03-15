@@ -10,6 +10,9 @@ type Mds struct {
 	// ServerPort is the port of the metadata server.
 	ServerPort string
 
+	// WorkDir is a working directory of the mds.
+	WorkDir string
+
 	// MySQLUser is the user ID of MySQL database.
 	MySQLUser string
 	// MySQLPassword is the password of MySQL user.

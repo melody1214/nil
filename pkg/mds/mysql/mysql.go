@@ -67,3 +67,8 @@ func (m *MySQL) Execute(query string) (sql.Result, error) {
 func (m *MySQL) QueryRow(query string, args ...interface{}) *sql.Row {
 	return m.db.QueryRow(query, args...)
 }
+
+// Query executes a query that returns rows.
+func (m *MySQL) Query(query string, args ...interface{}) (*sql.Rows, error) {
+	return m.db.Query(query, args...)
+}

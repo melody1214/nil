@@ -8,7 +8,7 @@ import (
 
 func TestEncodeDecode(t *testing.T) {
 	testMap := CMap{
-		OutDated: true,
+		Version: 1,
 		Nodes: []Node{
 			{
 				Addr: "localhost:1000",

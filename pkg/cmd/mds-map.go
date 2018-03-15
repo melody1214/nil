@@ -6,6 +6,7 @@ import (
 	"net/rpc"
 	"time"
 
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/spf13/cobra"
@@ -39,7 +40,16 @@ func mdsMapRun(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	fmt.Println(res.ClusterMap.HumanReadable())
+	m := &cmap.CMap{}
+	for _, n := range res.Nodes {
+		m.Nodes = append(m.Nodes, cmap.Node{
+			Addr: n.Addr,
+			Type: cmap.Type(n.Type),
+			Stat: cmap.Status(n.Stat),
+		})
+	}
+
+	fmt.Println(m.HumanReadable())
 }
 
 func init() {

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"log"
+	"os"
 
 	"github.com/chanyoung/nil/pkg/mds"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -20,6 +21,10 @@ var mdsCmd = &cobra.Command{
 }
 
 func mdsRun(cmd *cobra.Command, args []string) {
+	if err := os.Chdir(mdscfg.WorkDir); err != nil {
+		log.Fatal(err)
+	}
+
 	m, err := mds.New(&mdscfg)
 	if err != nil {
 		log.Fatal(err)
@@ -34,6 +39,8 @@ func init() {
 
 	mdsCmd.Flags().StringVarP(&mdscfg.ServerAddr, "bind", "b", config.Get("mds.addr"), "address to which the mds will bind")
 	mdsCmd.Flags().StringVarP(&mdscfg.ServerPort, "port", "p", config.Get("mds.port"), "port on which the mds will listen")
+
+	mdsCmd.Flags().StringVarP(&mdscfg.WorkDir, "work-dir", "", config.Get("mds.work_dir"), "working directory")
 
 	mdsCmd.Flags().StringVarP(&mdscfg.MySQLUser, "mysql-user", "", config.Get("mds.mysql_user"), "user id to mysql server")
 	mdsCmd.Flags().StringVarP(&mdscfg.MySQLPassword, "mysql-password", "", config.Get("mds.mysql_password"), "password of mysql user")

@@ -9,6 +9,8 @@
         "addr": "localhost",
         "port": "51000",
 
+        "work_dir": ".",
+
         "mysql_user": "nil",
         "mysql_password": "nil",
         "mysql_database": "nil",

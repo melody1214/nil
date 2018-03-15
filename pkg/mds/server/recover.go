@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/swim"
 	"github.com/sirupsen/logrus"
 )
@@ -18,6 +19,11 @@ func (s *Server) recover(pe swim.PingError) {
 
 	// Updates membership.
 	s.updateMembership()
+	m, err := cmap.GetLatest(s.cfg.ServerAddr + ":" + s.cfg.ServerPort)
+	if err != nil {
+		log.Error(err)
+	}
+	log.Error(m)
 
 	// If the error message is occured because just simple membership
 	// changed, then finish the recover routine here.

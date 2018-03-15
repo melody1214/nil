@@ -5,13 +5,32 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strconv"
 )
 
 const (
-	basePath      = ""
+	baseDir       = "cmap"
 	fileName      = "cluster_map"
 	fileExtension = ".xml"
 )
+
+func filePath(ver int64) string {
+	return baseDir + "/" + fileName + "_" + strconv.FormatInt(ver, 10) + fileExtension
+}
+
+func createFile(path string) error {
+	if _, err := os.Stat(baseDir); os.IsNotExist(err) {
+		os.Mkdir(baseDir, os.ModePerm)
+	}
+
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	return nil
+}
 
 func encode(m CMap, path string) error {
 	// Create xml file.

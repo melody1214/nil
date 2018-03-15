@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/s3"
@@ -236,18 +235,22 @@ func (s *Server) insertNewVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.
 
 // handleGetClusterMap returns a current local cluster map.
 func (s *Server) handleGetClusterMap(req *nilrpc.GetClusterMapRequest, res *nilrpc.GetClusterMapResponse) error {
-	sMap := s.swimSrv.GetMap()
+	m, err := s.updateClusterMap()
+	if err != nil {
+		return err
+	}
 
-	res.ClusterMap.OutDated = false
+	res.Version = m.Version
 
-	for _, m := range sMap {
-		n := cmap.Node{
-			Addr: string(m.Address),
-			Type: cmap.Type(m.Type),
-			Stat: cmap.Status(m.Status),
-		}
-
-		res.ClusterMap.Nodes = append(res.ClusterMap.Nodes, n)
+	for _, n := range m.Nodes {
+		res.Nodes = append(
+			res.Nodes,
+			nilrpc.ClusterNode{
+				Addr: n.Addr,
+				Type: n.Type.String(),
+				Stat: n.Stat.String(),
+			},
+		)
 	}
 
 	return nil

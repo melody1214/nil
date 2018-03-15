@@ -5,7 +5,6 @@ import (
 	"net"
 	"time"
 
-	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/s3"
 	"github.com/chanyoung/nil/pkg/security"
 )
@@ -115,7 +114,15 @@ type GetClusterMapRequest struct{}
 
 // GetClusterMapResponse contains a current local cluster members.
 type GetClusterMapResponse struct {
-	ClusterMap cmap.CMap
+	Version int64
+	Nodes   []ClusterNode
+}
+
+// ClusterNode represents the nodes.
+type ClusterNode struct {
+	Addr string
+	Type string
+	Stat string
 }
 
 // RegisterVolumeRequest contains a new volume information.

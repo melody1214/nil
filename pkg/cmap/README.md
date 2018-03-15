@@ -24,3 +24,13 @@ searchCall.Type(clusterMap.MDS).Status(clusterMap.Alive)
 // Get the node that matches a search call's conditions.
 node := searchCall.Do()
 ```
+
+## Update lock
+
+```
+// Get lock.
+cmap.Lock()
+
+// Unlock.
+cmap.Unlock()
+```

@@ -114,6 +114,7 @@ function purge() {
 	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS user;"
 	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS volume;"
 	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS node;"
+	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS cmap;"
     done
 }
 
@@ -177,12 +178,12 @@ function runmds() {
       -p $port \
       --mysql-user testNil \
       --mysql-database nil$region \
+      --work-dir $workdir \
       --raft-local-cluster-addr localhost:$((GWBASEPORT - 1)) \
       --raft-local-cluster-region $region \
-      --raft-dir $workdir/raftdir \
       --swim-coordinator-addr localhost:$MDSBASEPORT \
       --secure-certs-dir $CERTSDIR \
-      -l $workdir/log &
+      -l log &
     echo $! >> $PID
 }
 

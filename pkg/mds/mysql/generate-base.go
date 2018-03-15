@@ -55,4 +55,10 @@ var generateSQLBase = []string{
 			FOREIGN KEY (node_id) REFERENCES node (node_id)
 		) ENGINE=InnoDB DEFAULT CHARSET=ascii
 	`,
+	`
+		CREATE TABLE IF NOT EXISTS cmap (
+			cmap_id bigint unsigned NOT NULL AUTO_INCREMENT,
+			PRIMARY KEY (cmap_id)
+		) ENGINE=InnoDB DEFAULT CHARSET=ascii
+	`,
 }
