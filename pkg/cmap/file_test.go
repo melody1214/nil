@@ -6,6 +6,37 @@ import (
 	"testing"
 )
 
+func TestGetLatestMapFile(t *testing.T) {
+	testCases := []CMap{
+		{Version: 0},
+		{Version: 1},
+		{Version: 2},
+	}
+
+	defer os.RemoveAll(baseDir)
+	latestVer := int64(0)
+	for _, c := range testCases {
+		if latestVer < c.Version {
+			latestVer = c.Version
+		}
+
+		path := filePath(c.Version)
+
+		if err := createFile(path); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	f, err := getLatestMapFile()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if f != filePath(latestVer) {
+		t.Errorf("got %s, expected %s", f, filePath(latestVer))
+	}
+}
+
 func TestEncodeDecode(t *testing.T) {
 	testMap := CMap{
 		Version: 1,
