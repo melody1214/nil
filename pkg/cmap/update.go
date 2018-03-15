@@ -10,29 +10,29 @@ import (
 
 // GetLatest get the latest cluster map.
 func GetLatest(mdsAddrs ...string) (*CMap, error) {
+	// 1. Threads can't access map file when updating.
 	lock()
 	defer unlock()
 
+	// 2. If no mds address is given, then get mds address
+	// from the old map file.
 	if len(mdsAddrs) == 0 {
 		mdsAddr, err := getMdsAddr()
 		if err != nil {
-			return nil, fmt.Errorf("TODO: read mds address from file")
+			return nil, err
 		}
 
 		mdsAddrs = append(mdsAddrs, mdsAddr)
 	}
 
+	// 3. Get the latest map from the mds.
 	for _, mdsAddr := range mdsAddrs {
 		m, err := getLatest(mdsAddr)
 		if err != nil {
 			continue
 		}
 
-		path := filePath(m.Version)
-		if err = createFile(path); err != nil {
-			continue
-		}
-		if err = encode(*m, path); err != nil {
+		if err := store(m); err != nil {
 			continue
 		}
 
@@ -71,6 +71,38 @@ func getLatest(mdsAddr string) (*CMap, error) {
 	return m, nil
 }
 
+func store(m *CMap) error {
+	// 1. Get store file path.
+	path := filePath(m.Version)
+
+	// 2. Create empty file with the version.
+	if err := createFile(path); err != nil {
+		return err
+	}
+
+	// 3. Encode map data into the created file.
+	if err := encode(*m, path); err != nil {
+		removeFile(path)
+		return err
+	}
+
+	return nil
+}
+
 func getMdsAddr() (string, error) {
-	return "", fmt.Errorf("not implemented")
+	path, err := getLatestMapFile()
+	if err != nil {
+		return "", err
+	}
+
+	m, err := decode(path)
+	if err != nil {
+		return "", err
+	}
+
+	mds, err := m.SearchCall().Type(MDS).Status(Alive).Do()
+	if err != nil {
+		return "", err
+	}
+	return mds.Addr, nil
 }

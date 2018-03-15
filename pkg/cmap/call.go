@@ -20,6 +20,12 @@ func (c *SearchCall) Status(s Status) *SearchCall {
 }
 
 // Do returns the search result.
-func (c *SearchCall) Do() *Node {
-	return &Node{}
+func (c *SearchCall) Do() (Node, error) {
+	for _, n := range c.m.Nodes {
+		if n.Type == c.t && n.Stat == c.s {
+			return n, nil
+		}
+	}
+
+	return Node{}, nil
 }

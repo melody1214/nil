@@ -2,10 +2,12 @@ package cmap
 
 import (
 	"encoding/xml"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -30,6 +32,49 @@ func createFile(path string) error {
 	defer f.Close()
 
 	return nil
+}
+
+func removeFile(path string) error {
+	return os.Remove(path)
+}
+
+func getLatestMapFile() (string, error) {
+	files, err := listMapFiles()
+	if err != nil {
+		return "", err
+	}
+
+	latest := int64(0)
+	name := ""
+	for _, f := range files {
+		var ver int64
+		if _, err := fmt.Sscanf(f, fileName+"_%d"+fileExtension, &ver); err != nil {
+			return "", err
+		}
+
+		if ver >= latest {
+			name = f
+		}
+	}
+
+	return baseDir + "/" + name, nil
+}
+
+func listMapFiles() ([]string, error) {
+	maps := make([]string, 0)
+
+	files, err := ioutil.ReadDir(baseDir)
+	if err != nil {
+		return maps, fmt.Errorf("no map files")
+	}
+
+	for _, f := range files {
+		if strings.Contains(f.Name(), fileName) {
+			maps = append(maps, f.Name())
+		}
+	}
+
+	return maps, nil
 }
 
 func encode(m CMap, path string) error {
