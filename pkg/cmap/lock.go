@@ -11,8 +11,8 @@ const (
 	lockFile = baseDir + "/" + "LOCK"
 )
 
-// Lock locks updating map by LOCK file.
-func Lock() {
+// lock locks updating map by LOCK file.
+func lock() {
 	if _, err := os.Stat(baseDir); os.IsNotExist(err) {
 		os.Mkdir(baseDir, os.ModePerm)
 	}
@@ -31,7 +31,7 @@ func Lock() {
 	}
 }
 
-// Unlock unlocks updating map by LOCK file.
-func Unlock() {
+// unlock unlocks updating map by LOCK file.
+func unlock() {
 	os.RemoveAll(lockFile)
 }
