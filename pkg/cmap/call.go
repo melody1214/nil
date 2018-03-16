@@ -41,7 +41,7 @@ func (c *SearchCall) Status(s Status) *SearchCall {
 func (c *SearchCall) Do() (Node, error) {
 	for _, n := range c.m.Nodes {
 		// If search condition for ID is set, but the ID is not matched.
-		if c.i != -1 && n.ID != c.i {
+		if c.i != ID(-1) && n.ID != c.i {
 			continue
 		}
 

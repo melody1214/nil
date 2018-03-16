@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"log"
+	"os"
 
 	"github.com/chanyoung/nil/pkg/gw"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -20,6 +21,10 @@ var gwCmd = &cobra.Command{
 }
 
 func gwRun(cmd *cobra.Command, args []string) {
+	if err := os.Chdir(gwCfg.WorkDir); err != nil {
+		log.Fatal(err)
+	}
+
 	g, err := gw.New(&gwCfg)
 	if err != nil {
 		log.Fatal(err)
@@ -33,6 +38,8 @@ func init() {
 	gwCmd.Flags().StringVarP(&gwCfg.ServerPort, "port", "p", config.Get("gw.port"), "port on which the gateway will listen")
 	gwCmd.Flags().StringVarP(&gwCfg.LogLocation, "log", "l", config.Get("gw.log_location"), "log location of the gateway will print out")
 	gwCmd.Flags().StringVarP(&gwCfg.FirstMds, "first-mds", "", config.Get("gw.first_mds"), "mds address to get local cluster information in initialize routine")
+
+	gwCmd.Flags().StringVarP(&gwCfg.WorkDir, "work-dir", "", config.Get("gw.work_dir"), "working directory")
 
 	gwCmd.Flags().StringVarP(&gwCfg.Security.CertsDir, "secure-certs-dir", "", config.Get("security.certs_dir"), "directory path of secure configuration files")
 	gwCmd.Flags().StringVarP(&gwCfg.Security.RootCAPem, "secure-rootca-pem", "", config.Get("security.rootca_pem"), "file name of rootCA.pem")

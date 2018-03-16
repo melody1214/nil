@@ -13,6 +13,9 @@ type Gw struct {
 	// for getting local cluster membership information.
 	FirstMds string
 
+	// WorkDir is a working directory of the gw.
+	WorkDir string
+
 	// LogLocation is the file path of mds logging.
 	// Default output path is stderr.
 	LogLocation string

@@ -1,4 +1,4 @@
-package server
+package s3handling
 
 import (
 	"crypto/sha256"
@@ -7,11 +7,12 @@ import (
 	"net/rpc"
 	"time"
 
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/s3"
 )
 
-func (s *Server) authRequest(r *http.Request) (accessKey string, err s3.ErrorCode) {
+func (h *Handler) authRequest(r *http.Request) (accessKey string, err s3.ErrorCode) {
 	// Get authentication string from header.
 	authString := r.Header.Get("Authorization")
 
@@ -28,7 +29,7 @@ func (s *Server) authRequest(r *http.Request) (accessKey string, err s3.ErrorCod
 
 	// Make key.
 	accessKey = authArgs.Credential.AccessKey
-	secretKey, e := s.getSecretKey(accessKey)
+	secretKey, e := h.getSecretKey(accessKey)
 	if e != nil {
 		return accessKey, s3.ErrInternalError
 	} else if secretKey == "" {
@@ -68,13 +69,20 @@ func (s *Server) authRequest(r *http.Request) (accessKey string, err s3.ErrorCod
 	return accessKey, s3.ErrNone
 }
 
-func (s *Server) getSecretKey(accessKey string) (string, error) {
-	// Lookup cache first.
-	if sk := s.authCache.Get(accessKey); sk != nil {
+func (h *Handler) getSecretKey(accessKey string) (string, error) {
+	// 1. Lookup cache first.
+	if sk := h.authCache.Get(accessKey); sk != nil {
 		return sk.(string), nil
 	}
 
-	conn, err := nilrpc.Dial(s.cfg.FirstMds, nilrpc.RPCNil, time.Duration(2*time.Second))
+	// 2. Lookup mds from cluster map.
+	mds, err := h.clusterMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
+	if err != nil {
+		return "", nil
+	}
+
+	// 3. Try dial to mds.
+	conn, err := nilrpc.Dial(mds.Addr, nilrpc.RPCNil, time.Duration(2*time.Second))
 	if err != nil {
 		return "", err
 	}
@@ -83,11 +91,13 @@ func (s *Server) getSecretKey(accessKey string) (string, error) {
 	req := &nilrpc.GetCredentialRequest{AccessKey: accessKey}
 	res := &nilrpc.GetCredentialResponse{}
 
+	// 4. Request the secret key.
 	cli := rpc.NewClient(conn)
 	if err := cli.Call(nilrpc.GetCredential.String(), req, res); err != nil {
 		return "", err
 	}
 
+	// 5. No matched key.
 	if res.Exist == false {
 		return "", nil
 	}

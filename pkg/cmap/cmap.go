@@ -10,11 +10,20 @@ type CMap struct {
 	Nodes   []Node `xml:"node"`
 }
 
+// NewCMap returns an empty cluster map.
+func NewCMap() *CMap {
+	return &CMap{
+		Version: 0,
+		Nodes:   make([]Node, 0),
+	}
+}
+
 // SearchCall returns a new search call.
 func (m *CMap) SearchCall() *SearchCall {
 	return &SearchCall{
 		m: m,
 		i: ID(-1),
+		n: "",
 	}
 }
 

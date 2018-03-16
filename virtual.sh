@@ -159,9 +159,10 @@ function rungw() {
     # Run gw.
     $NIL gw \
       -p $port \
+      --work-dir $workdir \
       --first-mds localhost:$MDSBASEPORT \
       --secure-certs-dir $CERTSDIR \
-      -l $workdir/log &
+      -l log &
     echo $! >> $PID
 }
 
