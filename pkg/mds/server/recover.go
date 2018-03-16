@@ -19,11 +19,10 @@ func (s *Server) recover(pe swim.PingError) {
 
 	// Updates membership.
 	s.updateMembership()
-	m, err := cmap.GetLatest(s.cfg.ServerAddr + ":" + s.cfg.ServerPort)
+	_, err := cmap.GetLatest(s.cfg.ServerAddr + ":" + s.cfg.ServerPort)
 	if err != nil {
 		log.Error(err)
 	}
-	log.Error(m)
 
 	// If the error message is occured because just simple membership
 	// changed, then finish the recover routine here.
@@ -85,7 +84,7 @@ func (s *Server) insertNewMember(m swim.Member) {
 
 	_, err := s.store.Execute(q)
 	if err != nil {
-		log.Error(err)
+		log.WithField("func", "insertNewMember").Error(err)
 	}
 }
 
@@ -102,6 +101,6 @@ func (s *Server) updateMember(m swim.Member) {
 
 	_, err := s.store.Execute(q)
 	if err != nil {
-		log.Error(err)
+		log.WithField("func", "updateMember").Error(err)
 	}
 }

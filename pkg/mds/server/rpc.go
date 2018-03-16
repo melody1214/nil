@@ -246,6 +246,8 @@ func (s *Server) handleGetClusterMap(req *nilrpc.GetClusterMapRequest, res *nilr
 		res.Nodes = append(
 			res.Nodes,
 			nilrpc.ClusterNode{
+				ID:   n.ID.Int64(),
+				Name: n.Name,
 				Addr: n.Addr,
 				Type: n.Type.String(),
 				Stat: n.Stat.String(),

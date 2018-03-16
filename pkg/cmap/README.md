@@ -22,5 +22,8 @@ searchCall := clusterMap.SearchCall()
 searchCall.Type(clusterMap.MDS).Status(clusterMap.Alive)
 
 // Get the node that matches a search call's conditions.
-node := searchCall.Do()
+node, err := searchCall.Do()
+if err != nil {
+    // Handling error.
+}
 ```

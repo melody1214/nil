@@ -1,5 +1,12 @@
 package cmap
 
+import (
+	"strconv"
+)
+
+// unknown: unknown type or status of node.
+const unknown string = "unknown"
+
 // Type is the type of the node.
 type Type string
 
@@ -18,7 +25,7 @@ func (t Type) String() string {
 	case MDS, DS, GW:
 		return string(t)
 	default:
-		return "unknown"
+		return unknown
 	}
 }
 
@@ -40,12 +47,27 @@ func (s Status) String() string {
 	case Alive, Suspect, Faulty:
 		return string(s)
 	default:
-		return "unknown"
+		return unknown
 	}
+}
+
+// ID is the id of the node.
+type ID int64
+
+// String returns a string type of the ID.
+func (i ID) String() string {
+	return strconv.FormatInt(i.Int64(), 10)
+}
+
+// Int64 returns a int64 type of the ID.
+func (i ID) Int64() int64 {
+	return int64(i)
 }
 
 // Node is the member of cluster.
 type Node struct {
+	ID   ID     `xml:"id"`
+	Name string `xml:"name"`
 	Addr string `xml:"address"`
 	Type Type   `xml:"type"`
 	Stat Status `xml:"status"`

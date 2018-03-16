@@ -62,6 +62,8 @@ func getLatest(mdsAddr string) (*CMap, error) {
 	}
 	for _, n := range res.Nodes {
 		m.Nodes = append(m.Nodes, Node{
+			ID:   ID(n.ID),
+			Name: n.Name,
 			Addr: n.Addr,
 			Type: Type(n.Type),
 			Stat: Status(n.Stat),

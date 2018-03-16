@@ -43,6 +43,8 @@ func mdsMapRun(cmd *cobra.Command, args []string) {
 	m := &cmap.CMap{}
 	for _, n := range res.Nodes {
 		m.Nodes = append(m.Nodes, cmap.Node{
+			ID:   cmap.ID(n.ID),
+			Name: n.Name,
 			Addr: n.Addr,
 			Type: cmap.Type(n.Type),
 			Stat: cmap.Status(n.Stat),

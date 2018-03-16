@@ -42,6 +42,8 @@ func (s *Server) createClusterMap(ver int64) (*cmap.CMap, error) {
 	q := fmt.Sprintf(
 		`
 		SELECT
+			node_id,
+			node_name,
             node_type,
 			node_status,
 			node_address
@@ -64,7 +66,7 @@ func (s *Server) createClusterMap(ver int64) (*cmap.CMap, error) {
 	for rows.Next() {
 		n := cmap.Node{}
 
-		if err := rows.Scan(&n.Type, &n.Stat, &n.Addr); err != nil {
+		if err := rows.Scan(&n.ID, &n.Name, &n.Type, &n.Stat, &n.Addr); err != nil {
 			log.Error(err)
 		}
 

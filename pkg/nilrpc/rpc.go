@@ -120,6 +120,8 @@ type GetClusterMapResponse struct {
 
 // ClusterNode represents the nodes.
 type ClusterNode struct {
+	ID   int64
+	Name string
 	Addr string
 	Type string
 	Stat string
