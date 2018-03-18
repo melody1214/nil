@@ -45,9 +45,12 @@ func (h *Handler) Proxying(conn net.Conn) {
 	// 2. Lookup mds from cluster map.
 	mds, err := h.clusterMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
 	if err != nil {
-		log.Error(err)
-		go h.updateClusterMap()
-		return
+		h.updateClusterMap()
+		mds, err = h.clusterMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
+		if err != nil {
+			log.Error(err)
+			return
+		}
 	}
 
 	// 3. Dial with tls.

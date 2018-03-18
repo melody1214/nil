@@ -70,5 +70,15 @@ func TestSearchCall(t *testing.T) {
 		if _, err := c.Do(); err == nil {
 			t.Error("expected error, got nil")
 		}
+
+		// 4. Search with type and status.
+		c = testMap.SearchCall()
+		c.Type(n.Type).Status(n.Stat)
+
+		if find, err := c.Do(); err != nil {
+			t.Error(err)
+		} else if !reflect.DeepEqual(find, n) {
+			t.Errorf("expected %+v, got %+v", n, find)
+		}
 	}
 }

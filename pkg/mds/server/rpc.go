@@ -235,6 +235,7 @@ func (s *Server) insertNewVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.
 
 // handleGetClusterMap returns a current local cluster map.
 func (s *Server) handleGetClusterMap(req *nilrpc.GetClusterMapRequest, res *nilrpc.GetClusterMapResponse) error {
+	s.updateMembership()
 	m, err := s.updateClusterMap()
 	if err != nil {
 		return err

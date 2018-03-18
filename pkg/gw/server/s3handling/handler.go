@@ -81,8 +81,11 @@ func (h *Handler) s3MakeBucket(w http.ResponseWriter, r *http.Request) {
 	// 2. Lookup mds from cluster map.
 	mds, err := h.clusterMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
 	if err != nil {
-		s3.SendError(w, s3.ErrInternalError, r.RequestURI, "")
-		return
+		mds, err = h.clusterMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
+		if err != nil {
+			s3.SendError(w, s3.ErrInternalError, r.RequestURI, "")
+			return
+		}
 	}
 
 	// Dialing to mds for making rpc connection.

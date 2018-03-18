@@ -40,16 +40,25 @@ func (s *Store) PublishCommand(op, query string) (result sql.Result, err error) 
 
 // QueryRow executes a query that is expected to return at most one row.
 func (s *Store) QueryRow(query string, args ...interface{}) *sql.Row {
+	if s.db == nil {
+		return nil
+	}
 	return s.db.QueryRow(query, args...)
 }
 
 // Query executes a query that returns rows.
 func (s *Store) Query(query string, args ...interface{}) (*sql.Rows, error) {
+	if s.db == nil {
+		return nil, fmt.Errorf("mysql is not connected yet")
+	}
 	return s.db.Query(query, args...)
 }
 
 // Execute executes a query in the local cluster.
 func (s *Store) Execute(query string) (sql.Result, error) {
+	if s.db == nil {
+		return nil, fmt.Errorf("mysql is not connected yet")
+	}
 	return s.db.Execute(query)
 }
 

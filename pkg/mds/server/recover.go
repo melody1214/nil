@@ -57,7 +57,13 @@ func (s *Server) doUpdateMembership(m swim.Member) {
 	)
 
 	var oldStat, oldAddr string
-	err := s.store.QueryRow(q).Scan(&oldStat, &oldAddr)
+	row := s.store.QueryRow(q)
+	if row == nil {
+		log.WithField("func", "doUpdateMembership").Error("mysql is not connected yet")
+		return
+	}
+
+	err := row.Scan(&oldStat, &oldAddr)
 	if err == nil {
 		// Member exists, compare if some fields are changed.
 		if m.Status.String() != oldStat || string(m.Address) != oldAddr {
