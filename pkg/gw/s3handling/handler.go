@@ -44,8 +44,8 @@ func NewHandler() *Handler {
 	}
 }
 
-// Register registers s3 handling methods to the http mux.
-func (h *Handler) Register(router *mux.Router) {
+// RegisteredTo : s3 handler is registered to the multiplexer.
+func (h *Handler) RegisteredTo(router *mux.Router) {
 	// API routers.
 	apiRouter := router.PathPrefix("/").Subrouter()
 	bucketRouter := apiRouter.PathPrefix("/{bucket}").Subrouter()
