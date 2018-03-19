@@ -39,7 +39,7 @@ func NewHandler() *Handler {
 	log = mlog.GetLogger()
 
 	return &Handler{
-		clusterMap: cmap.NewCMap(),
+		clusterMap: cmap.New(),
 		authCache:  kv.New(),
 	}
 }

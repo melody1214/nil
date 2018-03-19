@@ -10,8 +10,8 @@ type CMap struct {
 	Nodes   []Node `xml:"node"`
 }
 
-// NewCMap returns an empty cluster map.
-func NewCMap() *CMap {
+// New returns an empty cluster map.
+func New() *CMap {
 	return &CMap{
 		Version: 0,
 		Nodes:   make([]Node, 0),

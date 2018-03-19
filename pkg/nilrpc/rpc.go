@@ -109,8 +109,12 @@ type AddBucketResponse struct {
 	S3ErrCode s3.ErrorCode
 }
 
-// GetClusterMapRequest requests to get current local cluster map.
-type GetClusterMapRequest struct{}
+// GetClusterMapRequest requests to get local cluster map.
+// Version == 0; requests the latest version.
+// Version > 0; requests higher version than given version.
+type GetClusterMapRequest struct {
+	Version int64
+}
 
 // GetClusterMapResponse contains a current local cluster members.
 type GetClusterMapResponse struct {

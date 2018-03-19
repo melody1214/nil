@@ -32,7 +32,7 @@ func mdsMapRun(cmd *cobra.Command, args []string) {
 	}
 	defer conn.Close()
 
-	req := &nilrpc.GetClusterMapRequest{}
+	req := &nilrpc.GetClusterMapRequest{Version: 0}
 	res := &nilrpc.GetClusterMapResponse{}
 
 	cli := rpc.NewClient(conn)
