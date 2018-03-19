@@ -1,4 +1,4 @@
-package server
+package mds
 
 import (
 	"fmt"
@@ -6,18 +6,18 @@ import (
 	"github.com/chanyoung/nil/pkg/cmap"
 )
 
-func (s *Server) updateClusterMap() (*cmap.CMap, error) {
+func (m *Mds) updateClusterMap() (*cmap.CMap, error) {
 	// 1. Get new map version.
-	ver, err := s.getNewClusterMapVer()
+	ver, err := m.getNewClusterMapVer()
 	if err != nil {
 		return nil, err
 	}
 
 	// 2. Create a cluster map with the new version.
-	return s.createClusterMap(ver)
+	return m.createClusterMap(ver)
 }
 
-func (s *Server) getNewClusterMapVer() (int64, error) {
+func (m *Mds) getNewClusterMapVer() (int64, error) {
 	q := fmt.Sprintf(
 		`
 		INSERT INTO cmap (cmap_id)
@@ -25,7 +25,7 @@ func (s *Server) getNewClusterMapVer() (int64, error) {
 		`,
 	)
 
-	res, err := s.store.Execute(q)
+	res, err := m.store.Execute(q)
 	if err != nil {
 		return -1, err
 	}
@@ -38,7 +38,7 @@ func (s *Server) getNewClusterMapVer() (int64, error) {
 	return ver, nil
 }
 
-func (s *Server) createClusterMap(ver int64) (*cmap.CMap, error) {
+func (m *Mds) createClusterMap(ver int64) (*cmap.CMap, error) {
 	q := fmt.Sprintf(
 		`
 		SELECT
@@ -52,13 +52,13 @@ func (s *Server) createClusterMap(ver int64) (*cmap.CMap, error) {
 		`,
 	)
 
-	rows, err := s.store.Query(q)
+	rows, err := m.store.Query(q)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	m := &cmap.CMap{
+	cm := &cmap.CMap{
 		Version: ver,
 		Nodes:   make([]cmap.Node, 0),
 	}
@@ -70,8 +70,8 @@ func (s *Server) createClusterMap(ver int64) (*cmap.CMap, error) {
 			log.Error(err)
 		}
 
-		m.Nodes = append(m.Nodes, n)
+		cm.Nodes = append(cm.Nodes, n)
 	}
 
-	return m, nil
+	return cm, nil
 }

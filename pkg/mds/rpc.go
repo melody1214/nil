@@ -1,4 +1,4 @@
-package server
+package mds
 
 import (
 	"database/sql"
@@ -14,60 +14,60 @@ import (
 
 // Handler has exposed methods for rpc server.
 type Handler struct {
-	s *Server
+	m *Mds
 }
 
-func newNilRPCHandler(s *Server) (NilRPCHandler, error) {
-	if s == nil {
+func newNilRPCHandler(m *Mds) (NilRPCHandler, error) {
+	if m == nil {
 		return nil, fmt.Errorf("nil server object")
 	}
 
-	return &Handler{s: s}, nil
+	return &Handler{m: m}, nil
 }
 
 // Join is an exposed method of swim rpc service.
 // It simply wraps the server's handleJoin method.
 func (h *Handler) Join(req *nilrpc.JoinRequest, res *nilrpc.JoinResponse) error {
-	return h.s.handleJoin(req, res)
+	return h.m.handleJoin(req, res)
 }
 
 // AddUser is an exposed method of swim rpc service.
 // It simply wraps the server's handleAddUser method.
 func (h *Handler) AddUser(req *nilrpc.AddUserRequest, res *nilrpc.AddUserResponse) error {
-	return h.s.handleAddUser(req, res)
+	return h.m.handleAddUser(req, res)
 }
 
 // GetCredential is an exposed method of swim rpc service.
 // It simply wraps the server's handleGetCredential method.
 func (h *Handler) GetCredential(req *nilrpc.GetCredentialRequest, res *nilrpc.GetCredentialResponse) error {
-	return h.s.handleGetCredential(req, res)
+	return h.m.handleGetCredential(req, res)
 }
 
 // AddBucket is an exposed method of swim rpc service.
 // It simply wraps the server's handleAddBucket method.
 func (h *Handler) AddBucket(req *nilrpc.AddBucketRequest, res *nilrpc.AddBucketResponse) error {
-	return h.s.handleAddBucket(req, res)
+	return h.m.handleAddBucket(req, res)
 }
 
 // GetClusterMap is an exposed method of swim rpc service.
 // It simply wraps the server's handleGetClusterMap method.
 func (h *Handler) GetClusterMap(req *nilrpc.GetClusterMapRequest, res *nilrpc.GetClusterMapResponse) error {
-	return h.s.handleGetClusterMap(req, res)
+	return h.m.handleGetClusterMap(req, res)
 }
 
 // RegisterVolume receives a new volume information from ds and register it to the database.
 func (h *Handler) RegisterVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.RegisterVolumeResponse) error {
-	return h.s.handleRegisterVolume(req, res)
+	return h.m.handleRegisterVolume(req, res)
 }
 
-func (s *Server) serveNilRPC(l *nilmux.Layer) {
+func (m *Mds) serveNilRPC(l *nilmux.Layer) {
 	for {
 		conn, err := l.Accept()
 		if err != nil {
 			log.Error(err)
 			return
 		}
-		go s.nilRPCSrv.ServeConn(conn)
+		go m.nilRPCSrv.ServeConn(conn)
 	}
 }
 
@@ -89,16 +89,16 @@ type NilRPCHandler interface {
 }
 
 // handleJoin joins the mds node into the cluster.
-func (s *Server) handleJoin(req *nilrpc.JoinRequest, res *nilrpc.JoinResponse) error {
+func (m *Mds) handleJoin(req *nilrpc.JoinRequest, res *nilrpc.JoinResponse) error {
 	if req.RaftAddr == "" || req.NodeID == "" {
 		return fmt.Errorf("not enough arguments: %+v", req)
 	}
 
-	return s.store.Join(req.NodeID, req.RaftAddr)
+	return m.store.Join(req.NodeID, req.RaftAddr)
 }
 
 // handleAddUser adds a new user with the given name.
-func (s *Server) handleAddUser(req *nilrpc.AddUserRequest, res *nilrpc.AddUserResponse) error {
+func (m *Mds) handleAddUser(req *nilrpc.AddUserRequest, res *nilrpc.AddUserResponse) error {
 	ak := security.NewAPIKey()
 
 	q := fmt.Sprintf(
@@ -110,7 +110,7 @@ func (s *Server) handleAddUser(req *nilrpc.AddUserRequest, res *nilrpc.AddUserRe
 		) LIMIT 1;
 		`, req.Name, ak.AccessKey(), ak.SecretKey(), req.Name,
 	)
-	_, err := s.store.PublishCommand("execute", q)
+	_, err := m.store.PublishCommand("execute", q)
 	if err != nil {
 		return err
 	}
@@ -122,7 +122,7 @@ func (s *Server) handleAddUser(req *nilrpc.AddUserRequest, res *nilrpc.AddUserRe
 }
 
 // handleGetCredential returns matching secret key with the given access key.
-func (s *Server) handleGetCredential(req *nilrpc.GetCredentialRequest, res *nilrpc.GetCredentialResponse) error {
+func (m *Mds) handleGetCredential(req *nilrpc.GetCredentialRequest, res *nilrpc.GetCredentialResponse) error {
 	q := fmt.Sprintf(
 		`
 		SELECT
@@ -135,7 +135,7 @@ func (s *Server) handleGetCredential(req *nilrpc.GetCredentialRequest, res *nilr
 	)
 
 	res.AccessKey = req.AccessKey
-	err := s.store.QueryRow(q).Scan(&res.SecretKey)
+	err := m.store.QueryRow(q).Scan(&res.SecretKey)
 	if err == nil {
 		res.Exist = true
 	} else if err == sql.ErrNoRows {
@@ -148,17 +148,17 @@ func (s *Server) handleGetCredential(req *nilrpc.GetCredentialRequest, res *nilr
 }
 
 // handleAddBucket creates a bucket with the given name.
-func (s *Server) handleAddBucket(req *nilrpc.AddBucketRequest, res *nilrpc.AddBucketResponse) error {
+func (m *Mds) handleAddBucket(req *nilrpc.AddBucketRequest, res *nilrpc.AddBucketResponse) error {
 	q := fmt.Sprintf(
 		`
 		INSERT INTO bucket (bucket_name, user_id, region_id)
 		SELECT '%s', u.user_id, r.region_id
 		FROM user u, region r
 		WHERE u.access_key = '%s' and r.region_name = '%s';
-		`, req.BucketName, req.AccessKey, s.cfg.Raft.LocalClusterRegion,
+		`, req.BucketName, req.AccessKey, m.cfg.Raft.LocalClusterRegion,
 	)
 
-	_, err := s.store.PublishCommand("execute", q)
+	_, err := m.store.PublishCommand("execute", q)
 	// No error occurred while adding the bucket.
 	if err == nil {
 		res.S3ErrCode = s3.ErrNone
@@ -181,16 +181,16 @@ func (s *Server) handleAddBucket(req *nilrpc.AddBucketRequest, res *nilrpc.AddBu
 	return nil
 }
 
-func (s *Server) handleRegisterVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.RegisterVolumeResponse) error {
+func (m *Mds) handleRegisterVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.RegisterVolumeResponse) error {
 	// If the id field of request is empty, then the ds
 	// tries to get an id of volume.
 	if req.ID == "" {
-		return s.insertNewVolume(req, res)
+		return m.insertNewVolume(req, res)
 	}
-	return s.updateVolume(req, res)
+	return m.updateVolume(req, res)
 }
 
-func (s *Server) updateVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.RegisterVolumeResponse) error {
+func (m *Mds) updateVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.RegisterVolumeResponse) error {
 	log.Infof("update a member %v", req)
 
 	q := fmt.Sprintf(
@@ -201,7 +201,7 @@ func (s *Server) updateVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.Reg
 		`, req.Status, req.Size, req.Free, req.Used, req.Speed, req.ID,
 	)
 
-	_, err := s.store.Execute(q)
+	_, err := m.store.Execute(q)
 	if err != nil {
 		log.Error(err)
 	}
@@ -209,7 +209,7 @@ func (s *Server) updateVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.Reg
 	return nil
 }
 
-func (s *Server) insertNewVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.RegisterVolumeResponse) error {
+func (m *Mds) insertNewVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.RegisterVolumeResponse) error {
 	log.Infof("insert a new volume %v", req)
 
 	q := fmt.Sprintf(
@@ -219,7 +219,7 @@ func (s *Server) insertNewVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.
 		`, req.Status, req.Size, req.Free, req.Used, req.Speed, req.Ds,
 	)
 
-	r, err := s.store.Execute(q)
+	r, err := m.store.Execute(q)
 	if err != nil {
 		return err
 	}
@@ -234,16 +234,16 @@ func (s *Server) insertNewVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.
 }
 
 // handleGetClusterMap returns a current local cluster map.
-func (s *Server) handleGetClusterMap(req *nilrpc.GetClusterMapRequest, res *nilrpc.GetClusterMapResponse) error {
-	s.updateMembership()
-	m, err := s.updateClusterMap()
+func (m *Mds) handleGetClusterMap(req *nilrpc.GetClusterMapRequest, res *nilrpc.GetClusterMapResponse) error {
+	m.updateMembership()
+	cm, err := m.updateClusterMap()
 	if err != nil {
 		return err
 	}
 
-	res.Version = m.Version
+	res.Version = cm.Version
 
-	for _, n := range m.Nodes {
+	for _, n := range cm.Nodes {
 		res.Nodes = append(
 			res.Nodes,
 			nilrpc.ClusterNode{

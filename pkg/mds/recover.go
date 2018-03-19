@@ -1,4 +1,4 @@
-package server
+package mds
 
 import (
 	"database/sql"
@@ -9,7 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func (s *Server) recover(pe swim.PingError) {
+func (m *Mds) recover(pe swim.PingError) {
 	// Logging the error.
 	log.WithFields(logrus.Fields{
 		"server":       "swim",
@@ -18,8 +18,8 @@ func (s *Server) recover(pe swim.PingError) {
 	}).Warn(pe.Err)
 
 	// Updates membership.
-	s.updateMembership()
-	_, err := cmap.GetLatest(s.cfg.ServerAddr + ":" + s.cfg.ServerPort)
+	m.updateMembership()
+	_, err := cmap.GetLatest(m.cfg.ServerAddr + ":" + m.cfg.ServerPort)
 	if err != nil {
 		log.Error(err)
 	}
@@ -33,17 +33,17 @@ func (s *Server) recover(pe swim.PingError) {
 	// TODO: recovery routine.
 }
 
-func (s *Server) updateMembership() {
-	membership := s.swimSrv.GetMap()
-	for _, m := range membership {
+func (m *Mds) updateMembership() {
+	membership := m.swimSrv.GetMap()
+	for _, member := range membership {
 		// Currently we only cares ds.
-		if m.Type == swim.DS || m.Type == swim.MDS {
-			s.doUpdateMembership(m)
+		if member.Type == swim.DS || member.Type == swim.MDS {
+			m.doUpdateMembership(member)
 		}
 	}
 }
 
-func (s *Server) doUpdateMembership(m swim.Member) {
+func (m *Mds) doUpdateMembership(sm swim.Member) {
 	q := fmt.Sprintf(
 		`
 		SELECT
@@ -53,11 +53,11 @@ func (s *Server) doUpdateMembership(m swim.Member) {
 			node
 		WHERE
 			node_name = '%s'
-		`, m.ID,
+		`, sm.ID,
 	)
 
 	var oldStat, oldAddr string
-	row := s.store.QueryRow(q)
+	row := m.store.QueryRow(q)
 	if row == nil {
 		log.WithField("func", "doUpdateMembership").Error("mysql is not connected yet")
 		return
@@ -66,46 +66,46 @@ func (s *Server) doUpdateMembership(m swim.Member) {
 	err := row.Scan(&oldStat, &oldAddr)
 	if err == nil {
 		// Member exists, compare if some fields are changed.
-		if m.Status.String() != oldStat || string(m.Address) != oldAddr {
-			s.updateMember(m)
+		if sm.Status.String() != oldStat || string(sm.Address) != oldAddr {
+			m.updateMember(sm)
 		}
 	} else if err == sql.ErrNoRows {
 		// Member not exists, add into the database.
-		s.insertNewMember(m)
+		m.insertNewMember(sm)
 	} else {
 		log.Error(err)
 		return
 	}
 }
 
-func (s *Server) insertNewMember(m swim.Member) {
-	log.Infof("insert a new member %v", m)
+func (m *Mds) insertNewMember(sm swim.Member) {
+	log.Infof("insert a new member %v", sm)
 
 	q := fmt.Sprintf(
 		`
 		INSERT INTO node (node_name, node_type, node_status, node_address)
 		VALUES ('%s', '%s', '%s', '%s')
-		`, string(m.ID), m.Type.String(), m.Status.String(), string(m.Address),
+		`, string(sm.ID), sm.Type.String(), sm.Status.String(), string(sm.Address),
 	)
 
-	_, err := s.store.Execute(q)
+	_, err := m.store.Execute(q)
 	if err != nil {
 		log.WithField("func", "insertNewMember").Error(err)
 	}
 }
 
-func (s *Server) updateMember(m swim.Member) {
-	log.Infof("update a member %v", m)
+func (m *Mds) updateMember(sm swim.Member) {
+	log.Infof("update a member %v", sm)
 
 	q := fmt.Sprintf(
 		`
 		UPDATE node
 		SET node_status='%s', node_address='%s'
 		WHERE node_name in ('%s')
-		`, m.Status.String(), string(m.Address), string(m.ID),
+		`, sm.Status.String(), string(sm.Address), string(sm.ID),
 	)
 
-	_, err := s.store.Execute(q)
+	_, err := m.store.Execute(q)
 	if err != nil {
 		log.WithField("func", "updateMember").Error(err)
 	}
