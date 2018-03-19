@@ -43,7 +43,7 @@ type Mds struct {
 
 // New creates a mds object.
 func New(cfg *config.Mds) (*Mds, error) {
-	// Setting logger.
+	// 1. Setting logger.
 	if err := mlog.Init(cfg.LogLocation); err != nil {
 		return nil, err
 	}
@@ -53,38 +53,41 @@ func New(cfg *config.Mds) (*Mds, error) {
 	}
 	log.WithField("location", cfg.LogLocation).Info("Setting logger succeeded")
 
-	// Generate MDS ID.
+	// 2. Generate MDS ID.
 	cfg.ID = uuid.Gen()
 	log.WithField("uuid", cfg.ID).Info("Generating MDS UUID succeeded")
 
+	// 3. Creates metadata server object with the given config.
 	m := &Mds{cfg: cfg}
 
-	// Resolve gateway address.
+	// 4. Resolve mds address.
 	addr := cfg.ServerAddr + ":" + cfg.ServerPort
 	resolvedAddr, err := net.ResolveTCPAddr("tcp", cfg.ServerAddr+":"+cfg.ServerPort)
 	if err != nil {
 		return nil, err
 	}
 
-	// Create a rpc layer.
+	// 5. Create a rpc layer.
 	rpcTypeBytes := []byte{
 		0x02, // rpcNil
 	}
 	m.nilLayer = nilmux.NewLayer(rpcTypeBytes, resolvedAddr, false)
 
-	// Create a raft layer.
+	// 6. Create a raft layer.
 	raftTypeBytes := []byte{
 		0x01, // rpcRaft
 	}
 	m.raftLayer = nilmux.NewLayer(raftTypeBytes, resolvedAddr, false)
 	m.raftTransportLayer = nilmux.NewRaftTransportLayer(m.raftLayer)
 
+	// 7. Create a swim layer.
 	swimTypeBytes := []byte{
 		0x03, // rpcSwim
 	}
 	m.swimLayer = nilmux.NewLayer(swimTypeBytes, resolvedAddr, false)
 	m.swimTransportLayer = nilmux.NewSwimTransportLayer(m.swimLayer)
 
+	// 8. Load a swim config.
 	swimConf := swim.DefaultConfig()
 	swimConf.ID = swim.ServerID(cfg.ID)
 	swimConf.Address = swim.ServerAddress(cfg.ServerAddr + ":" + cfg.ServerPort)
@@ -101,6 +104,7 @@ func New(cfg *config.Mds) (*Mds, error) {
 	}
 	swimConf.Type = swim.MDS
 
+	// 9. Create a swim server.
 	m.swimSrv, err = swim.NewServer(
 		swimConf,
 		m.swimTransportLayer,
@@ -109,16 +113,16 @@ func New(cfg *config.Mds) (*Mds, error) {
 		return nil, err
 	}
 
-	// Create a mux and register layers.
+	// 10. Create a mux and register layers.
 	m.nilMux = nilmux.NewNilMux(addr, &cfg.Security)
 	m.nilMux.RegisterLayer(m.nilLayer)
 	m.nilMux.RegisterLayer(m.raftLayer)
 	m.nilMux.RegisterLayer(m.swimLayer)
 
-	// Create new raft store.
+	// 11. Create new raft store.
 	m.store = store.New(cfg, m.raftTransportLayer)
 
-	// Create nil RPC server.
+	// 12. Create nil RPC server.
 	m.nilRPCSrv = rpc.NewServer()
 	if err := m.registerNilRPCHandler(); err != nil {
 		return nil, err
