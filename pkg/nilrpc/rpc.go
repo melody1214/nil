@@ -102,6 +102,7 @@ type GetCredentialResponse struct {
 type AddBucketRequest struct {
 	BucketName string
 	AccessKey  string
+	Region     string
 }
 
 // AddBucketResponse responses the result of addBucket.

@@ -12,28 +12,28 @@ import (
 	"github.com/chanyoung/nil/pkg/s3"
 )
 
-func (h *Handler) authRequest(r *http.Request) (accessKey string, err s3.ErrorCode) {
+func (h *Handler) authRequest(r *http.Request) (cred s3.CredV4, err s3.ErrorCode) {
 	// Get authentication string from header.
 	authString := r.Header.Get("Authorization")
 
 	// Check the sign version is supported.
 	if err := s3.ValidateSignVersion(authString); err != s3.ErrNone {
-		return "", err
+		return cred, err
 	}
 
 	// Parse auth string.
 	authArgs, err := s3.ParseSignV4(authString)
 	if err != s3.ErrNone {
-		return "", err
+		return cred, err
 	}
 
 	// Make key.
-	accessKey = authArgs.Credential.AccessKey
-	secretKey, e := h.getSecretKey(accessKey)
+	cred = authArgs.Credential
+	secretKey, e := h.getSecretKey(cred.AccessKey)
 	if e != nil {
-		return accessKey, s3.ErrInternalError
+		return cred, s3.ErrInternalError
 	} else if secretKey == "" {
-		return accessKey, s3.ErrInvalidAccessKeyId
+		return cred, s3.ErrInvalidAccessKeyId
 	}
 
 	// Task 1: Create a Canonical Request for Signature Version 4.
@@ -63,10 +63,10 @@ func (h *Handler) authRequest(r *http.Request) (accessKey string, err s3.ErrorCo
 
 	derivedSignature := s3.GenSignature(signatureKey, stringToSign)
 	if authArgs.Signature != derivedSignature {
-		return accessKey, s3.ErrSignatureDoesNotMatch
+		return cred, s3.ErrSignatureDoesNotMatch
 	}
 
-	return accessKey, s3.ErrNone
+	return cred, s3.ErrNone
 }
 
 func (h *Handler) getSecretKey(accessKey string) (string, error) {
@@ -78,7 +78,12 @@ func (h *Handler) getSecretKey(accessKey string) (string, error) {
 	// 2. Lookup mds from cluster map.
 	mds, err := h.clusterMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
 	if err != nil {
-		return "", nil
+		h.updateClusterMap()
+		mds, err = h.clusterMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
+		if err != nil {
+			log.Error(err)
+			return "", err
+		}
 	}
 
 	// 3. Try dial to mds.

@@ -67,12 +67,14 @@ func (h *Handler) RegisteredTo(router *mux.Router) {
 }
 
 func (h *Handler) s3MakeBucket(w http.ResponseWriter, r *http.Request) {
-	// Extract access key along with user authentication.
-	accessKey, s3Err := h.authRequest(r)
+	// Extract credential along with user authentication.
+	cred, s3Err := h.authRequest(r)
 	if s3Err != s3.ErrNone {
 		s3.SendError(w, s3Err, r.RequestURI, "")
 		return
 	}
+
+	log.Infof("%+v", cred)
 
 	// Extract bucket name.
 	// ex) /bucketname/ -> bucketname
@@ -98,7 +100,8 @@ func (h *Handler) s3MakeBucket(w http.ResponseWriter, r *http.Request) {
 
 	// Fill the request and prepare response object.
 	req := &nilrpc.AddBucketRequest{
-		AccessKey:  accessKey,
+		AccessKey:  cred.AccessKey,
+		Region:     cred.Region,
 		BucketName: bucketName,
 	}
 	res := &nilrpc.AddBucketResponse{}

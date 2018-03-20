@@ -118,16 +118,14 @@ func (h *Handler) GetCredential(req *nilrpc.GetCredentialRequest, res *nilrpc.Ge
 
 // AddBucket creates a bucket with the given name.
 func (h *Handler) AddBucket(req *nilrpc.AddBucketRequest, res *nilrpc.AddBucketResponse) error {
-	q := ""
-	// TODO: request includes region name.
-	// q := fmt.Sprintf(
-	// 	`
-	// 	INSERT INTO bucket (bucket_name, user_id, region_id)
-	// 	SELECT '%s', u.user_id, r.region_id
-	// 	FROM user u, region r
-	// 	WHERE u.access_key = '%s' and r.region_name = '%s';
-	// 	`, req.BucketName, req.AccessKey, m.cfg.Raft.LocalClusterRegion,
-	// )
+	q := fmt.Sprintf(
+		`
+		INSERT INTO bucket (bucket_name, user_id, region_id)
+		SELECT '%s', u.user_id, r.region_id
+		FROM user u, region r
+		WHERE u.access_key = '%s' and r.region_name = '%s';
+		`, req.BucketName, req.AccessKey, req.Region,
+	)
 
 	_, err := h.store.PublishCommand("execute", q)
 	// No error occurred while adding the bucket.

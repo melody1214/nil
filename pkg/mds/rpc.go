@@ -149,6 +149,8 @@ func (m *Mds) handleGetCredential(req *nilrpc.GetCredentialRequest, res *nilrpc.
 
 // handleAddBucket creates a bucket with the given name.
 func (m *Mds) handleAddBucket(req *nilrpc.AddBucketRequest, res *nilrpc.AddBucketResponse) error {
+	log.Infof("%+v", req)
+
 	q := fmt.Sprintf(
 		`
 		INSERT INTO bucket (bucket_name, user_id, region_id)
@@ -158,7 +160,10 @@ func (m *Mds) handleAddBucket(req *nilrpc.AddBucketRequest, res *nilrpc.AddBucke
 		`, req.BucketName, req.AccessKey, m.cfg.Raft.LocalClusterRegion,
 	)
 
+	log.Infof("%+v", q)
+
 	_, err := m.store.PublishCommand("execute", q)
+	log.Infof("%+v", err)
 	// No error occurred while adding the bucket.
 	if err == nil {
 		res.S3ErrCode = s3.ErrNone
