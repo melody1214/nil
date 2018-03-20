@@ -22,6 +22,9 @@ DSBASEPORT=52000
 DISKSIZE=100 # megabytes
 DISKNUM=3    # per ds
 
+# Users
+USERS=30
+
 # Save settings.
 AUTOMOUNT_OPEN=""
 
@@ -208,6 +211,25 @@ function runds() {
     createsdisks "$DISKNUM" "$DISKSIZE" "$workdir" "$port"
 }
 
+function createusers() {
+    for i in $(seq 1 $USERS); do
+        echo "create user$i ..."
+
+        local cred=$($NIL mds user add user$i)
+        local ak=$(echo $cred | awk '{print $1}')
+        local sk=$(echo $cred | awk '{print $2}')
+
+        declare -A user"$i"="([accesskey]=$ak [secretkey]=$sk)"
+    done
+
+    for i in $(seq 1 $USERS); do
+        ak=user$i[accesskey]
+        sk=user$i[secretkey]
+
+        echo ${!ak}, ${!sk}       
+    done
+}
+
 function main() {
     purge
 
@@ -220,13 +242,17 @@ function main() {
     # Execute pending command.
     if [ -e $PENDINGCMD ]; then
         # Give some time to each cluster member can join the membership.
-        sleep 60
+        sleep 80
 
         # Read line by line ...
         while read cmd; do
             $($cmd)
         done < $PENDINGCMD
     fi
+
+    # Create users.
+    sleep 3
+    createusers
 }
 
 # Run as root.
