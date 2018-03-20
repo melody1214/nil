@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/mds/store"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/nilrpc"
@@ -128,6 +129,11 @@ func New(cfg *config.Mds) (*Mds, error) {
 		return nil, err
 	}
 	if err := m.nilRPCSrv.RegisterName(nilrpc.MDSRPCPrefix, m.NilRPCHandler); err != nil {
+		return nil, err
+	}
+
+	// 13. Prepare the initial cluster map.
+	if err := cmap.Initial(cfg.ServerAddr + ":" + cfg.ServerPort); err != nil {
 		return nil, err
 	}
 

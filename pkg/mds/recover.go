@@ -4,27 +4,34 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/swim"
 	"github.com/sirupsen/logrus"
 )
 
 func (m *Mds) recover(pe swim.PingError) {
-	// Logging the error.
+	// 1. Logging the error.
 	log.WithFields(logrus.Fields{
 		"server":       "swim",
 		"message type": pe.Type,
 		"destID":       pe.DestID,
 	}).Warn(pe.Err)
 
-	// Updates membership.
+	// 2. Updates membership.
 	m.updateMembership()
-	_, err := cmap.GetLatest(cmap.FromRemote(m.cfg.ServerAddr + ":" + m.cfg.ServerPort))
+
+	// 3. Get the new version of cluster map.
+	newCMap, err := m.updateClusterMap()
 	if err != nil {
 		log.Error(err)
 	}
 
-	// If the error message is occured because just simple membership
+	// 4. Save the new cluster map.
+	err = newCMap.Save()
+	if err != nil {
+		log.Error(err)
+	}
+
+	// 5. If the error message is occured because just simple membership
 	// changed, then finish the recover routine here.
 	if pe.Err == swim.ErrChanged {
 		return

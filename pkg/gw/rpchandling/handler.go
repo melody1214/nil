@@ -56,7 +56,7 @@ func (h *Handler) Proxying(conn net.Conn) {
 	// 3. Dial with tls.
 	remote, err := tls.DialWithDialer(dialer, "tcp", mds.Addr, tlsConfig)
 	if err != nil {
-		log.Error(err)
+		log.WithField("pkg", "rpchandling").Error(err)
 		return
 	}
 
@@ -67,7 +67,7 @@ func (h *Handler) Proxying(conn net.Conn) {
 
 // updateClusterMap retrieves the latest cluster map from the mds.
 func (h *Handler) updateClusterMap() {
-	m, err := cmap.GetLatest(cmap.FromRemote())
+	m, err := cmap.GetLatest(cmap.WithFromRemote(true))
 	if err != nil {
 		log.Error(err)
 		return

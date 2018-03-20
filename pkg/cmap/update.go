@@ -1,7 +1,6 @@
 package cmap
 
 import (
-	"fmt"
 	"net/rpc"
 	"time"
 
@@ -27,30 +26,23 @@ func GetLatest(opts ...Option) (*CMap, error) {
 
 	// 4. If no mds address is given, then get mds address
 	// from the old map file.
-	if len(o.remoteAddr) == 0 {
-		mdsAddr, err := getMdsAddr()
-		if err != nil {
-			return nil, err
-		}
-
-		o.remoteAddr = append(o.remoteAddr, mdsAddr)
+	mdsAddr, err := getMdsAddr()
+	if err != nil {
+		return nil, err
 	}
 
 	// 5. Get the latest map from the mds.
-	for _, mdsAddr := range o.remoteAddr {
-		m, err := getLatestMapFromRemote(mdsAddr)
-		if err != nil {
-			continue
-		}
-
-		if err := store(m); err != nil {
-			continue
-		}
-
-		return m, nil
+	m, err := getLatestMapFromRemote(mdsAddr)
+	if err != nil {
+		return nil, err
 	}
 
-	return nil, fmt.Errorf("couldn't get the mds address")
+	// 6. Save the map to the local.
+	if err := m.Save(); err != nil {
+		return nil, err
+	}
+
+	return m, nil
 }
 
 func getLatestMapFromLocal() (*CMap, error) {
@@ -137,26 +129,16 @@ type Option func(*options)
 
 type options struct {
 	fromRemote bool
-	remoteAddr []string
 }
 
 var defaultOptions = options{
 	fromRemote: false,
-	remoteAddr: make([]string, 0),
 }
 
-// FromRemote set to get the latest cluster map from the remote address.
+// WithFromRemote set to get the latest cluster map from the remote address.
 // The address should be available metadata server.
-func FromRemote(addr ...string) Option {
+func WithFromRemote(enabled bool) Option {
 	return func(o *options) {
-		o.fromRemote = true
-		o.remoteAddr = addr
-	}
-}
-
-// FromLocal set to get the latest cluster map from the local cluster map directory.
-func FromLocal() Option {
-	return func(o *options) {
-		o.fromRemote = false
+		o.fromRemote = enabled
 	}
 }

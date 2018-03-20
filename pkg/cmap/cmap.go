@@ -18,6 +18,25 @@ func New() *CMap {
 	}
 }
 
+// Initial creates an initial cluster map with the given coordinator address.
+func Initial(coordinator string) error {
+	// 1. Create an empty map.
+	m := &CMap{
+		Version: 0,
+		Nodes:   make([]Node, 1),
+	}
+
+	// 2. Set the mds.
+	m.Nodes[0] = Node{
+		Addr: coordinator,
+		Type: MDS,
+		Stat: Alive,
+	}
+
+	// 3. Save to local.
+	return m.Save()
+}
+
 // SearchCall returns a new search call.
 func (m *CMap) SearchCall() *SearchCall {
 	return &SearchCall{
@@ -46,4 +65,9 @@ func (m *CMap) HumanReadable() string {
 	}
 
 	return out
+}
+
+// Save stores the cluster map to the local file system.
+func (m *CMap) Save() error {
+	return store(m)
 }

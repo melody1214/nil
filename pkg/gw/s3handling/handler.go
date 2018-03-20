@@ -135,7 +135,7 @@ func (h *Handler) s3DeleteObject(w http.ResponseWriter, r *http.Request) {
 
 // updateClusterMap retrieves the latest cluster map from the mds.
 func (h *Handler) updateClusterMap() {
-	m, err := cmap.GetLatest(cmap.FromRemote())
+	m, err := cmap.GetLatest(cmap.WithFromRemote(true))
 	if err != nil {
 		log.Error(err)
 		return

@@ -91,8 +91,10 @@ func New(cfg *config.Gw) (*Gw, error) {
 		MaxHeaderBytes: 1 << 20,
 	}
 
-	// 11. Prepare cluster map.
-	go prepareClusterMap(cfg.FirstMds)
+	// 11. Prepare the initial cluster map.
+	if err := cmap.Initial(cfg.FirstMds); err != nil {
+		return nil, err
+	}
 
 	log.Info("Creating gateway object succeeded")
 
@@ -141,28 +143,5 @@ func (g *Gw) serveRPC() {
 		}
 
 		go g.rpcHandler.Proxying(conn)
-	}
-}
-
-// prepareClusterMap prepares the cluster map with the given address.
-// It calls only one time in the initiating routine and retry repeatedly
-// until it succeed.
-func prepareClusterMap(mdsAddr string) {
-	for {
-		time.Sleep(100 * time.Millisecond)
-
-		m, err := cmap.GetLatest(cmap.FromRemote(mdsAddr))
-		if err != nil {
-			log.Error(err)
-			continue
-		}
-
-		_, err = m.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
-		if err != nil {
-			log.Error(err)
-			continue
-		}
-
-		break
 	}
 }

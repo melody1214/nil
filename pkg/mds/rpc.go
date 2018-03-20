@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/s3"
@@ -240,14 +241,12 @@ func (m *Mds) insertNewVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.Reg
 
 // handleGetClusterMap returns a current local cluster map.
 func (m *Mds) handleGetClusterMap(req *nilrpc.GetClusterMapRequest, res *nilrpc.GetClusterMapResponse) error {
-	m.updateMembership()
-	cm, err := m.updateClusterMap()
+	cm, err := cmap.GetLatest()
 	if err != nil {
 		return err
 	}
 
 	res.Version = cm.Version
-
 	for _, n := range cm.Nodes {
 		res.Nodes = append(
 			res.Nodes,
