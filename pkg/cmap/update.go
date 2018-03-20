@@ -9,25 +9,36 @@ import (
 )
 
 // GetLatest get the latest cluster map.
-func GetLatest(mdsAddrs ...string) (*CMap, error) {
+func GetLatest(opts ...Option) (*CMap, error) {
 	// 1. Threads can't access map file when updating.
 	lock()
 	defer unlock()
 
-	// 2. If no mds address is given, then get mds address
+	// 2. Set the options.
+	o := defaultOptions
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	// 3. If it wants the map from local, then find it and return.
+	if o.fromRemote == false {
+		return getLatestMapFromLocal()
+	}
+
+	// 4. If no mds address is given, then get mds address
 	// from the old map file.
-	if len(mdsAddrs) == 0 {
+	if len(o.remoteAddr) == 0 {
 		mdsAddr, err := getMdsAddr()
 		if err != nil {
 			return nil, err
 		}
 
-		mdsAddrs = append(mdsAddrs, mdsAddr)
+		o.remoteAddr = append(o.remoteAddr, mdsAddr)
 	}
 
-	// 3. Get the latest map from the mds.
-	for _, mdsAddr := range mdsAddrs {
-		m, err := getLatest(mdsAddr)
+	// 5. Get the latest map from the mds.
+	for _, mdsAddr := range o.remoteAddr {
+		m, err := getLatestMapFromRemote(mdsAddr)
 		if err != nil {
 			continue
 		}
@@ -42,7 +53,19 @@ func GetLatest(mdsAddrs ...string) (*CMap, error) {
 	return nil, fmt.Errorf("couldn't get the mds address")
 }
 
-func getLatest(mdsAddr string) (*CMap, error) {
+func getLatestMapFromLocal() (*CMap, error) {
+	// 1. Get the latest map full path from the local.
+	path, err := getLatestMapFile()
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. Decode the file and return the cluster map.
+	m, err := decode(path)
+	return &m, err
+}
+
+func getLatestMapFromRemote(mdsAddr string) (*CMap, error) {
 	conn, err := nilrpc.Dial(mdsAddr, nilrpc.RPCNil, time.Duration(2*time.Second))
 	if err != nil {
 		return nil, err
@@ -107,4 +130,33 @@ func getMdsAddr() (string, error) {
 		return "", err
 	}
 	return mds.Addr, nil
+}
+
+// Option allows to override updating parameters.
+type Option func(*options)
+
+type options struct {
+	fromRemote bool
+	remoteAddr []string
+}
+
+var defaultOptions = options{
+	fromRemote: false,
+	remoteAddr: make([]string, 0),
+}
+
+// FromRemote set to get the latest cluster map from the remote address.
+// The address should be available metadata server.
+func FromRemote(addr ...string) Option {
+	return func(o *options) {
+		o.fromRemote = true
+		o.remoteAddr = addr
+	}
+}
+
+// FromLocal set to get the latest cluster map from the local cluster map directory.
+func FromLocal() Option {
+	return func(o *options) {
+		o.fromRemote = false
+	}
 }

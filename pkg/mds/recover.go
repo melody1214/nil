@@ -19,7 +19,7 @@ func (m *Mds) recover(pe swim.PingError) {
 
 	// Updates membership.
 	m.updateMembership()
-	_, err := cmap.GetLatest(m.cfg.ServerAddr + ":" + m.cfg.ServerPort)
+	_, err := cmap.GetLatest(cmap.FromRemote(m.cfg.ServerAddr + ":" + m.cfg.ServerPort))
 	if err != nil {
 		log.Error(err)
 	}

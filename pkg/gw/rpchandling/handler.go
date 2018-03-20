@@ -67,7 +67,7 @@ func (h *Handler) Proxying(conn net.Conn) {
 
 // updateClusterMap retrieves the latest cluster map from the mds.
 func (h *Handler) updateClusterMap() {
-	m, err := cmap.GetLatest()
+	m, err := cmap.GetLatest(cmap.FromRemote())
 	if err != nil {
 		log.Error(err)
 		return

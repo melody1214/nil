@@ -6,11 +6,15 @@ It is maintained by per node: mds, ds and gw.
 ## Use cases
 
 ```
-// Get the latest cluster map.
-clusterMap = cmap.GetLatest()
+// Get the latest cluster map from the remote.
+clusterMap = cmap.GetLatest(FromRemote())
 
-// Get the latest cluster map from the given mds address.
-clusterMap = cmap.GetLatest(mdsAddr)
+// Get the latest cluster map from the remote with the given mds address.
+clusterMap = cmap.GetLatest(FromRemote(mdsAddr))
+
+// Get the latest cluster map from the local file.
+// Note: default option is from local.
+clusterMap = cmap.GetLatest(FromLocal())
 
 // Get the human readable string of cluster map.
 fmt.Println(clusterMap.HumanReadable())

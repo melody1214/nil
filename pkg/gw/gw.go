@@ -151,7 +151,7 @@ func prepareClusterMap(mdsAddr string) {
 	for {
 		time.Sleep(100 * time.Millisecond)
 
-		m, err := cmap.GetLatest(mdsAddr)
+		m, err := cmap.GetLatest(cmap.FromRemote(mdsAddr))
 		if err != nil {
 			log.Error(err)
 			continue
