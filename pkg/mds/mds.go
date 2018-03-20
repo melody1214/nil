@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/chanyoung/nil/pkg/cmap"
+	"github.com/chanyoung/nil/pkg/mds/rpchandling"
 	"github.com/chanyoung/nil/pkg/mds/store"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/nilrpc"
@@ -30,7 +31,7 @@ type Mds struct {
 	nilMux        *nilmux.NilMux
 	nilLayer      *nilmux.Layer
 	nilRPCSrv     *rpc.Server
-	NilRPCHandler NilRPCHandler
+	NilRPCHandler rpchandling.NilRPCHandler
 
 	raftTransportLayer *nilmux.RaftTransportLayer
 	raftLayer          *nilmux.Layer
@@ -69,10 +70,7 @@ func New(cfg *config.Mds) (*Mds, error) {
 	}
 
 	// 5. Create a rpc layer.
-	rpcTypeBytes := []byte{
-		0x02, // rpcNil
-	}
-	m.nilLayer = nilmux.NewLayer(rpcTypeBytes, resolvedAddr, false)
+	m.nilLayer = nilmux.NewLayer(rpchandling.TypeBytes(), resolvedAddr, false)
 
 	// 6. Create a raft layer.
 	raftTypeBytes := []byte{
@@ -125,7 +123,8 @@ func New(cfg *config.Mds) (*Mds, error) {
 
 	// 12. Create nil RPC server.
 	m.nilRPCSrv = rpc.NewServer()
-	if err := m.registerNilRPCHandler(); err != nil {
+	m.NilRPCHandler, err = rpchandling.New(m.store)
+	if err != nil {
 		return nil, err
 	}
 	if err := m.nilRPCSrv.RegisterName(nilrpc.MDSRPCPrefix, m.NilRPCHandler); err != nil {
@@ -216,7 +215,13 @@ func (m *Mds) join(joinAddr, raftAddr, nodeID string) error {
 	return cli.Call(nilrpc.Join.String(), req, res)
 }
 
-func (m *Mds) registerNilRPCHandler() (err error) {
-	m.NilRPCHandler, err = newNilRPCHandler(m)
-	return
+func (m *Mds) serveNilRPC(l *nilmux.Layer) {
+	for {
+		conn, err := l.Accept()
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		go m.nilRPCSrv.ServeConn(conn)
+	}
 }
