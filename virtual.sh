@@ -22,8 +22,13 @@ DSBASEPORT=52000
 DISKSIZE=100 # megabytes
 DISKNUM=3    # per ds
 
-# Users
-USERS=30
+# User per region
+TOTALUSERS=0    # (REGIONUSERS) * (number of regions)
+REGIONUSERS=5   # 5 users per region
+                # In this test, users are only allowed to create bucket in own region.
+
+# Buckets per user
+BUCKETS=3
 
 # Save settings.
 AUTOMOUNT_OPEN=""
@@ -212,21 +217,44 @@ function runds() {
 }
 
 function createusers() {
-    for i in $(seq 1 $USERS); do
-        echo "create user$i ..."
-
-        local cred=$($NIL mds user add user$i)
-        local ak=$(echo $cred | awk '{print $1}')
-        local sk=$(echo $cred | awk '{print $2}')
-
-        declare -A user"$i"="([accesskey]=$ak [secretkey]=$sk)"
+    for region in ${REGIONS[@]}; do
+        TOTALUSERS=$(($TOTALUSERS + $REGIONUSERS))
     done
 
-    for i in $(seq 1 $USERS); do
-        ak=user$i[accesskey]
-        sk=user$i[secretkey]
+    local idx=0
+    for region in ${REGIONS[@]}; do
+        for i in $(seq 1 $REGIONUSERS); do
+            idx=$(($idx + 1))
+            echo "create user$idx in region $region ..."
 
-        echo ${!ak}, ${!sk}       
+            local cred=$($NIL mds user add user$idx)
+            local ak=$(echo $cred | awk '{print $1}')
+            local sk=$(echo $cred | awk '{print $2}')
+
+            declare -Ag user"$idx"="([bucketregion]=$region [accesskey]=$ak [secretkey]=$sk)"
+        done
+    done
+
+    for i in $(seq 1 $TOTALUSERS); do
+        local region=user$i[bucketregion]
+        local ak=user$i[accesskey]
+        local sk=user$i[secretkey]
+
+        echo ${!region}, ${!ak}, ${!sk}       
+    done
+}
+
+function createbuckets() {
+    for i in $(seq 1 $TOTALUSERS); do
+        local ak=user$i[accesskey]
+        local sk=user$i[secretkey]
+        local region=user$i[bucketregion]
+
+        for j in $(seq 1 $BUCKETS); do
+            local bucket="user$i-bucket$j"
+            echo "s3cmd mb s3://$bucket --access_key=${!ak} --secret_key=${!sk} --region=${!region} --no-check-hostname"
+            s3cmd mb s3://$bucket --access_key=${!ak} --secret_key=${!sk} --region=${!region} --no-check-hostname
+        done
     done
 }
 
@@ -242,7 +270,7 @@ function main() {
     # Execute pending command.
     if [ -e $PENDINGCMD ]; then
         # Give some time to each cluster member can join the membership.
-        sleep 80
+        sleep 90
 
         # Read line by line ...
         while read cmd; do
@@ -253,6 +281,10 @@ function main() {
     # Create users.
     sleep 3
     createusers
+
+    # Create buckets.
+    sleep 3
+    createbuckets
 }
 
 # Run as root.
