@@ -1,4 +1,4 @@
-package mds
+package membership
 
 import (
 	"database/sql"
@@ -8,7 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func (m *Mds) recover(pe swim.PingError) {
+func (h *Handler) Recover(pe swim.PingError) {
 	// 1. Logging the error.
 	log.WithFields(logrus.Fields{
 		"server":       "swim",
@@ -17,10 +17,10 @@ func (m *Mds) recover(pe swim.PingError) {
 	}).Warn(pe.Err)
 
 	// 2. Updates membership.
-	m.updateMembership()
+	h.updateMembership()
 
 	// 3. Get the new version of cluster map.
-	newCMap, err := m.updateClusterMap()
+	newCMap, err := h.updateClusterMap()
 	if err != nil {
 		log.Error(err)
 	}
@@ -40,17 +40,17 @@ func (m *Mds) recover(pe swim.PingError) {
 	// TODO: recovery routine.
 }
 
-func (m *Mds) updateMembership() {
-	membership := m.swimSrv.GetMap()
+func (h *Handler) updateMembership() {
+	membership := h.swimSrv.GetMap()
 	for _, member := range membership {
 		// Currently we only cares ds.
 		if member.Type == swim.DS || member.Type == swim.MDS {
-			m.doUpdateMembership(member)
+			h.doUpdateMembership(member)
 		}
 	}
 }
 
-func (m *Mds) doUpdateMembership(sm swim.Member) {
+func (h *Handler) doUpdateMembership(sm swim.Member) {
 	q := fmt.Sprintf(
 		`
 		SELECT
@@ -64,7 +64,7 @@ func (m *Mds) doUpdateMembership(sm swim.Member) {
 	)
 
 	var oldStat, oldAddr string
-	row := m.store.QueryRow(q)
+	row := h.store.QueryRow(q)
 	if row == nil {
 		log.WithField("func", "doUpdateMembership").Error("mysql is not connected yet")
 		return
@@ -74,18 +74,18 @@ func (m *Mds) doUpdateMembership(sm swim.Member) {
 	if err == nil {
 		// Member exists, compare if some fields are changed.
 		if sm.Status.String() != oldStat || string(sm.Address) != oldAddr {
-			m.updateMember(sm)
+			h.updateMember(sm)
 		}
 	} else if err == sql.ErrNoRows {
 		// Member not exists, add into the database.
-		m.insertNewMember(sm)
+		h.insertNewMember(sm)
 	} else {
 		log.Error(err)
 		return
 	}
 }
 
-func (m *Mds) insertNewMember(sm swim.Member) {
+func (h *Handler) insertNewMember(sm swim.Member) {
 	log.Infof("insert a new member %v", sm)
 
 	q := fmt.Sprintf(
@@ -95,13 +95,13 @@ func (m *Mds) insertNewMember(sm swim.Member) {
 		`, string(sm.ID), sm.Type.String(), sm.Status.String(), string(sm.Address),
 	)
 
-	_, err := m.store.Execute(q)
+	_, err := h.store.Execute(q)
 	if err != nil {
 		log.WithField("func", "insertNewMember").Error(err)
 	}
 }
 
-func (m *Mds) updateMember(sm swim.Member) {
+func (h *Handler) updateMember(sm swim.Member) {
 	log.Infof("update a member %v", sm)
 
 	q := fmt.Sprintf(
@@ -112,7 +112,7 @@ func (m *Mds) updateMember(sm swim.Member) {
 		`, sm.Status.String(), string(sm.Address), string(sm.ID),
 	)
 
-	_, err := m.store.Execute(q)
+	_, err := h.store.Execute(q)
 	if err != nil {
 		log.WithField("func", "updateMember").Error(err)
 	}

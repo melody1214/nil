@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/chanyoung/nil/pkg/cmap"
+	"github.com/chanyoung/nil/pkg/mds/membership"
 	"github.com/chanyoung/nil/pkg/mds/rpchandling"
 	"github.com/chanyoung/nil/pkg/mds/store"
 	"github.com/chanyoung/nil/pkg/nilmux"
@@ -32,6 +33,8 @@ type Mds struct {
 	nilLayer      *nilmux.Layer
 	nilRPCSrv     *rpc.Server
 	NilRPCHandler rpchandling.NilRPCHandler
+
+	membershipHandler *membership.Handler
 
 	raftTransportLayer *nilmux.RaftTransportLayer
 	raftLayer          *nilmux.Layer
@@ -80,10 +83,7 @@ func New(cfg *config.Mds) (*Mds, error) {
 	m.raftTransportLayer = nilmux.NewRaftTransportLayer(m.raftLayer)
 
 	// 7. Create a swim layer.
-	swimTypeBytes := []byte{
-		0x03, // rpcSwim
-	}
-	m.swimLayer = nilmux.NewLayer(swimTypeBytes, resolvedAddr, false)
+	m.swimLayer = nilmux.NewLayer(membership.TypeBytes(), resolvedAddr, false)
 	m.swimTransportLayer = nilmux.NewSwimTransportLayer(m.swimLayer)
 
 	// 8. Load a swim config.
@@ -131,6 +131,12 @@ func New(cfg *config.Mds) (*Mds, error) {
 		return nil, err
 	}
 
+	// 13. Create a membership handler.
+	m.membershipHandler, err = membership.NewHandler(m.store, m.swimSrv)
+	if err != nil {
+		return nil, err
+	}
+
 	// 13. Prepare the initial cluster map.
 	if err := cmap.Initial(cfg.ServerAddr + ":" + cfg.ServerPort); err != nil {
 		return nil, err
@@ -175,7 +181,7 @@ func (m *Mds) Start() {
 	for {
 		select {
 		case err := <-sc:
-			m.recover(err)
+			m.membershipHandler.Recover(err)
 		case <-sigc:
 			log.Info("Received stop signal from OS")
 			m.stop()
