@@ -50,9 +50,25 @@ var generateSQLBase = []string{
 			size int unsigned NOT NULL,
 			free int unsigned NOT NULL,
 			used int unsigned NOT NULL,
+			max_chain int unsigned NOT NULL,
 			speed varchar(32) charset ascii NOT NULL,
 			PRIMARY KEY (volume_id),
 			FOREIGN KEY (node_id) REFERENCES node (node_id)
+		) ENGINE=InnoDB DEFAULT CHARSET=ascii
+	`,
+	`
+		CREATE TABLE IF NOT EXISTS local_chain (
+			local_chain_id bigint unsigned NOT NULL AUTO_INCREMENT,
+			local_chain_status varchar(32) CHARACTER SET ascii NOT NULL,
+			first_volume_id bigint unsigned NOT NULL,
+			second_volume_id bigint unsigned NOT NULL,
+			third_volume_id bigint unsigned NOT NULL,
+			parity_volume_id bigint unsigned NOT NULL,
+			PRIMARY KEY (local_chain_id),
+			FOREIGN KEY (first_volume_id) REFERENCES volume (volume_id),
+			FOREIGN KEY (second_volume_id) REFERENCES volume (volume_id),
+			FOREIGN KEY (third_volume_id) REFERENCES volume (volume_id),
+			FOREIGN KEY (parity_volume_id) REFERENCES volume (volume_id)
 		) ENGINE=InnoDB DEFAULT CHARSET=ascii
 	`,
 	`
