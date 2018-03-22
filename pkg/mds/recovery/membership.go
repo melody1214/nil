@@ -1,44 +1,11 @@
-package membership
+package recovery
 
 import (
 	"database/sql"
 	"fmt"
 
 	"github.com/chanyoung/nil/pkg/swim"
-	"github.com/sirupsen/logrus"
 )
-
-func (h *Handler) Recover(pe swim.PingError) {
-	// 1. Logging the error.
-	log.WithFields(logrus.Fields{
-		"server":       "swim",
-		"message type": pe.Type,
-		"destID":       pe.DestID,
-	}).Warn(pe.Err)
-
-	// 2. Updates membership.
-	h.updateMembership()
-
-	// 3. Get the new version of cluster map.
-	newCMap, err := h.updateClusterMap()
-	if err != nil {
-		log.Error(err)
-	}
-
-	// 4. Save the new cluster map.
-	err = newCMap.Save()
-	if err != nil {
-		log.Error(err)
-	}
-
-	// 5. If the error message is occured because just simple membership
-	// changed, then finish the recover routine here.
-	if pe.Err == swim.ErrChanged {
-		return
-	}
-
-	// TODO: recovery routine.
-}
 
 func (h *Handler) updateMembership() {
 	membership := h.swimSrv.GetMap()
