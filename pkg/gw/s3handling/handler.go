@@ -122,6 +122,26 @@ func (h *Handler) s3RemoveBucket(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) s3PutObject(w http.ResponseWriter, r *http.Request) {
+	// Extract credential along with user authentication.
+	cred, s3Err := h.authRequest(r)
+	if s3Err != s3.ErrNone {
+		s3.SendError(w, s3Err, r.RequestURI, "")
+		return
+	}
+
+	// Extract bucket name and object name.
+	// ex) /bucketname/object1
+	// ->  bucketname/object1
+	// ->  bucketName: bucketname
+	// ->  objectName: object1
+	bucketAndObject := strings.SplitN(strings.Trim(r.RequestURI, "/"), "/", 2)
+	if len(bucketAndObject) < 2 {
+		s3.SendError(w, s3.ErrInvalidURI, r.RequestURI, "")
+		return
+	}
+
+	_ = cred
+
 	fmt.Fprintf(w, "%v", r)
 }
 
