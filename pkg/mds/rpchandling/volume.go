@@ -23,9 +23,9 @@ func (h *Handler) updateVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.Re
 	q := fmt.Sprintf(
 		`
 		UPDATE volume
-		SET volume_status='%s', size='%d', free='%d', used='%d', speed='%s'
+		SET volume_status='%s', size='%d', free='%d', used='%d', max_chain='%d', speed='%s' 
 		WHERE volume_id in ('%s')
-		`, req.Status, req.Size, req.Free, req.Used, req.Speed, req.ID,
+		`, req.Status, req.Size, req.Free, req.Used, calcMaxChain(req.Size), req.Speed, req.ID,
 	)
 
 	_, err := h.store.Execute(q)
@@ -41,9 +41,9 @@ func (h *Handler) insertNewVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc
 
 	q := fmt.Sprintf(
 		`
-		INSERT INTO volume (node_id, volume_status, size, free, used, speed)
-		SELECT node_id, '%s', '%d', '%d', '%d', '%s' FROM node WHERE node_name = '%s'
-		`, req.Status, req.Size, req.Free, req.Used, req.Speed, req.Ds,
+		INSERT INTO volume (node_id, volume_status, size, free, used, max_chain, speed)
+		SELECT node_id, '%s', '%d', '%d', '%d', '%d', '%s' FROM node WHERE node_name = '%s'
+		`, req.Status, req.Size, req.Free, req.Used, calcMaxChain(req.Size), req.Speed, req.Ds,
 	)
 
 	r, err := h.store.Execute(q)
@@ -58,4 +58,13 @@ func (h *Handler) insertNewVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc
 	res.ID = strconv.FormatInt(id, 10)
 
 	return nil
+}
+
+func calcMaxChain(volumeSize uint64) int {
+	if volumeSize <= 0 {
+		return 0
+	}
+
+	// Test, chain per 10MB,
+	return int(volumeSize / 10)
 }
