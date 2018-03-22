@@ -2,6 +2,7 @@ package recovery
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/chanyoung/nil/pkg/mds/store"
 	"github.com/chanyoung/nil/pkg/swim"
@@ -15,6 +16,8 @@ var log *logrus.Logger
 type Handler struct {
 	store   *store.Store
 	swimSrv *swim.Server
+
+	l sync.RWMutex
 }
 
 // NewHandler returns a new membership handler.
@@ -31,7 +34,11 @@ func NewHandler(store *store.Store, swimSrv *swim.Server) (*Handler, error) {
 	}, nil
 }
 
+// Recover handle the error message from the membership protocol.
 func (h *Handler) Recover(pe swim.PingError) {
+	h.l.Lock()
+	defer h.l.Unlock()
+
 	// 1. Logging the error.
 	log.WithFields(logrus.Fields{
 		"server":       "swim",
@@ -61,4 +68,22 @@ func (h *Handler) Recover(pe swim.PingError) {
 	}
 
 	// TODO: recovery routine.
+}
+
+// Rebalance checks and recalculates the local chain balance.
+func (h *Handler) Rebalance() {
+	h.l.Lock()
+	defer h.l.Unlock()
+
+	if !h.needRebalance() {
+		log.Info("no need rebalance")
+		return
+	}
+
+	log.Info("do rebalance")
+	if err := h.rebalance(); err != nil {
+		log.Error(err)
+	}
+
+	return
 }

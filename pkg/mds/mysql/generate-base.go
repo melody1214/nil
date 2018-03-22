@@ -50,6 +50,7 @@ var generateSQLBase = []string{
 			size int unsigned NOT NULL,
 			free int unsigned NOT NULL,
 			used int unsigned NOT NULL,
+			chain int unsigned NOT NULL,
 			max_chain int unsigned NOT NULL,
 			speed varchar(32) charset ascii NOT NULL,
 			PRIMARY KEY (volume_id),

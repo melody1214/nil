@@ -181,10 +181,20 @@ func (m *Mds) Start() {
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
 
+	// Make ticker for routinely rebalancing.
+	t, err := time.ParseDuration(m.cfg.Rebalance)
+	if err != nil {
+		log.Fatal(err)
+	}
+	rebalanceNoti := time.NewTicker(t)
+
 	for {
 		select {
 		case err := <-sc:
 			m.recoveryHandler.Recover(err)
+			m.recoveryHandler.Rebalance()
+		case <-rebalanceNoti.C:
+			m.recoveryHandler.Rebalance()
 		case <-sigc:
 			log.Info("Received stop signal from OS")
 			m.stop()

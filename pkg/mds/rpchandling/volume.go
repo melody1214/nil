@@ -41,9 +41,9 @@ func (h *Handler) insertNewVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc
 
 	q := fmt.Sprintf(
 		`
-		INSERT INTO volume (node_id, volume_status, size, free, used, max_chain, speed)
-		SELECT node_id, '%s', '%d', '%d', '%d', '%d', '%s' FROM node WHERE node_name = '%s'
-		`, req.Status, req.Size, req.Free, req.Used, calcMaxChain(req.Size), req.Speed, req.Ds,
+		INSERT INTO volume (node_id, volume_status, size, free, used, chain, max_chain, speed)
+		SELECT node_id, '%s', '%d', '%d', '%d', '%d', '%d', '%s' FROM node WHERE node_name = '%s'
+		`, req.Status, req.Size, req.Free, req.Used, 0, calcMaxChain(req.Size), req.Speed, req.Ds,
 	)
 
 	r, err := h.store.Execute(q)

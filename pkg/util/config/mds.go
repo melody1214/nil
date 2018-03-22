@@ -13,6 +13,9 @@ type Mds struct {
 	// WorkDir is a working directory of the mds.
 	WorkDir string
 
+	// Rebalance is a period of check balance.
+	Rebalance string
+
 	// MySQLUser is the user ID of MySQL database.
 	MySQLUser string
 	// MySQLPassword is the password of MySQL user.

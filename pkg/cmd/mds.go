@@ -48,6 +48,8 @@ func init() {
 	mdsCmd.Flags().StringVarP(&mdscfg.MySQLPort, "mysql-port", "", config.Get("mds.mysql_port"), "port number of mysql server")
 	mdsCmd.Flags().StringVarP(&mdscfg.MySQLDatabase, "mysql-database", "", config.Get("mds.mysql_database"), "mysql schema name")
 
+	mdsCmd.Flags().StringVarP(&mdscfg.Rebalance, "rebalance", "", config.Get("mds.rebalance"), "peroid for checking balance of the cluster")
+
 	mdsCmd.Flags().StringVarP(&mdscfg.Raft.LocalClusterAddr, "raft-local-cluster-addr", "", config.Get("raft.local_cluster_addr"), "raft local cluster end point")
 	mdsCmd.Flags().StringVarP(&mdscfg.Raft.LocalClusterRegion, "raft-local-cluster-region", "", config.Get("raft.local_cluster_region"), "region name of the local cluster")
 	mdsCmd.Flags().StringVarP(&mdscfg.Raft.GlobalClusterAddr, "raft-global-cluster-addr", "", config.Get("raft.global_cluster_addr"), "global raft cluster end point")

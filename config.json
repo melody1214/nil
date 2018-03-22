@@ -20,6 +20,8 @@
         "mysql_host": "localhost",
         "mysql_port": "3306",
 
+        "rebalance": "1m",
+
         "log_location": "stderr"
     },
     "ds": {

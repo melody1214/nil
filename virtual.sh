@@ -13,14 +13,16 @@ MNT=$DIR/mnt
 PENDINGCMD=$DIR/pending
 
 # Region names follow ISO-3166-1
-REGIONS=("KR" "US" "HK" "SG" "JP" "DE")
+#REGIONS=("KR" "US" "HK" "SG" "JP" "DE")
+REGIONS=("KR")
 GWBASEPORT=50000
 MDSBASEPORT=51000
 DSBASEPORT=52000
 
 # Disk configuration.
 DISKSIZE=100 # megabytes
-DISKNUM=3    # per ds
+# DISKNUM=3    # per ds
+DISKNUM=5    # per ds
 
 # User per region
 TOTALUSERS=0    # (REGIONUSERS) * (number of regions)
@@ -264,14 +266,16 @@ function main() {
 
     for region in ${REGIONS[@]}; do
         echo "set region $region ..."
-        runregion "$region" 1 1 3
+#        runregion "$region" 1 1 3
+        runregion "$region" 1 1 10
         sleep 3
     done
 
     # Execute pending command.
     if [ -e $PENDINGCMD ]; then
         # Give some time to each cluster member can join the membership.
-        sleep 90
+#        sleep 90
+        sleep 3
 
         # Read line by line ...
         while read cmd; do
