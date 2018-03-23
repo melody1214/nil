@@ -9,6 +9,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/chanyoung/nil/pkg/cmap"
+	"github.com/chanyoung/nil/pkg/ds/server/rpchandling"
 	"github.com/chanyoung/nil/pkg/ds/store"
 	"github.com/chanyoung/nil/pkg/ds/store/lvstore"
 	"github.com/chanyoung/nil/pkg/nilmux"
@@ -28,7 +30,7 @@ type Server struct {
 	nilMux        *nilmux.NilMux
 	nilLayer      *nilmux.Layer
 	nilRPCSrv     *rpc.Server
-	NilRPCHandler NilRPCHandler
+	NilRPCHandler rpchandling.NilRPCHandler
 
 	swimTransportLayer *nilmux.SwimTransportLayer
 	swimLayer          *nilmux.Layer
@@ -53,10 +55,7 @@ func New(cfg *config.Ds) (*Server, error) {
 	}
 
 	// Create a rpc layer.
-	rpcTypeBytes := []byte{
-		0x02, // rpcNil
-	}
-	srv.nilLayer = nilmux.NewLayer(rpcTypeBytes, resolvedAddr, false)
+	srv.nilLayer = nilmux.NewLayer(rpchandling.TypeBytes(), resolvedAddr, false)
 
 	swimTypeBytes := []byte{
 		0x03, // rpcSwim
@@ -93,20 +92,26 @@ func New(cfg *config.Ds) (*Server, error) {
 	srv.nilMux.RegisterLayer(srv.nilLayer)
 	srv.nilMux.RegisterLayer(srv.swimLayer)
 
+	// Prepare backend store.
+	if cfg.Store == "lv" {
+		srv.store = lvstore.NewService(cfg.WorkDir)
+	} else {
+		return nil, fmt.Errorf("unknown store type: %s", cfg.Store)
+	}
+
 	// Create nil RPC server.
 	srv.nilRPCSrv = rpc.NewServer()
-	if err := srv.registerNilRPCHandler(); err != nil {
+	srv.NilRPCHandler, err = rpchandling.New(cfg.ID, srv.store)
+	if err != nil {
 		return nil, err
 	}
 	if err := srv.nilRPCSrv.RegisterName(nilrpc.DSRPCPrefix, srv.NilRPCHandler); err != nil {
 		return nil, err
 	}
 
-	// Prepare backend store.
-	if cfg.Store == "lv" {
-		srv.store = lvstore.NewService(cfg.WorkDir)
-	} else {
-		return nil, fmt.Errorf("unknown store type: %s", cfg.Store)
+	// 13. Prepare the initial cluster map.
+	if err := cmap.Initial(cfg.Swim.CoordinatorAddr); err != nil {
+		return nil, err
 	}
 
 	return srv, nil
@@ -148,7 +153,13 @@ func (s *Server) stop() error {
 	return nil
 }
 
-func (s *Server) registerNilRPCHandler() (err error) {
-	s.NilRPCHandler, err = newNilRPCHandler(s)
-	return
+func (s *Server) serveNilRPC(l *nilmux.Layer) {
+	for {
+		conn, err := l.Accept()
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		go s.nilRPCSrv.ServeConn(conn)
+	}
 }
