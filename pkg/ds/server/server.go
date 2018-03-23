@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"net"
+	"net/http"
 	"net/rpc"
 	"os"
 	"os/signal"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/ds/server/rpchandling"
+	"github.com/chanyoung/nil/pkg/ds/server/s3handling"
 	"github.com/chanyoung/nil/pkg/ds/store"
 	"github.com/chanyoung/nil/pkg/ds/store/lvstore"
 	"github.com/chanyoung/nil/pkg/nilmux"
@@ -18,6 +20,7 @@ import (
 	"github.com/chanyoung/nil/pkg/swim"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
+	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
 
@@ -35,6 +38,10 @@ type Server struct {
 	swimTransportLayer *nilmux.SwimTransportLayer
 	swimLayer          *nilmux.Layer
 	swimSrv            *swim.Server
+	s3Handler          *s3handling.Handler
+	httpMux            *mux.Router
+	httpLayer          *nilmux.Layer
+	httpSrv            *http.Server
 
 	store store.Service
 }
@@ -109,6 +116,21 @@ func New(cfg *config.Ds) (*Server, error) {
 		return nil, err
 	}
 
+	srv.s3Handler, err = s3handling.New(srv.store)
+	if err != nil {
+		return nil, err
+	}
+	srv.httpLayer = nilmux.NewLayer(s3handling.TypeBytes(), resolvedAddr, true)
+	srv.nilMux.RegisterLayer(srv.httpLayer)
+	srv.httpMux = mux.NewRouter()
+	srv.s3Handler.RegisteredTo(srv.httpMux)
+	srv.httpSrv = &http.Server{
+		Handler:        srv.httpMux,
+		ReadTimeout:    10 * time.Second,
+		WriteTimeout:   10 * time.Second,
+		MaxHeaderBytes: 1 << 20,
+	}
+
 	// 13. Prepare the initial cluster map.
 	if err := cmap.Initial(cfg.Swim.CoordinatorAddr); err != nil {
 		return nil, err
@@ -119,9 +141,12 @@ func New(cfg *config.Ds) (*Server, error) {
 
 // Start starts to listen and serve RPCs.
 func (s *Server) Start() error {
+	go s.store.Run()
+
 	// Start tcp listen and serve.
 	go s.nilMux.ListenAndServeTLS()
 	go s.serveNilRPC(s.nilLayer)
+	go s.httpSrv.Serve(s.httpLayer)
 
 	// Starts swim service.
 	sc := make(chan swim.PingError, 1)

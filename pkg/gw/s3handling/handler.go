@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"math/rand"
+
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/kv"
 	"github.com/chanyoung/nil/pkg/nilrpc"
@@ -126,12 +128,12 @@ func (h *Handler) s3RemoveBucket(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) s3PutObject(w http.ResponseWriter, r *http.Request) {
 	// Extract credential along with user authentication.
-	cred, s3Err := h.authRequest(r)
-	if s3Err != s3.ErrNone {
-		s3.SendError(w, s3Err, r.RequestURI, "")
-		return
-	}
-	_ = cred
+	// cred, s3Err := h.authRequest(r)
+	// if s3Err != s3.ErrNone {
+	// 	s3.SendError(w, s3Err, r.RequestURI, "")
+	// 	return
+	// }
+	// _ = cred
 
 	// Extract bucket name and object name.
 	// ex) /bucketname/object1
@@ -152,15 +154,23 @@ func (h *Handler) s3PutObject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rpURL, err := url.Parse(node.Addr)
+	rpURL, err := url.Parse("https://" + node.Addr)
 	if err != nil {
 		logger.Error(err)
 		s3.SendError(w, s3.ErrInternalError, r.RequestURI, "")
 		return
 	}
 	proxy := httputil.NewSingleHostReverseProxy(rpURL)
-	proxy.ErrorLog = log.New(logger.Writer(), "http reverse proxy", log.Llongfile)
+	r.Header.Add("Volume-Id", randomVolumeID())
+	proxy.ErrorLog = log.New(logger.Writer(), "http reverse proxy", log.Lshortfile)
 	proxy.ServeHTTP(w, r)
+}
+
+// For Testing
+const volumes = "123456789"
+
+func randomVolumeID() string {
+	return string(volumes[rand.Intn(len(volumes))])
 }
 
 func (h *Handler) s3GetObject(w http.ResponseWriter, r *http.Request) {
