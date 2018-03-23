@@ -81,7 +81,7 @@ func (h *Handler) getSecretKey(accessKey string) (string, error) {
 		h.updateClusterMap()
 		mds, err = h.clusterMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
 		if err != nil {
-			log.Error(err)
+			logger.Error(err)
 			return "", err
 		}
 	}

@@ -2,8 +2,11 @@ package s3handling
 
 import (
 	"fmt"
+	"log"
 	"net/http"
+	"net/http/httputil"
 	"net/rpc"
+	"net/url"
 	"strings"
 	"time"
 
@@ -16,7 +19,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var log *logrus.Logger
+var logger *logrus.Logger
 
 // TypeBytes returns rpc type bytes which is used to multiplexing.
 func TypeBytes() []byte {
@@ -36,7 +39,7 @@ type Handler struct {
 
 // NewHandler returns a new rpc handler.
 func NewHandler() *Handler {
-	log = mlog.GetLogger()
+	logger = mlog.GetLogger()
 
 	return &Handler{
 		clusterMap: cmap.New(),
@@ -74,7 +77,7 @@ func (h *Handler) s3MakeBucket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Infof("%+v", cred)
+	logger.Infof("%+v", cred)
 
 	// Extract bucket name.
 	// ex) /bucketname/ -> bucketname
@@ -128,6 +131,7 @@ func (h *Handler) s3PutObject(w http.ResponseWriter, r *http.Request) {
 		s3.SendError(w, s3Err, r.RequestURI, "")
 		return
 	}
+	_ = cred
 
 	// Extract bucket name and object name.
 	// ex) /bucketname/object1
@@ -140,9 +144,23 @@ func (h *Handler) s3PutObject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_ = cred
+	// Test code
+	c := h.clusterMap.SearchCall()
+	node, err := c.Type(cmap.DS).Do()
+	if err != nil {
+		s3.SendError(w, s3.ErrInternalError, r.RequestURI, "")
+		return
+	}
 
-	fmt.Fprintf(w, "%v", r)
+	rpURL, err := url.Parse(node.Addr)
+	if err != nil {
+		logger.Error(err)
+		s3.SendError(w, s3.ErrInternalError, r.RequestURI, "")
+		return
+	}
+	proxy := httputil.NewSingleHostReverseProxy(rpURL)
+	proxy.ErrorLog = log.New(logger.Writer(), "http reverse proxy", log.Llongfile)
+	proxy.ServeHTTP(w, r)
 }
 
 func (h *Handler) s3GetObject(w http.ResponseWriter, r *http.Request) {
@@ -157,7 +175,7 @@ func (h *Handler) s3DeleteObject(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) updateClusterMap() {
 	m, err := cmap.GetLatest(cmap.WithFromRemote(true))
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 		return
 	}
 
