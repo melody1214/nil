@@ -10,6 +10,7 @@ import (
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/s3"
+	"github.com/pkg/errors"
 )
 
 func (h *Handler) authRequest(r *http.Request) (cred s3.CredV4, err s3.ErrorCode) {
@@ -31,6 +32,7 @@ func (h *Handler) authRequest(r *http.Request) (cred s3.CredV4, err s3.ErrorCode
 	cred = authArgs.Credential
 	secretKey, e := h.getSecretKey(cred.AccessKey)
 	if e != nil {
+		logger.WithField("method", "Handler.authRequest").Error(errors.Wrap(e, "get secret key failed"))
 		return cred, s3.ErrInternalError
 	} else if secretKey == "" {
 		return cred, s3.ErrInvalidAccessKeyId
@@ -81,15 +83,14 @@ func (h *Handler) getSecretKey(accessKey string) (string, error) {
 		h.updateClusterMap()
 		mds, err = h.clusterMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
 		if err != nil {
-			logger.Error(err)
-			return "", err
+			return "", errors.Wrap(err, "find alive mds failed")
 		}
 	}
 
 	// 3. Try dial to mds.
 	conn, err := nilrpc.Dial(mds.Addr, nilrpc.RPCNil, time.Duration(2*time.Second))
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "dial to mds failed")
 	}
 	defer conn.Close()
 
@@ -99,7 +100,7 @@ func (h *Handler) getSecretKey(accessKey string) (string, error) {
 	// 4. Request the secret key.
 	cli := rpc.NewClient(conn)
 	if err := cli.Call(nilrpc.GetCredential.String(), req, res); err != nil {
-		return "", err
+		return "", errors.Wrap(err, "mds rpc client calling failed")
 	}
 
 	// 5. No matched key.

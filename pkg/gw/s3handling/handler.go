@@ -18,10 +18,11 @@ import (
 	"github.com/chanyoung/nil/pkg/s3"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
-var logger *logrus.Logger
+var logger *logrus.Entry
 
 // TypeBytes returns rpc type bytes which is used to multiplexing.
 func TypeBytes() []byte {
@@ -41,7 +42,7 @@ type Handler struct {
 
 // NewHandler returns a new rpc handler.
 func NewHandler() *Handler {
-	logger = mlog.GetLogger()
+	logger = mlog.GetLogger().WithField("package", "gw/s3handling")
 
 	return &Handler{
 		clusterMap: cmap.New(),
@@ -78,8 +79,6 @@ func (h *Handler) s3MakeBucket(w http.ResponseWriter, r *http.Request) {
 		s3.SendError(w, s3Err, r.RequestURI, "")
 		return
 	}
-
-	logger.Infof("%+v", cred)
 
 	// Extract bucket name.
 	// ex) /bucketname/ -> bucketname
@@ -156,7 +155,14 @@ func (h *Handler) s3PutObject(w http.ResponseWriter, r *http.Request) {
 
 	rpURL, err := url.Parse("https://" + node.Addr)
 	if err != nil {
-		logger.Error(err)
+		logger.WithField("method", "Handler.s3PutObject").Error(
+			errors.Wrapf(
+				err,
+				"parse ds url failed, ds ID: %s, ds url: %s",
+				node.ID.String(),
+				node.Addr,
+			),
+		)
 		s3.SendError(w, s3.ErrInternalError, r.RequestURI, "")
 		return
 	}
@@ -185,7 +191,12 @@ func (h *Handler) s3DeleteObject(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) updateClusterMap() {
 	m, err := cmap.GetLatest(cmap.WithFromRemote(true))
 	if err != nil {
-		logger.Error(err)
+		logger.WithField("method", "Handler.updateClusterMap").Error(
+			errors.Wrap(
+				err,
+				"get the latest cluster map from remote failed",
+			),
+		)
 		return
 	}
 

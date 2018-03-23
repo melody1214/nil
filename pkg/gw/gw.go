@@ -1,7 +1,6 @@
 package gw
 
 import (
-	"errors"
 	"net"
 	"net/http"
 	"os"
@@ -17,10 +16,11 @@ import (
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/chanyoung/nil/pkg/util/uuid"
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
-var log *logrus.Logger
+var log *logrus.Entry
 
 // Gw is the [project name] gateway server node.
 type Gw struct {
@@ -42,17 +42,18 @@ type Gw struct {
 func New(cfg *config.Gw) (*Gw, error) {
 	// 1. Setting logger.
 	if err := mlog.Init(cfg.LogLocation); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "init log failed")
 	}
-	log = mlog.GetLogger()
+	log = mlog.GetLogger().WithField("package", "gw")
 	if log == nil {
-		return nil, errors.New("nil logger object")
+		return nil, errors.New("init log failed: nil logger object")
 	}
-	log.WithField("location", cfg.LogLocation).Info("Setting logger succeeded")
+	ctxLogger := log.WithField("method", "New")
+	ctxLogger.Info("Setting logger succeeded")
 
 	// 2. Generate gateway ID.
 	cfg.ID = uuid.Gen()
-	log.WithField("uuid", cfg.ID).Info("Generating gateway UUID succeeded")
+	ctxLogger.WithField("uuid", cfg.ID).Info("Generating gateway UUID succeeded")
 
 	// 3. Creates gateway server object with the given config.
 	g := &Gw{cfg: cfg}
@@ -61,7 +62,7 @@ func New(cfg *config.Gw) (*Gw, error) {
 	addr := cfg.ServerAddr + ":" + cfg.ServerPort
 	resolvedAddr, err := net.ResolveTCPAddr("tcp", cfg.ServerAddr+":"+cfg.ServerPort)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "resolve gateway address failed")
 	}
 
 	// 5. Create each handlers.
@@ -93,17 +94,18 @@ func New(cfg *config.Gw) (*Gw, error) {
 
 	// 11. Prepare the initial cluster map.
 	if err := cmap.Initial(cfg.FirstMds); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "init cluster map failed")
 	}
 
-	log.Info("Creating gateway object succeeded")
+	ctxLogger.Info("Creating gateway object succeeded")
 
 	return g, nil
 }
 
 // Start starts the gateway.
 func (g *Gw) Start() {
-	log.Info("Start gateway service ...")
+	ctxLogger := log.WithField("method", "Gw.Start")
+	ctxLogger.Info("Start gateway service ...")
 
 	go g.nilMux.ListenAndServeTLS()
 	go g.serveRPC()
@@ -116,7 +118,7 @@ func (g *Gw) Start() {
 	for {
 		select {
 		case <-sigc:
-			log.Info("Received stop signal from OS")
+			ctxLogger.Info("Received stop signal from OS")
 			g.stop()
 			return
 		}
@@ -127,7 +129,7 @@ func (g *Gw) Start() {
 func (g *Gw) stop() error {
 	// nilMux will closes listener and all the registered layers.
 	if err := g.nilMux.Close(); err != nil {
-		return err
+		return errors.Wrap(err, "close nil mux failed")
 	}
 
 	// Close the http server.
@@ -138,7 +140,12 @@ func (g *Gw) serveRPC() {
 	for {
 		conn, err := g.nilLayer.Accept()
 		if err != nil {
-			log.Error(err)
+			log.WithField("method", "Gw.serveRPC").Error(
+				errors.Wrap(
+					err,
+					"accept connection from nil layer failed",
+				),
+			)
 			return
 		}
 

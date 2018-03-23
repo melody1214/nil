@@ -9,10 +9,11 @@ import (
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/security"
 	"github.com/chanyoung/nil/pkg/util/mlog"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
-var log *logrus.Logger
+var log *logrus.Entry
 
 // TypeBytes returns rpc type bytes which is used to multiplexing.
 func TypeBytes() []byte {
@@ -29,7 +30,7 @@ type Handler struct {
 
 // NewHandler returns a new rpc handler.
 func NewHandler() *Handler {
-	log = mlog.GetLogger()
+	log = mlog.GetLogger().WithField("package", "gw/rpchandling")
 
 	return &Handler{
 		clusterMap: cmap.New(),
@@ -48,7 +49,7 @@ func (h *Handler) Proxying(conn net.Conn) {
 		h.updateClusterMap()
 		mds, err = h.clusterMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
 		if err != nil {
-			log.Error(err)
+			log.WithField("method", "Handler.Proxying").Error(errors.Wrap(err, "find alive mds failed"))
 			return
 		}
 	}
@@ -56,7 +57,7 @@ func (h *Handler) Proxying(conn net.Conn) {
 	// 3. Dial with tls.
 	remote, err := tls.DialWithDialer(dialer, "tcp", mds.Addr, tlsConfig)
 	if err != nil {
-		log.WithField("pkg", "rpchandling").Error(err)
+		log.WithField("method", "Handler.Proxying").Error(errors.Wrap(err, "dial to mds failed"))
 		return
 	}
 
@@ -69,7 +70,7 @@ func (h *Handler) Proxying(conn net.Conn) {
 func (h *Handler) updateClusterMap() {
 	m, err := cmap.GetLatest(cmap.WithFromRemote(true))
 	if err != nil {
-		log.Error(err)
+		log.WithField("method", "Handler.updateClusterMap").Error(err)
 		return
 	}
 
