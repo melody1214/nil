@@ -98,6 +98,8 @@ func (h *Handler) s3PutObject(w http.ResponseWriter, r *http.Request) {
 		s3.SendError(w, s3.ErrInternalError, r.RequestURI, "")
 	}
 	logger.Info("Finished")
+
+	s3.SendSuccess(w)
 	// fmt.Fprintf(w, "%v", r)
 }
 
