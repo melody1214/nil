@@ -27,6 +27,8 @@ const (
 	GetClusterMap
 	RegisterVolume
 	GetLocalChain
+	GetAllChain
+	GetAllVolume
 
 	// DS methods.
 	AddVolume
@@ -48,6 +50,10 @@ func (m MethodName) String() string {
 		return MDSRPCPrefix + "." + "RegisterVolume"
 	case GetLocalChain:
 		return MDSRPCPrefix + "." + "GetLocalChain"
+	case GetAllChain:
+		return MDSRPCPrefix + "." + "GetAllChain"
+	case GetAllVolume:
+		return MDSRPCPrefix + "." + "GetAllVolume"
 	case AddVolume:
 		return DSRPCPrefix + "." + "AddVolume"
 	default:
@@ -164,6 +170,27 @@ type GetLocalChainResponse struct {
 	LocalChainID   int64
 	ParityVolumeID int64
 	ParityNodeID   int64
+}
+
+type Chain struct {
+	ID             int64
+	FirstVolumeID  int64
+	SecondVolumeID int64
+	ThirdVolumeID  int64
+	ParityVolumeID int64
+}
+type GetAllChainRequest struct{}
+type GetAllChainResponse struct {
+	Chains []Chain
+}
+
+type Volume struct {
+	ID     int64
+	NodeID int64
+}
+type GetAllVolumeRequest struct{}
+type GetAllVolumeResponse struct {
+	Volumes []Volume
 }
 
 // Dial dials with the given rpc type connection to the address.

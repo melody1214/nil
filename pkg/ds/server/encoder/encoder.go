@@ -2,12 +2,16 @@ package encoder
 
 import (
 	"strings"
+	"time"
+
+	"github.com/chanyoung/nil/pkg/util/mlog"
 
 	"github.com/chanyoung/nil/pkg/ds/store"
 	"github.com/chanyoung/nil/pkg/ds/store/request"
 )
 
 type Encoder struct {
+	emap   map[int64]encodeGroup
 	s      store.Service
 	q      *queue
 	pushCh chan interface{}
@@ -15,6 +19,7 @@ type Encoder struct {
 
 func NewEncoder(s store.Service) *Encoder {
 	return &Encoder{
+		emap:   make(map[int64]encodeGroup),
 		s:      s,
 		q:      newRequestsQueue(),
 		pushCh: make(chan interface{}, 1),
@@ -22,10 +27,15 @@ func NewEncoder(s store.Service) *Encoder {
 }
 
 func (e *Encoder) Run() {
+	updateMapNoti := time.NewTicker(10 * time.Second)
+
 	for {
 		select {
 		case <-e.pushCh:
 			e.doAll()
+		case <-updateMapNoti.C:
+			e.updateGroup()
+			mlog.GetLogger().Infof("%+v", e.emap)
 		}
 	}
 }
