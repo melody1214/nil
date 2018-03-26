@@ -110,3 +110,33 @@ func (h *Handler) getSecretKey(accessKey string) (string, error) {
 
 	return res.SecretKey, nil
 }
+
+// For testing. Will be removed soon.
+func (h *Handler) getLocalChain() (*nilrpc.GetLocalChainResponse, error) {
+	mds, err := h.clusterMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
+	if err != nil {
+		h.updateClusterMap()
+		mds, err = h.clusterMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
+		if err != nil {
+			return nil, errors.Wrap(err, "find alive mds failed")
+		}
+	}
+
+	// 3. Try dial to mds.
+	conn, err := nilrpc.Dial(mds.Addr, nilrpc.RPCNil, time.Duration(2*time.Second))
+	if err != nil {
+		return nil, errors.Wrap(err, "dial to mds failed")
+	}
+	defer conn.Close()
+
+	req := &nilrpc.GetLocalChainRequest{}
+	res := &nilrpc.GetLocalChainResponse{}
+
+	// 4. Request the secret key.
+	cli := rpc.NewClient(conn)
+	if err := cli.Call(nilrpc.GetLocalChain.String(), req, res); err != nil {
+		return nil, errors.Wrap(err, "mds rpc client calling failed")
+	}
+
+	return res, nil
+}

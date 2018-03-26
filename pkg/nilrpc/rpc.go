@@ -26,6 +26,7 @@ const (
 	AddBucket
 	GetClusterMap
 	RegisterVolume
+	GetLocalChain
 
 	// DS methods.
 	AddVolume
@@ -45,6 +46,8 @@ func (m MethodName) String() string {
 		return MDSRPCPrefix + "." + "GetClusterMap"
 	case RegisterVolume:
 		return MDSRPCPrefix + "." + "RegisterVolume"
+	case GetLocalChain:
+		return MDSRPCPrefix + "." + "GetLocalChain"
 	case AddVolume:
 		return DSRPCPrefix + "." + "AddVolume"
 	default:
@@ -155,6 +158,13 @@ type AddVolumeRequest struct {
 
 // AddVolumeResponse is a response message to add volume request.
 type AddVolumeResponse struct{}
+
+type GetLocalChainRequest struct{}
+type GetLocalChainResponse struct {
+	LocalChainID   int64
+	ParityVolumeID int64
+	ParityNodeID   int64
+}
 
 // Dial dials with the given rpc type connection to the address.
 func Dial(addr string, rpcType RPCType, timeout time.Duration) (net.Conn, error) {

@@ -26,6 +26,8 @@ type NilRPCHandler interface {
 
 	// RegisterVolume adds a new volume from ds into the db and returns a registered volume id.
 	RegisterVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.RegisterVolumeResponse) error
+
+	GetLocalChain(req *nilrpc.GetLocalChainRequest, res *nilrpc.GetLocalChainResponse) error
 }
 
 // TypeBytes returns rpc type bytes which is used to multiplexing.

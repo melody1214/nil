@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"math/rand"
+	"strconv"
 
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/kv"
@@ -127,12 +127,19 @@ func (h *Handler) s3RemoveBucket(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) s3PutObject(w http.ResponseWriter, r *http.Request) {
 	// Extract credential along with user authentication.
-	// cred, s3Err := h.authRequest(r)
-	// if s3Err != s3.ErrNone {
-	// 	s3.SendError(w, s3Err, r.RequestURI, "")
-	// 	return
-	// }
-	// _ = cred
+	cred, s3Err := h.authRequest(r)
+	if s3Err != s3.ErrNone {
+		s3.SendError(w, s3Err, r.RequestURI, "")
+		return
+	}
+	_ = cred
+
+	res, err := h.getLocalChain()
+	if err != nil {
+		logger.Error(err)
+		s3.SendError(w, s3.ErrInternalError, r.RequestURI, "")
+		return
+	}
 
 	// Extract bucket name and object name.
 	// ex) /bucketname/object1
@@ -147,7 +154,7 @@ func (h *Handler) s3PutObject(w http.ResponseWriter, r *http.Request) {
 
 	// Test code
 	c := h.clusterMap.SearchCall()
-	node, err := c.Type(cmap.DS).Do()
+	node, err := c.ID(cmap.ID(res.ParityNodeID)).Do()
 	if err != nil {
 		s3.SendError(w, s3.ErrInternalError, r.RequestURI, "")
 		return
@@ -167,16 +174,10 @@ func (h *Handler) s3PutObject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	proxy := httputil.NewSingleHostReverseProxy(rpURL)
-	r.Header.Add("Volume-Id", randomVolumeID())
+	r.Header.Add("Volume-Id", strconv.FormatInt(res.ParityVolumeID, 10))
+	r.Header.Add("Local-Chain-Id", strconv.FormatInt(res.LocalChainID, 10))
 	proxy.ErrorLog = log.New(logger.Writer(), "http reverse proxy", log.Lshortfile)
 	proxy.ServeHTTP(w, r)
-}
-
-// For Testing
-const volumes = "123456789"
-
-func randomVolumeID() string {
-	return string(volumes[rand.Intn(len(volumes))])
 }
 
 func (h *Handler) s3GetObject(w http.ResponseWriter, r *http.Request) {

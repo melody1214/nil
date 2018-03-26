@@ -260,12 +260,28 @@ function createbuckets() {
     done
 }
 
+function putobjects() {
+    for i in $(seq 1 $TOTALUSERS); do
+        local ak=user$i[accesskey]
+        local sk=user$i[secretkey]
+        local region=user$i[bucketregion]
+
+        for j in $(seq 1 $BUCKETS); do
+            local bucket="user$i-bucket$j"
+
+            for k in $(seq 1 100); do
+                s3cmd put README.md s3://$bucket/obj$k --access_key=${!ak} --secret_key=${!sk} --region=${!region} --no-check-hostname
+            done
+        done
+    done
+}
+
 function main() {
     purge
 
     for region in ${REGIONS[@]}; do
         echo "set region $region ..."
-        runregion "$region" 1 1 3
+        runregion "$region" 1 1 6
         sleep 3
     done
 
@@ -288,6 +304,10 @@ function main() {
     # Create buckets.
     sleep 3
     createbuckets
+
+    # Put objects.
+    sleep 3
+    putobjects
 }
 
 # Run as root.
