@@ -261,6 +261,8 @@ function createbuckets() {
 }
 
 function putobjects() {
+    fallocate -l 1M $DIR/dummy1M
+
     for i in $(seq 1 $TOTALUSERS); do
         local ak=user$i[accesskey]
         local sk=user$i[secretkey]
@@ -269,8 +271,8 @@ function putobjects() {
         for j in $(seq 1 $BUCKETS); do
             local bucket="user$i-bucket$j"
 
-            for k in $(seq 1 100); do
-                s3cmd put README.md s3://$bucket/obj$k --access_key=${!ak} --secret_key=${!sk} --region=${!region} --no-check-hostname
+            for k in $(seq 1 3); do
+                s3cmd put $DIR/dummy1M s3://$bucket/obj$k --access_key=${!ak} --secret_key=${!sk} --region=${!region} --no-check-hostname
             done
         done
     done

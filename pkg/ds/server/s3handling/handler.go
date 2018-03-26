@@ -3,6 +3,7 @@ package s3handling
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/ds/store"
@@ -78,7 +79,7 @@ func (h *Handler) s3PutObject(w http.ResponseWriter, r *http.Request) {
 	req := &request.Request{
 		Op:  request.Write,
 		Vol: r.Header.Get("Volume-Id"),
-		Oid: "AAA",
+		Oid: strings.Replace(strings.Trim(r.RequestURI, "/"), "/", ".", -1),
 
 		In: r.Body,
 	}
@@ -99,8 +100,17 @@ func (h *Handler) s3PutObject(w http.ResponseWriter, r *http.Request) {
 	}
 	logger.Info("Finished")
 
+	attrs := r.Header.Get("X-Amz-Meta-S3cmd-Attrs")
+	var md5str string
+	for _, attr := range strings.Split(attrs, "/") {
+		if strings.HasPrefix(attr, "md5:") {
+			md5str = strings.Split(attr, ":")[1]
+			break
+		}
+	}
+
+	w.Header().Set("ETag", md5str)
 	s3.SendSuccess(w)
-	// fmt.Fprintf(w, "%v", r)
 }
 
 func (h *Handler) s3GetObject(w http.ResponseWriter, r *http.Request) {
