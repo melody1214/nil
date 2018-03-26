@@ -300,15 +300,15 @@ function main() {
     fi
 
     # Create users.
-    sleep 3
+    sleep 5
     createusers
 
     # Create buckets.
-    sleep 3
+    sleep 5
     createbuckets
 
     # Put objects.
-    sleep 3
+    sleep 5
     putobjects
 }
 

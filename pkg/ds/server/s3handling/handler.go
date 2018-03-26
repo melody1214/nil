@@ -8,6 +8,7 @@ import (
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/ds/server/encoder"
 	"github.com/chanyoung/nil/pkg/ds/store"
+	"github.com/chanyoung/nil/pkg/ds/store/request"
 	"github.com/chanyoung/nil/pkg/s3"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/gorilla/mux"
@@ -81,6 +82,27 @@ func (h *Handler) s3RemoveBucket(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) s3PutObject(w http.ResponseWriter, r *http.Request) {
+	attrs := r.Header.Get("X-Amz-Meta-S3cmd-Attrs")
+	if attrs == "" {
+		storeReq := &request.Request{
+			Op:  request.Write,
+			Vol: r.Header.Get("Volume-Id"),
+			Oid: strings.Replace(strings.Trim(r.URL.Path, "/"), "/", ".", -1),
+
+			In: r.Body,
+		}
+		h.store.Push(storeReq)
+
+		err := storeReq.Wait()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	req := encoder.NewRequest(r)
 	h.encoder.Push(req)
 	if err := req.Wait(); err != nil {
@@ -89,7 +111,6 @@ func (h *Handler) s3PutObject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	attrs := r.Header.Get("X-Amz-Meta-S3cmd-Attrs")
 	var md5str string
 	for _, attr := range strings.Split(attrs, "/") {
 		if strings.HasPrefix(attr, "md5:") {

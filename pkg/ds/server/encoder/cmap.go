@@ -2,6 +2,7 @@ package encoder
 
 import (
 	"net/rpc"
+	"strconv"
 	"time"
 
 	"github.com/chanyoung/nil/pkg/cmap"
@@ -123,6 +124,6 @@ func (e *Encoder) updateGroup() {
 		g.parityVolNodeID = id
 		g.parityVolNodeAddr = n.Addr
 
-		e.emap[g.id] = g
+		e.emap[strconv.FormatInt(g.id, 10)] = g
 	}
 }
