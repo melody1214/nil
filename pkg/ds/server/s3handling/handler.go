@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/chanyoung/nil/pkg/cmap"
+	"github.com/chanyoung/nil/pkg/ds/server/encoder"
 	"github.com/chanyoung/nil/pkg/ds/store"
-	"github.com/chanyoung/nil/pkg/ds/store/request"
 	"github.com/chanyoung/nil/pkg/s3"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/gorilla/mux"
@@ -29,6 +29,7 @@ func TypeBytes() []byte {
 type Handler struct {
 	clusterMap *cmap.CMap
 	store      store.Service
+	encoder    *encoder.Encoder
 }
 
 // New returns a new s3 handler.
@@ -39,9 +40,13 @@ func New(s store.Service) (*Handler, error) {
 		return nil, fmt.Errorf("nil store object")
 	}
 
+	enc := encoder.NewEncoder(s)
+	go enc.Run()
+
 	return &Handler{
 		store:      s,
 		clusterMap: cmap.New(),
+		encoder:    enc,
 	}, nil
 }
 
@@ -76,29 +81,13 @@ func (h *Handler) s3RemoveBucket(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) s3PutObject(w http.ResponseWriter, r *http.Request) {
-	req := &request.Request{
-		Op:  request.Write,
-		Vol: r.Header.Get("Volume-Id"),
-		Oid: strings.Replace(strings.Trim(r.RequestURI, "/"), "/", ".", -1),
-
-		In: r.Body,
-	}
-
-	logger.Infof("%+v", req)
-
-	err := h.store.Push(req)
-	if err != nil {
+	req := encoder.NewRequest(r)
+	h.encoder.Push(req)
+	if err := req.Wait(); err != nil {
 		logger.Error(err)
 		s3.SendError(w, s3.ErrInternalError, r.RequestURI, "")
 		return
 	}
-
-	err = req.Wait()
-	if err != nil {
-		logger.Error(err)
-		s3.SendError(w, s3.ErrInternalError, r.RequestURI, "")
-	}
-	logger.Info("Finished")
 
 	attrs := r.Header.Get("X-Amz-Meta-S3cmd-Attrs")
 	var md5str string
