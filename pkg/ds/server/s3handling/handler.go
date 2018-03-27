@@ -93,11 +93,12 @@ func (h *Handler) s3PutObject(w http.ResponseWriter, r *http.Request) {
 		}
 
 		storeReq := &request.Request{
-			Op:    request.Write,
-			Vol:   r.Header.Get("Volume-Id"),
-			Oid:   strings.Replace(strings.Trim(r.URL.Path, "/"), "/", ".", -1),
-			Cid:   r.Header.Get("Chunk-Id"),
-			Osize: osize,
+			Op:     request.Write,
+			Vol:    r.Header.Get("Volume-Id"),
+			Oid:    strings.Replace(strings.Trim(r.URL.Path, "/"), "/", ".", -1),
+			Cid:    r.Header.Get("Chunk-Id"),
+			LocGid: r.Header.Get("Local-Chain-Id"),
+			Osize:  osize,
 
 			In: r.Body,
 		}

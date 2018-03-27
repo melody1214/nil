@@ -36,11 +36,11 @@ func (s *Service) Run() {
 		select {
 		case <-s.pushCh:
 			if c := s.requestQueue.pop(); c != nil {
-				s.handleCall(c)
+				go s.handleCall(c)
 			}
 		case <-checkTicker.C:
 			if c := s.requestQueue.pop(); c != nil {
-				s.handleCall(c)
+				go s.handleCall(c)
 			}
 		}
 	}

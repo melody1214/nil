@@ -96,11 +96,12 @@ func (e *Encoder) do(r *Request) {
 
 	parityCID := e.chunkMap[lcid].chunkID + "-" + strconv.Itoa(e.chunkMap[lcid].seq)
 	req := &request.Request{
-		Op:    request.Write,
-		Vol:   r.R.Header.Get("Volume-Id"),
-		Oid:   strings.Replace(strings.Trim(r.R.RequestURI, "/"), "/", ".", -1),
-		Cid:   parityCID,
-		Osize: osize,
+		Op:     request.Write,
+		Vol:    r.R.Header.Get("Volume-Id"),
+		LocGid: lcid,
+		Oid:    strings.Replace(strings.Trim(r.R.RequestURI, "/"), "/", ".", -1),
+		Cid:    parityCID,
+		Osize:  osize,
 
 		In: r.R.Body,
 	}
@@ -177,9 +178,10 @@ func (e *Encoder) do(r *Request) {
 	// mlog.GetLogger().Errorf("%+v", *copyReq)
 
 	req = &request.Request{
-		Op:  request.Read,
-		Vol: r.R.Header.Get("Volume-Id"),
-		Oid: strings.Replace(strings.Trim(r.R.RequestURI, "/"), "/", ".", -1),
+		Op:     request.Read,
+		Vol:    r.R.Header.Get("Volume-Id"),
+		LocGid: lcid,
+		Oid:    strings.Replace(strings.Trim(r.R.RequestURI, "/"), "/", ".", -1),
 		// Cid:   e.chunkMap[lcid].chunkID,
 		Cid:   parityCID,
 		Osize: osize,
