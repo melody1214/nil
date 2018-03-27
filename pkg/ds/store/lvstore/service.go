@@ -83,6 +83,7 @@ func (s *Service) AddVolume(v *volume.Vol) error {
 		Vol: v,
 	}
 
+	v.ChunkSize = 10000000
 	// Set volume has running state.
 	v.Status = volume.Active
 
@@ -109,31 +110,86 @@ func (s *Service) read(r *request.Request) {
 		return
 	}
 
-	f, err := os.Open(lv.MntPoint + "/" + r.Oid)
+	fmt.Println("---In read---")
+	for key, value := range lv.Objs {
+		fmt.Println(key, value)
+	}
+
+	obj, ok := lv.Objs[r.Oid]
+	if !ok {
+		r.Err = fmt.Errorf("no such object: %s", r.Oid)
+		return
+	}
+
+	fmt.Println("---In read---")
+	fmt.Println("obj.Cid : ", obj.Cid, " obj.Offset : ", obj.Offset)
+
+	fChunk, err := os.Open(lv.MntPoint + "/" + obj.Cid)
 	if err != nil {
 		r.Err = err
 		return
 	}
-	defer f.Close()
 
-	_, r.Err = io.Copy(r.Out, f)
+	fmt.Println("File open completed")
+
+	defer fChunk.Close()
+
+	_, err = fChunk.Seek(obj.Offset, os.SEEK_SET)
+	if err != nil {
+		r.Err = err
+		return
+	}
+
+	if _, err = io.CopyN(r.Out, fChunk, r.Osize); err != nil {
+		r.Err = err
+		return
+	}
 }
 
-func (s *Service) write(r *request.Request) {
+func (s *Service) write(r *request.Request) error {
 	lv, ok := s.lvs[r.Vol]
 	if !ok {
 		r.Err = fmt.Errorf("no such lv: %s", r.Vol)
-		return
+		return nil
 	}
 
-	f, err := os.Create(lv.MntPoint + "/" + r.Oid)
+	// Chunk file open
+	fChunk, err := os.OpenFile(lv.MntPoint+"/"+r.Cid, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		r.Err = err
-		return
+		return nil
 	}
-	defer f.Close()
+	defer fChunk.Close()
 
-	_, r.Err = io.Copy(f, r.In)
+	// Check chunk file info
+	fChunkName := fChunk.Name()
+
+	fChunkInfo, err := os.Lstat(fChunkName)
+	if err != nil {
+		r.Err = err
+		return nil
+	}
+
+	fChunkLen := fChunkInfo.Size()
+
+	fmt.Println("request : ", r.Op, r.Vol, r.Oid, r.Cid, r.Osize)
+	fmt.Println("fChunkLen : ", fChunkLen, ", lv.ChunkSize : ", lv.ChunkSize)
+
+	if fChunkLen < lv.ChunkSize {
+		if lv.ChunkSize-fChunkLen >= r.Osize {
+			if _, err = io.CopyN(fChunk, r.In, r.Osize); err != nil {
+				return nil
+			}
+			lv.Objs[r.Oid] = volume.ObjMap{Cid: r.Cid, Offset: fChunkLen}
+		} else {
+			if err := fChunk.Truncate(lv.ChunkSize); err != nil {
+				return err
+			}
+			fmt.Println("Truncated")
+		}
+	}
+
+	return nil
 }
 
 func (s *Service) delete(r *request.Request) {

@@ -59,6 +59,12 @@ func (s Status) String() string {
 	}
 }
 
+// ObjMap contains mapping information of objects.
+type ObjMap struct {
+	Cid    string
+	Offset int64
+}
+
 // Vol contains information about the volume.
 type Vol struct {
 	Name     string
@@ -69,6 +75,9 @@ type Vol struct {
 	Used     uint64
 	Speed    Speed
 	Status   Status
+
+	ChunkSize int64
+	Objs      map[string]ObjMap
 }
 
 // NewVol collects information about the volume with the given
