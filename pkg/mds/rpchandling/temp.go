@@ -11,12 +11,20 @@ func (h *Handler) GetLocalChain(req *nilrpc.GetLocalChainRequest, res *nilrpc.Ge
 	q := fmt.Sprintf(
 		`
 		SELECT
-            local_chain_id, parity_volume_id
+	        local_chain_id, parity_volume_id
 		FROM
-            local_chain
-        ORDER BY rand() limit 1;
+	        local_chain
+	    ORDER BY rand() limit 1;
 		`,
 	)
+	// q := fmt.Sprintf(
+	// 	`
+	// 	SELECT
+	//         local_chain_id, parity_volume_id
+	// 	FROM
+	//         local_chain
+	// 	`,
+	// )
 
 	row := h.store.QueryRow(q)
 	if row == nil {

@@ -92,6 +92,7 @@ func NewVol(dev string) (v *Vol, err error) {
 	v = &Vol{
 		Dev:    dev,
 		Status: Prepared,
+		Objs:   make(map[string]ObjMap),
 	}
 
 	// Checks the given device path is valid.

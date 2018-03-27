@@ -31,6 +31,9 @@ func (e *Encoder) updateGroup() {
 	if err != nil {
 		mlog.GetLogger().Error(err)
 	}
+	if m == nil {
+		return
+	}
 
 	mds, err := m.SearchCall().Type(cmap.MDS).Do()
 	if err != nil {

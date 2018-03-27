@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strings"
 
+	"strconv"
+
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/ds/server/encoder"
 	"github.com/chanyoung/nil/pkg/ds/store"
@@ -84,16 +86,24 @@ func (h *Handler) s3RemoveBucket(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) s3PutObject(w http.ResponseWriter, r *http.Request) {
 	attrs := r.Header.Get("X-Amz-Meta-S3cmd-Attrs")
 	if attrs == "" {
+		osize, err := strconv.ParseInt(r.Header.Get("Content-Length"), 10, 64)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
 		storeReq := &request.Request{
-			Op:  request.Write,
-			Vol: r.Header.Get("Volume-Id"),
-			Oid: strings.Replace(strings.Trim(r.URL.Path, "/"), "/", ".", -1),
+			Op:    request.Write,
+			Vol:   r.Header.Get("Volume-Id"),
+			Oid:   strings.Replace(strings.Trim(r.URL.Path, "/"), "/", ".", -1),
+			Cid:   r.Header.Get("Chunk-Id"),
+			Osize: osize,
 
 			In: r.Body,
 		}
 		h.store.Push(storeReq)
 
-		err := storeReq.Wait()
+		err = storeReq.Wait()
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return

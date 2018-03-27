@@ -21,7 +21,7 @@ DSBASEPORT=52000
 
 # Disk configuration.
 DISKSIZE=100 # megabytes
-DISKNUM=3    # per ds
+DISKNUM=4    # per ds
 
 # User per region
 TOTALUSERS=0    # (REGIONUSERS) * (number of regions)
@@ -261,7 +261,7 @@ function createbuckets() {
 }
 
 function putobjects() {
-    fallocate -l 1M $DIR/dummy1M
+    fallocate -l 3M $DIR/dummy3M
 
     for i in $(seq 1 $TOTALUSERS); do
         local ak=user$i[accesskey]
@@ -271,8 +271,9 @@ function putobjects() {
         for j in $(seq 1 $BUCKETS); do
             local bucket="user$i-bucket$j"
 
-            for k in $(seq 1 3); do
-                s3cmd put $DIR/dummy1M s3://$bucket/obj$k --access_key=${!ak} --secret_key=${!sk} --region=${!region} --no-check-hostname
+            for k in $(seq 1 10); do
+                s3cmd put $DIR/dummy3M s3://$bucket/obj$k --access_key=${!ak} --secret_key=${!sk} --region=${!region} --no-check-hostname
+                sleep 0.1
             done
         done
     done
@@ -283,7 +284,7 @@ function main() {
 
     for region in ${REGIONS[@]}; do
         echo "set region $region ..."
-        runregion "$region" 1 1 6
+        runregion "$region" 1 1 4
         sleep 3
     done
 

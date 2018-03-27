@@ -14,21 +14,29 @@ import (
 	"github.com/chanyoung/nil/pkg/ds/store/request"
 	"github.com/chanyoung/nil/pkg/security"
 	"github.com/chanyoung/nil/pkg/util/mlog"
+	"github.com/chanyoung/nil/pkg/util/uuid"
 )
 
 type Encoder struct {
-	emap   map[string]encodeGroup
-	s      store.Service
-	q      *queue
-	pushCh chan interface{}
+	chunkMap map[string]*chunkMap
+	emap     map[string]encodeGroup
+	s        store.Service
+	q        *queue
+	pushCh   chan interface{}
+}
+
+type chunkMap struct {
+	chunkID string
+	seq     int
 }
 
 func NewEncoder(s store.Service) *Encoder {
 	return &Encoder{
-		emap:   make(map[string]encodeGroup),
-		s:      s,
-		q:      newRequestsQueue(),
-		pushCh: make(chan interface{}, 1),
+		chunkMap: make(map[string]*chunkMap),
+		emap:     make(map[string]encodeGroup),
+		s:        s,
+		q:        newRequestsQueue(),
+		pushCh:   make(chan interface{}, 1),
 	}
 }
 
@@ -72,10 +80,27 @@ func (e *Encoder) do(r *Request) {
 		return
 	}
 
+	_, ok = e.chunkMap[lcid]
+	if !ok {
+		e.chunkMap[lcid] = &chunkMap{
+			chunkID: uuid.Gen(),
+			seq:     0,
+		}
+	}
+
+	osize, err := strconv.ParseInt(r.R.Header.Get("Content-Length"), 10, 64)
+	if err != nil {
+		r.err = err
+		return
+	}
+
+	parityCID := e.chunkMap[lcid].chunkID + "-" + strconv.Itoa(e.chunkMap[lcid].seq)
 	req := &request.Request{
-		Op:  request.Write,
-		Vol: r.R.Header.Get("Volume-Id"),
-		Oid: strings.Replace(strings.Trim(r.R.RequestURI, "/"), "/", ".", -1),
+		Op:    request.Write,
+		Vol:   r.R.Header.Get("Volume-Id"),
+		Oid:   strings.Replace(strings.Trim(r.R.RequestURI, "/"), "/", ".", -1),
+		Cid:   parityCID,
+		Osize: osize,
 
 		In: r.R.Body,
 	}
@@ -86,12 +111,44 @@ func (e *Encoder) do(r *Request) {
 	}
 
 	r.err = req.Wait()
-	if r.err != nil {
+	if r.err != nil && r.err.Error() == "chunk full" {
+	} else if r.err != nil && r.err.Error() == "truncated" {
+		if e.chunkMap[lcid].seq == 2 {
+			go func() {
+				encode(e.chunkMap[lcid])
+				// Do encode
+			}()
+
+			delete(e.chunkMap, lcid)
+		} else {
+			e.chunkMap[lcid].seq++
+		}
+		r.wg.Add(1)
+		e.do(r)
+		return
+	} else if r.err != nil {
+		mlog.GetLogger().Error(r.err)
+		r.err = err
 		return
 	}
 
+	addr := "https://"
+	switch e.chunkMap[lcid].seq {
+	case 0:
+		addr = addr + lc.firstVolNodeAddr
+	case 1:
+		addr = addr + lc.secondVolNodeAddr
+	case 2:
+		addr = addr + lc.thirdVolNodeAddr
+	default:
+		mlog.GetLogger().Error("no such volume seq")
+		r.err = fmt.Errorf("vol seq error")
+		return
+	}
+	addr = addr + r.R.RequestURI
+
 	pipeReader, pipeWriter := io.Pipe()
-	copyReq, err := http.NewRequest(r.R.Method, "https://"+lc.firstVolNodeAddr+r.R.RequestURI, pipeReader)
+	copyReq, err := http.NewRequest(r.R.Method, addr, pipeReader)
 	if err != nil {
 		r.err = err
 		return
@@ -100,16 +157,34 @@ func (e *Encoder) do(r *Request) {
 	// copyReq.RequestURI = r.R.RequestURI
 	copyReq.Header.Add("Local-Chain-Id", lcid)
 	copyReq.Header.Add("Volume-Id", strconv.FormatInt(lc.firstVolID, 10))
+	copyReq.Header.Add("Chunk-Id", e.chunkMap[lcid].chunkID)
+	copyReq.ContentLength = osize
 
 	// mlog.GetLogger().Errorf("%+v", *r.R)
 	// mlog.GetLogger().Errorf("%+v", *copyReq)
 
 	req = &request.Request{
-		Op:  request.Read,
-		Vol: r.R.Header.Get("Volume-Id"),
-		Oid: strings.Replace(strings.Trim(r.R.RequestURI, "/"), "/", ".", -1),
-		Out: pipeWriter,
+		Op:    request.Read,
+		Vol:   r.R.Header.Get("Volume-Id"),
+		Oid:   strings.Replace(strings.Trim(r.R.RequestURI, "/"), "/", ".", -1),
+		Cid:   e.chunkMap[lcid].chunkID,
+		Osize: osize,
+		Out:   pipeWriter,
 	}
+
+	r.err = e.s.Push(req)
+	if r.err != nil {
+		return
+	}
+
+	go func(readReq *request.Request) {
+		defer pipeWriter.Close()
+		err := readReq.Wait()
+		if err != nil {
+			mlog.GetLogger().Errorf("%+v", err)
+			return
+		}
+	}(req)
 
 	var netTransport = &http.Transport{
 		Dial:                (&net.Dialer{Timeout: 5 * time.Second}).Dial,
@@ -122,25 +197,17 @@ func (e *Encoder) do(r *Request) {
 		Transport: netTransport,
 	}
 
-	r.err = e.s.Push(req)
-	if r.err != nil {
-		return
-	}
-
-	go func() {
-		r.err = req.Wait()
-		if r.err != nil {
-			return
-		}
-		pipeWriter.Close()
-	}()
-
 	resp, err := netClient.Do(copyReq)
 	if err != nil {
 		r.err = err
+		mlog.GetLogger().Errorf("%+v", r.err)
 		return
 	}
 
 	b, _ := ioutil.ReadAll(resp.Body)
 	mlog.GetLogger().Infof("%+v", string(b))
+}
+
+func encode(chunkmap *chunkMap) {
+
 }

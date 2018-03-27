@@ -15,6 +15,7 @@ type Service struct {
 	lvs          map[string]*lv
 	basePath     string
 	requestQueue queue
+	pushCh       chan interface{}
 }
 
 // NewService returns a new backend store service.
@@ -22,18 +23,26 @@ func NewService(basePath string) *Service {
 	return &Service{
 		basePath: basePath,
 		lvs:      map[string]*lv{},
+		pushCh:   make(chan interface{}, 1),
 	}
 }
 
 // Run starts to serve backend store service.
 func (s *Service) Run() {
+	checkTicker := time.NewTicker(100 * time.Millisecond)
+
 	// TODO: change to do not polling.
 	for {
-		if c := s.requestQueue.pop(); c != nil {
-			s.handleCall(c)
+		select {
+		case <-s.pushCh:
+			if c := s.requestQueue.pop(); c != nil {
+				s.handleCall(c)
+			}
+		case <-checkTicker.C:
+			if c := s.requestQueue.pop(); c != nil {
+				s.handleCall(c)
+			}
 		}
-
-		time.Sleep(100 * time.Millisecond)
 	}
 }
 
@@ -57,6 +66,7 @@ func (s *Service) Push(r *request.Request) error {
 
 	r.Wg.Add(1)
 	s.requestQueue.push(r)
+	s.pushCh <- nil
 
 	return nil
 }
@@ -110,10 +120,10 @@ func (s *Service) read(r *request.Request) {
 		return
 	}
 
-	fmt.Println("---In read---")
-	for key, value := range lv.Objs {
-		fmt.Println(key, value)
-	}
+	// fmt.Println("---In read---")
+	// for key, value := range lv.Objs {
+	// fmt.Println(key, value)
+	// }
 
 	obj, ok := lv.Objs[r.Oid]
 	if !ok {
@@ -121,8 +131,8 @@ func (s *Service) read(r *request.Request) {
 		return
 	}
 
-	fmt.Println("---In read---")
-	fmt.Println("obj.Cid : ", obj.Cid, " obj.Offset : ", obj.Offset)
+	// fmt.Println("---In read---")
+	// fmt.Println("obj.Cid : ", obj.Cid, " obj.Offset : ", obj.Offset)
 
 	fChunk, err := os.Open(lv.MntPoint + "/" + obj.Cid)
 	if err != nil {
@@ -130,7 +140,7 @@ func (s *Service) read(r *request.Request) {
 		return
 	}
 
-	fmt.Println("File open completed")
+	// fmt.Println("File open completed")
 
 	defer fChunk.Close()
 
@@ -172,20 +182,27 @@ func (s *Service) write(r *request.Request) error {
 
 	fChunkLen := fChunkInfo.Size()
 
-	fmt.Println("request : ", r.Op, r.Vol, r.Oid, r.Cid, r.Osize)
-	fmt.Println("fChunkLen : ", fChunkLen, ", lv.ChunkSize : ", lv.ChunkSize)
+	// fmt.Println("request : ", r.Op, r.Vol, r.Oid, r.Cid, r.Osize)
+	// fmt.Println("fChunkLen : ", fChunkLen, ", lv.ChunkSize : ", lv.ChunkSize)
 
 	if fChunkLen < lv.ChunkSize {
 		if lv.ChunkSize-fChunkLen >= r.Osize {
 			if _, err = io.CopyN(fChunk, r.In, r.Osize); err != nil {
 				return nil
 			}
+
+			if lv.ChunkSize-fChunkLen == r.Osize {
+				r.Err = fmt.Errorf("chunk full")
+			}
 			lv.Objs[r.Oid] = volume.ObjMap{Cid: r.Cid, Offset: fChunkLen}
 		} else {
 			if err := fChunk.Truncate(lv.ChunkSize); err != nil {
+				r.Err = err
 				return err
 			}
-			fmt.Println("Truncated")
+
+			// fmt.Println("Truncated")
+			r.Err = fmt.Errorf("truncated")
 		}
 	}
 
