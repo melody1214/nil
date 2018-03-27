@@ -154,9 +154,22 @@ func (e *Encoder) do(r *Request) {
 		return
 	}
 
+	var volID string
+	switch e.chunkMap[lcid].seq {
+	case 0:
+		volID = strconv.FormatInt(lc.firstVolID, 10)
+	case 1:
+		volID = strconv.FormatInt(lc.secondVolID, 10)
+	case 2:
+		volID = strconv.FormatInt(lc.thirdVolID, 10)
+	default:
+		mlog.GetLogger().Error("no such volume seq")
+		r.err = fmt.Errorf("vol seq error")
+		return
+	}
 	// copyReq.RequestURI = r.R.RequestURI
 	copyReq.Header.Add("Local-Chain-Id", lcid)
-	copyReq.Header.Add("Volume-Id", strconv.FormatInt(lc.firstVolID, 10))
+	copyReq.Header.Add("Volume-Id", volID)
 	copyReq.Header.Add("Chunk-Id", e.chunkMap[lcid].chunkID)
 	copyReq.ContentLength = osize
 

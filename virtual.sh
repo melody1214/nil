@@ -271,9 +271,11 @@ function putobjects() {
         for j in $(seq 1 $BUCKETS); do
             local bucket="user$i-bucket$j"
 
-            for k in $(seq 1 10); do
-                s3cmd put $DIR/dummy3M s3://$bucket/obj$k --access_key=${!ak} --secret_key=${!sk} --region=${!region} --no-check-hostname
+            for k in $(seq 1 30); do
+#                s3cmd put $DIR/dummy3M s3://$bucket/obj$k --access_key=${!ak} --secret_key=${!sk} --region=${!region} --no-check-hostname
+                s3cmd put virtual.sh s3://$bucket/obj$k --access_key=${!ak} --secret_key=${!sk} --region=${!region} --no-check-hostname
             done
+	    return
         done
     done
 }
