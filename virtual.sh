@@ -273,7 +273,6 @@ function putobjects() {
 
             for k in $(seq 1 10); do
                 s3cmd put $DIR/dummy3M s3://$bucket/obj$k --access_key=${!ak} --secret_key=${!sk} --region=${!region} --no-check-hostname
-                sleep 0.1
             done
         done
     done

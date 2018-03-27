@@ -164,10 +164,11 @@ func (e *Encoder) do(r *Request) {
 	// mlog.GetLogger().Errorf("%+v", *copyReq)
 
 	req = &request.Request{
-		Op:    request.Read,
-		Vol:   r.R.Header.Get("Volume-Id"),
-		Oid:   strings.Replace(strings.Trim(r.R.RequestURI, "/"), "/", ".", -1),
-		Cid:   e.chunkMap[lcid].chunkID,
+		Op:  request.Read,
+		Vol: r.R.Header.Get("Volume-Id"),
+		Oid: strings.Replace(strings.Trim(r.R.RequestURI, "/"), "/", ".", -1),
+		// Cid:   e.chunkMap[lcid].chunkID,
+		Cid:   parityCID,
 		Osize: osize,
 		Out:   pipeWriter,
 	}
