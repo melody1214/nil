@@ -131,10 +131,16 @@ func (s *Service) read(r *request.Request) {
 		return
 	}
 
+	LocGrpDir := lv.MntPoint + "/" + r.LocGid
+
+	if _, err := os.Stat(LocGrpDir); os.IsNotExist(err) {
+		os.MkdirAll(LocGrpDir, 0775)
+	}
+
 	// fmt.Println("---In read---")
 	// fmt.Println("obj.Cid : ", obj.Cid, " obj.Offset : ", obj.Offset)
 
-	fChunk, err := os.Open(lv.MntPoint + "/" + obj.Cid)
+	fChunk, err := os.Open(LocGrpDir + "/" + obj.Cid)
 	if err != nil {
 		r.Err = err
 		return
@@ -163,8 +169,14 @@ func (s *Service) write(r *request.Request) error {
 		return nil
 	}
 
+	LocGrpDir := lv.MntPoint + "/" + r.LocGid
+
+	if _, err := os.Stat(LocGrpDir); os.IsNotExist(err) {
+		os.MkdirAll(LocGrpDir, 0775)
+	}
+
 	// Chunk file open
-	fChunk, err := os.OpenFile(lv.MntPoint+"/"+r.Cid, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	fChunk, err := os.OpenFile(LocGrpDir+"/"+r.Cid, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0775)
 	if err != nil {
 		r.Err = err
 		return nil

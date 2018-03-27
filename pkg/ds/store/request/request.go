@@ -22,10 +22,11 @@ const (
 
 // Request includes information abOut backend store request.
 type Request struct {
-	Op  Operation
-	Vol string // Volume
-	Oid string // Object ID
-	Cid string // Chunk ID
+	Op     Operation
+	Vol    string // Volume
+	LocGid string // Local group ID
+	Oid    string // Object ID
+	Cid    string // Chunk ID
 
 	Osize int64 // Object Size
 

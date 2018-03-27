@@ -16,7 +16,7 @@ import (
 func TestServiceAPIs(t *testing.T) {
 	dir := "testServiceAPIs"
 	os.Mkdir(dir, 0775)
-	defer os.RemoveAll(dir)
+	//defer os.RemoveAll(dir)
 
 	os.Mkdir(dir+"/lv1", 0775)
 	lv1 := &lv{
@@ -50,25 +50,25 @@ func TestServiceAPIs(t *testing.T) {
 	runtime.Gosched()
 
 	testCases := []struct {
-		op           request.Operation
-		lv, oid, cid string
-		size         int64
-		content      string
-		result       error
+		op                 request.Operation
+		lv, lgid, oid, cid string
+		size               int64
+		content            string
+		result             error
 	}{
-		{request.Read, "lv1", "banana", "chunk1", int64(len("banana is good\n")), "banana is good\n",
+		{request.Read, "lv1", "lg1", "banana", "chunk1", int64(len("banana is good\n")), "banana is good\n",
 			fmt.Errorf("%s %s: %s", "open", dir+"/lv1/banana", "no such object: banana"),
 		},
-		{request.Write, "lv1", "banana", "chunk1", int64(len("banana is good\n")), "banana is good\n", nil},
-		{request.Read, "lv1", "banana", "chunk1", int64(len("banana is good\n")), "banana is good\n", nil},
+		{request.Write, "lv1", "lg1", "banana", "chunk1", int64(len("banana is good\n")), "banana is good\n", nil},
+		{request.Read, "lv1", "lg1", "banana", "chunk1", int64(len("banana is good\n")), "banana is good\n", nil},
 		//{request.Delete, "lv2", "apple", "apple is sweet\n",
 		//fmt.Errorf("%s %s: %s", "remove", dir+"/lv2/apple", "no such file or directory"),
 		//},
-		{request.Read, "lv2", "apple", "chunk2", int64(len("apple is sweet\n")), "apple is sweet\n",
+		{request.Read, "lv2", "lg2", "apple", "chunk2", int64(len("apple is sweet\n")), "apple is sweet\n",
 			fmt.Errorf("%s %s: %s", "open", dir+"/lv2/apple", "no such object: apple"),
 		},
-		{request.Write, "lv2", "apple", "chunk2", int64(len("apple is sweet\n")), "apple is sweet\n", nil},
-		{request.Read, "lv2", "apple", "chunk2", int64(len("apple is sweet\n")), "apple is sweet\n", nil},
+		{request.Write, "lv2", "lg2", "apple", "chunk2", int64(len("apple is sweet\n")), "apple is sweet\n", nil},
+		{request.Read, "lv2", "lg2", "apple", "chunk2", int64(len("apple is sweet\n")), "apple is sweet\n", nil},
 		//{request.Delete, "lv2", "apple", "apple is sweet\n", nil},
 	}
 
@@ -77,13 +77,14 @@ func TestServiceAPIs(t *testing.T) {
 		writer := bufio.NewWriter(&b)
 
 		r := &request.Request{
-			Op:    c.op,
-			Vol:   c.lv,
-			Oid:   c.oid,
-			Cid:   c.cid,
-			Osize: c.size,
-			In:    strings.NewReader(c.content),
-			Out:   writer,
+			Op:     c.op,
+			Vol:    c.lv,
+			LocGid: c.lgid,
+			Oid:    c.oid,
+			Cid:    c.cid,
+			Osize:  c.size,
+			In:     strings.NewReader(c.content),
+			Out:    writer,
 		}
 
 		s.Push(r)
