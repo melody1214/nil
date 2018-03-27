@@ -275,7 +275,6 @@ function putobjects() {
 #                s3cmd put $DIR/dummy3M s3://$bucket/obj$k --access_key=${!ak} --secret_key=${!sk} --region=${!region} --no-check-hostname
                 s3cmd put virtual.sh s3://$bucket/obj$k --access_key=${!ak} --secret_key=${!sk} --region=${!region} --no-check-hostname
             done
-	    return
         done
     done
 }

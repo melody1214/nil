@@ -115,8 +115,9 @@ func (e *Encoder) do(r *Request) {
 	if r.err != nil && r.err.Error() == "chunk full" {
 	} else if r.err != nil && r.err.Error() == "truncated" {
 		if e.chunkMap[lcid].seq == 2 {
+			cm := e.chunkMap[lcid]
 			go func() {
-				encode(e.chunkMap[lcid])
+				e.encode(cm, r.R.Header.Get("Volume-Id"), lcid)
 				// Do encode
 			}()
 
@@ -224,6 +225,99 @@ func (e *Encoder) do(r *Request) {
 	mlog.GetLogger().Infof("%+v", string(b))
 }
 
-func encode(chunkmap *chunkMap) {
+func (e *Encoder) encode(chunkmap *chunkMap, volID, lgid string) {
+	mlog.GetLogger().Info("Start encoding")
 
+	pr1, pw1 := io.Pipe()
+	req1 := &request.Request{
+		Op:     request.Read,
+		Vol:    volID,
+		LocGid: lgid,
+		Cid:    chunkmap.chunkID + "-0",
+		Osize:  100000,
+		Out:    pw1,
+	}
+	e.s.Push(req1)
+	go func(readReq *request.Request) {
+		defer pw1.Close()
+		err := readReq.Wait()
+		if err != nil {
+			mlog.GetLogger().Errorf("%+v", err)
+			return
+		}
+	}(req1)
+	buf1 := make([]byte, 100000)
+	pr1.Read(buf1)
+
+	pr2, pw2 := io.Pipe()
+	req2 := &request.Request{
+		Op:     request.Read,
+		Vol:    volID,
+		LocGid: lgid,
+		Cid:    chunkmap.chunkID + "-1",
+		Osize:  100000,
+		Out:    pw2,
+	}
+	e.s.Push(req2)
+	go func(readReq *request.Request) {
+		defer pw2.Close()
+		err := readReq.Wait()
+		if err != nil {
+			mlog.GetLogger().Errorf("%+v", err)
+			return
+		}
+	}(req2)
+	buf2 := make([]byte, 100000)
+	pr2.Read(buf2)
+
+	pr3, pw3 := io.Pipe()
+	req3 := &request.Request{
+		Op:     request.Read,
+		Vol:    volID,
+		LocGid: lgid,
+		Cid:    chunkmap.chunkID + "-2",
+		Osize:  100000,
+		Out:    pw3,
+	}
+	e.s.Push(req3)
+	go func(readReq *request.Request) {
+		defer pw2.Close()
+		err := readReq.Wait()
+		if err != nil {
+			mlog.GetLogger().Errorf("%+v", err)
+			return
+		}
+	}(req3)
+	buf3 := make([]byte, 100000)
+	pr3.Read(buf3)
+
+	pr4, pw4 := io.Pipe()
+	req4 := &request.Request{
+		Op:     request.Write,
+		Vol:    volID,
+		LocGid: lgid,
+		Cid:    chunkmap.chunkID,
+		Oid:    chunkmap.chunkID,
+		Osize:  10000,
+		In:     pr4,
+	}
+	e.s.Push(req4)
+
+	buf4 := make([]byte, 100000)
+	for i := 0; i < 10000; i++ {
+		buf4[i] = buf1[i] ^ buf2[i] ^ buf3[i]
+	}
+
+	_, err := pw4.Write(buf4)
+	if err != nil {
+		mlog.GetLogger().Errorf("error in pw4: %v", err)
+	}
+	pw4.Close()
+
+	err = req4.Wait()
+	if err != nil {
+		mlog.GetLogger().Errorf("error in pw4: %v", err)
+	}
+
+	mlog.GetLogger().Info("Finish encoding")
 }

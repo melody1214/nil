@@ -44,7 +44,7 @@ type Request struct {
 func (r *Request) Verify() error {
 	switch r.Op {
 	case Read:
-		if r.Vol == "" || r.Oid == "" || r.Out == nil {
+		if r.Vol == "" || r.Out == nil {
 			return fmt.Errorf("%v: invalid arguments", r)
 		}
 	case Write:

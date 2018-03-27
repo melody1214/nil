@@ -114,6 +114,11 @@ func (s *Service) handleCall(r *request.Request) {
 }
 
 func (s *Service) read(r *request.Request) {
+	if r.Oid == "" {
+		s.readAll(r)
+		return
+	}
+
 	lv, ok := s.lvs[r.Vol]
 	if !ok {
 		r.Err = fmt.Errorf("no such lv: %s", r.Vol)
@@ -157,6 +162,32 @@ func (s *Service) read(r *request.Request) {
 	}
 
 	if _, err = io.CopyN(r.Out, fChunk, r.Osize); err != nil {
+		r.Err = err
+		return
+	}
+}
+
+func (s *Service) readAll(r *request.Request) {
+	lv, ok := s.lvs[r.Vol]
+	if !ok {
+		r.Err = fmt.Errorf("no such lv: %s", r.Vol)
+		return
+	}
+
+	LocGrpDir := lv.MntPoint + "/" + r.LocGid
+
+	if _, err := os.Stat(LocGrpDir); os.IsNotExist(err) {
+		os.MkdirAll(LocGrpDir, 0775)
+	}
+
+	fChunk, err := os.Open(LocGrpDir + "/" + r.Cid)
+	if err != nil {
+		r.Err = err
+		return
+	}
+	defer fChunk.Close()
+
+	if _, err = io.Copy(r.Out, fChunk); err != nil {
 		r.Err = err
 		return
 	}
