@@ -234,7 +234,7 @@ func (e *Encoder) encode(chunkmap *chunkMap, volID, lgid string) {
 		Vol:    volID,
 		LocGid: lgid,
 		Cid:    chunkmap.chunkID + "-0",
-		Osize:  100000,
+		Osize:  30000,
 		Out:    pw1,
 	}
 	e.s.Push(req1)
@@ -246,8 +246,10 @@ func (e *Encoder) encode(chunkmap *chunkMap, volID, lgid string) {
 			return
 		}
 	}(req1)
-	buf1 := make([]byte, 100000)
+	buf1 := make([]byte, 30000)
 	pr1.Read(buf1)
+
+	mlog.GetLogger().Info("Encoding step 1")
 
 	pr2, pw2 := io.Pipe()
 	req2 := &request.Request{
@@ -255,7 +257,7 @@ func (e *Encoder) encode(chunkmap *chunkMap, volID, lgid string) {
 		Vol:    volID,
 		LocGid: lgid,
 		Cid:    chunkmap.chunkID + "-1",
-		Osize:  100000,
+		Osize:  30000,
 		Out:    pw2,
 	}
 	e.s.Push(req2)
@@ -267,8 +269,10 @@ func (e *Encoder) encode(chunkmap *chunkMap, volID, lgid string) {
 			return
 		}
 	}(req2)
-	buf2 := make([]byte, 100000)
+	buf2 := make([]byte, 30000)
 	pr2.Read(buf2)
+
+	mlog.GetLogger().Info("Encoding step 2")
 
 	pr3, pw3 := io.Pipe()
 	req3 := &request.Request{
@@ -276,7 +280,7 @@ func (e *Encoder) encode(chunkmap *chunkMap, volID, lgid string) {
 		Vol:    volID,
 		LocGid: lgid,
 		Cid:    chunkmap.chunkID + "-2",
-		Osize:  100000,
+		Osize:  30000,
 		Out:    pw3,
 	}
 	e.s.Push(req3)
@@ -288,8 +292,10 @@ func (e *Encoder) encode(chunkmap *chunkMap, volID, lgid string) {
 			return
 		}
 	}(req3)
-	buf3 := make([]byte, 100000)
+	buf3 := make([]byte, 30000)
 	pr3.Read(buf3)
+
+	mlog.GetLogger().Info("Encoding step 3")
 
 	pr4, pw4 := io.Pipe()
 	req4 := &request.Request{
@@ -298,15 +304,17 @@ func (e *Encoder) encode(chunkmap *chunkMap, volID, lgid string) {
 		LocGid: lgid,
 		Cid:    chunkmap.chunkID,
 		Oid:    chunkmap.chunkID,
-		Osize:  10000,
+		Osize:  30000,
 		In:     pr4,
 	}
 	e.s.Push(req4)
 
-	buf4 := make([]byte, 100000)
-	for i := 0; i < 10000; i++ {
+	buf4 := make([]byte, 30000)
+	for i := 0; i < 30000; i++ {
 		buf4[i] = buf1[i] ^ buf2[i] ^ buf3[i]
 	}
+
+	mlog.GetLogger().Info("Encoding step 4")
 
 	_, err := pw4.Write(buf4)
 	if err != nil {
@@ -318,6 +326,33 @@ func (e *Encoder) encode(chunkmap *chunkMap, volID, lgid string) {
 	if err != nil {
 		mlog.GetLogger().Errorf("error in pw4: %v", err)
 	}
+
+	mlog.GetLogger().Info("Encoding step 5")
+
+	req1 = &request.Request{
+		Op:     request.Delete,
+		Vol:    volID,
+		LocGid: lgid,
+		Cid:    chunkmap.chunkID + "-0",
+		Oid:    chunkmap.chunkID + "-0",
+	}
+	req2 = &request.Request{
+		Op:     request.Delete,
+		Vol:    volID,
+		LocGid: lgid,
+		Cid:    chunkmap.chunkID + "-1",
+		Oid:    chunkmap.chunkID + "-1",
+	}
+	req3 = &request.Request{
+		Op:     request.Delete,
+		Vol:    volID,
+		LocGid: lgid,
+		Cid:    chunkmap.chunkID + "-2",
+		Oid:    chunkmap.chunkID + "-2",
+	}
+	e.s.Push(req1)
+	e.s.Push(req2)
+	e.s.Push(req3)
 
 	mlog.GetLogger().Info("Finish encoding")
 }
