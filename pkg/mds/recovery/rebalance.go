@@ -78,6 +78,7 @@ func (h *Handler) rebalanceSpeedGroup(speed string) error {
 			volume
 		WHERE
 			speed = '%s'
+		ORDER BY rand();
 		`, speed,
 	)
 

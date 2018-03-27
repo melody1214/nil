@@ -21,11 +21,11 @@ DSBASEPORT=52000
 
 # Disk configuration.
 DISKSIZE=100 # megabytes
-DISKNUM=4    # per ds
+DISKNUM=3    # per ds
 
 # User per region
 TOTALUSERS=0    # (REGIONUSERS) * (number of regions)
-REGIONUSERS=5   # 5 users per region
+REGIONUSERS=20  # 20 users per region
                 # In this test, users are only allowed to create bucket in own region.
 
 # Buckets per user
@@ -284,7 +284,7 @@ function main() {
 
     for region in ${REGIONS[@]}; do
         echo "set region $region ..."
-        runregion "$region" 1 1 4
+        runregion "$region" 1 1 8
         sleep 3
     done
 
@@ -301,15 +301,15 @@ function main() {
     fi
 
     # Create users.
-    sleep 5
+    sleep 3
     createusers
 
     # Create buckets.
-    sleep 5
+    sleep 3
     createbuckets
 
     # Put objects.
-    sleep 5
+    sleep 3
     putobjects
 }
 

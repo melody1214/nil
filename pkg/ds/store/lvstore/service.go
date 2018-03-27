@@ -93,7 +93,7 @@ func (s *Service) AddVolume(v *volume.Vol) error {
 		Vol: v,
 	}
 
-	v.ChunkSize = 30000
+	v.ChunkSize = 20000
 	// Set volume has running state.
 	v.Status = volume.Active
 

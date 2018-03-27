@@ -234,7 +234,7 @@ func (e *Encoder) encode(chunkmap *chunkMap, volID, lgid string) {
 		Vol:    volID,
 		LocGid: lgid,
 		Cid:    chunkmap.chunkID + "-0",
-		Osize:  30000,
+		Osize:  20000,
 		Out:    pw1,
 	}
 	e.s.Push(req1)
@@ -246,7 +246,7 @@ func (e *Encoder) encode(chunkmap *chunkMap, volID, lgid string) {
 			return
 		}
 	}(req1)
-	buf1 := make([]byte, 30000)
+	buf1 := make([]byte, 20000)
 	pr1.Read(buf1)
 
 	mlog.GetLogger().Info("Encoding step 1")
@@ -257,7 +257,7 @@ func (e *Encoder) encode(chunkmap *chunkMap, volID, lgid string) {
 		Vol:    volID,
 		LocGid: lgid,
 		Cid:    chunkmap.chunkID + "-1",
-		Osize:  30000,
+		Osize:  20000,
 		Out:    pw2,
 	}
 	e.s.Push(req2)
@@ -269,7 +269,7 @@ func (e *Encoder) encode(chunkmap *chunkMap, volID, lgid string) {
 			return
 		}
 	}(req2)
-	buf2 := make([]byte, 30000)
+	buf2 := make([]byte, 20000)
 	pr2.Read(buf2)
 
 	mlog.GetLogger().Info("Encoding step 2")
@@ -280,7 +280,7 @@ func (e *Encoder) encode(chunkmap *chunkMap, volID, lgid string) {
 		Vol:    volID,
 		LocGid: lgid,
 		Cid:    chunkmap.chunkID + "-2",
-		Osize:  30000,
+		Osize:  20000,
 		Out:    pw3,
 	}
 	e.s.Push(req3)
@@ -292,7 +292,7 @@ func (e *Encoder) encode(chunkmap *chunkMap, volID, lgid string) {
 			return
 		}
 	}(req3)
-	buf3 := make([]byte, 30000)
+	buf3 := make([]byte, 20000)
 	pr3.Read(buf3)
 
 	mlog.GetLogger().Info("Encoding step 3")
@@ -304,13 +304,13 @@ func (e *Encoder) encode(chunkmap *chunkMap, volID, lgid string) {
 		LocGid: lgid,
 		Cid:    chunkmap.chunkID,
 		Oid:    chunkmap.chunkID,
-		Osize:  30000,
+		Osize:  20000,
 		In:     pr4,
 	}
 	e.s.Push(req4)
 
-	buf4 := make([]byte, 30000)
-	for i := 0; i < 30000; i++ {
+	buf4 := make([]byte, 20000)
+	for i := 0; i < 20000; i++ {
 		buf4[i] = buf1[i] ^ buf2[i] ^ buf3[i]
 	}
 
