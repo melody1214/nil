@@ -1,11 +1,11 @@
-package cmd
+package cli
 
 import (
 	"github.com/spf13/cobra"
 )
 
-// RootCmd is a root of all commands.
-var RootCmd = &cobra.Command{
+// rootCmd is a root of all commands.
+var rootCmd = &cobra.Command{
 	Use:   "nil [command] [flags]",
 	Short: "nil command-line interface",
 	Long:  `nil command-line interface`,
@@ -18,7 +18,7 @@ func rootCmdRun(cmd *cobra.Command, args []string) {
 
 func init() {
 	// Add commands.
-	RootCmd.AddCommand(mdsCmd)
-	RootCmd.AddCommand(dsCmd)
-	RootCmd.AddCommand(gwCmd)
+	rootCmd.AddCommand(mdsCmd)
+	rootCmd.AddCommand(dsCmd)
+	rootCmd.AddCommand(gwCmd)
 }
