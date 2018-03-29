@@ -8,10 +8,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/chanyoung/nil/app/mds/recovery"
+	"github.com/chanyoung/nil/app/mds/rpchandling"
+	"github.com/chanyoung/nil/app/mds/store"
 	"github.com/chanyoung/nil/pkg/cmap"
-	"github.com/chanyoung/nil/pkg/mds/recovery"
-	"github.com/chanyoung/nil/pkg/mds/rpchandling"
-	"github.com/chanyoung/nil/pkg/mds/store"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/swim"

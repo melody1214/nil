@@ -3,7 +3,7 @@ package rpchandling
 import (
 	"fmt"
 
-	"github.com/chanyoung/nil/pkg/mds/store"
+	"github.com/chanyoung/nil/app/mds/store"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/sirupsen/logrus"

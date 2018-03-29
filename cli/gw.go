@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/chanyoung/nil/pkg/gw"
+	"github.com/chanyoung/nil/app/gw"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/spf13/cobra"
 )

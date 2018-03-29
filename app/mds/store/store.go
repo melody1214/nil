@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/chanyoung/nil/pkg/mds/mysql"
+	"github.com/chanyoung/nil/app/mds/mysql"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/hashicorp/raft"

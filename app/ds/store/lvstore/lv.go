@@ -1,6 +1,6 @@
 package lvstore
 
-import "github.com/chanyoung/nil/pkg/ds/store/volume"
+import "github.com/chanyoung/nil/app/ds/store/volume"
 
 type lv struct {
 	// Embed volume.

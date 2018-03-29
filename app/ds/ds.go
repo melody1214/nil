@@ -3,7 +3,7 @@ package ds
 import (
 	"errors"
 
-	"github.com/chanyoung/nil/pkg/ds/server"
+	"github.com/chanyoung/nil/app/ds/server"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/chanyoung/nil/pkg/util/uuid"

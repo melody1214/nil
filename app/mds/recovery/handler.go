@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/chanyoung/nil/pkg/mds/store"
+	"github.com/chanyoung/nil/app/mds/store"
 	"github.com/chanyoung/nil/pkg/swim"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/sirupsen/logrus"

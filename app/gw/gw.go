@@ -8,9 +8,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/chanyoung/nil/app/gw/rpchandling"
+	"github.com/chanyoung/nil/app/gw/s3handling"
 	"github.com/chanyoung/nil/pkg/cmap"
-	"github.com/chanyoung/nil/pkg/gw/rpchandling"
-	"github.com/chanyoung/nil/pkg/gw/s3handling"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"

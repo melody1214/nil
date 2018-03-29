@@ -3,7 +3,7 @@ package lvstore
 import (
 	"sync"
 
-	"github.com/chanyoung/nil/pkg/ds/store/request"
+	"github.com/chanyoung/nil/app/ds/store/request"
 )
 
 // queue is a FIFO queue for handling io requests(struct request.Call).

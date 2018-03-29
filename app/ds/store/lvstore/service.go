@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/chanyoung/nil/pkg/ds/store/request"
-	"github.com/chanyoung/nil/pkg/ds/store/volume"
+	"github.com/chanyoung/nil/app/ds/store/request"
+	"github.com/chanyoung/nil/app/ds/store/volume"
 )
 
 // Service is the backend store service.

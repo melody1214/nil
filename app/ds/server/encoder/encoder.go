@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/chanyoung/nil/pkg/ds/store"
-	"github.com/chanyoung/nil/pkg/ds/store/request"
+	"github.com/chanyoung/nil/app/ds/store"
+	"github.com/chanyoung/nil/app/ds/store/request"
 	"github.com/chanyoung/nil/pkg/security"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/chanyoung/nil/pkg/util/uuid"

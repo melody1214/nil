@@ -4,8 +4,8 @@ import (
 	"net/rpc"
 	"time"
 
+	"github.com/chanyoung/nil/app/ds/store/volume"
 	"github.com/chanyoung/nil/pkg/cmap"
-	"github.com/chanyoung/nil/pkg/ds/store/volume"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/pkg/errors"
 )

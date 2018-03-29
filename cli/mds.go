@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/chanyoung/nil/pkg/mds"
+	"github.com/chanyoung/nil/app/mds"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/spf13/cobra"
 )
