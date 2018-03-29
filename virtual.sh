@@ -13,8 +13,8 @@ MNT=$DIR/mnt
 PENDINGCMD=$DIR/pending
 
 # Region names follow ISO-3166-1
-#REGIONS=("KR" "US" "HK" "SG" "JP" "DE")
-REGIONS=("KR")
+# REGIONS=("KR" "US" "HK" "SG" "JP" "DE")
+REGIONS=("KR" "US")
 GWBASEPORT=50000
 MDSBASEPORT=51000
 DSBASEPORT=52000
@@ -25,7 +25,7 @@ DISKNUM=3    # per ds
 
 # User per region
 TOTALUSERS=0    # (REGIONUSERS) * (number of regions)
-REGIONUSERS=20  # 20 users per region
+REGIONUSERS=5   # 5 users per region
                 # In this test, users are only allowed to create bucket in own region.
 
 # Buckets per user
@@ -271,8 +271,7 @@ function putobjects() {
         for j in $(seq 1 $BUCKETS); do
             local bucket="user$i-bucket$j"
 
-            for k in $(seq 1 30); do
-#                s3cmd put $DIR/dummy3M s3://$bucket/obj$k --access_key=${!ak} --secret_key=${!sk} --region=${!region} --no-check-hostname
+            for k in $(seq 1 10); do
                 s3cmd put virtual.sh s3://$bucket/obj$k --access_key=${!ak} --secret_key=${!sk} --region=${!region} --no-check-hostname
             done
         done
@@ -284,7 +283,7 @@ function main() {
 
     for region in ${REGIONS[@]}; do
         echo "set region $region ..."
-        runregion "$region" 1 1 8
+        runregion "$region" 1 1 6
         sleep 3
     done
 
