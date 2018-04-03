@@ -12,6 +12,7 @@ import (
 	"github.com/chanyoung/nil/pkg/s3"
 )
 
+// MakeBucketHandler handles the client request for making a new bucket.
 func (h *handlers) MakeBucketHandler(w http.ResponseWriter, r *http.Request) {
 	ctxLogger := log.WithField("method", "handlers.MakeBucketHandler")
 
@@ -87,6 +88,7 @@ func (h *handlers) makeBucket(accessKey, region, bucket string) error {
 	return nil
 }
 
+// RemoveBucketHandler handles the client request for removing a bucket.
 func (h *handlers) RemoveBucketHandler(w http.ResponseWriter, r *http.Request) {
 	_, err := h.requestEventFactory.CreateRequestEvent(w, r)
 	if err == client.ErrInvalidProtocol {

@@ -20,6 +20,7 @@ type handlers struct {
 	cMap *cmap.CMap
 }
 
+// NewHandlers creates an admin handlers with necessary dependencies.
 func NewHandlers() delivery.AdminHandlers {
 	log = mlog.GetLogger().WithField("package", "gw/usecase/admin")
 
@@ -28,6 +29,7 @@ func NewHandlers() delivery.AdminHandlers {
 	}
 }
 
+// Proxying forwards the rpc connection to the mds.
 func (h *handlers) Proxying(conn net.Conn) {
 	ctxLogger := log.WithField("method", "handlers.Proxying")
 

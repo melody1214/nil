@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// PutObjectHandler handles the client request for creating an object.
 func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 	ctxLogger := log.WithField("method", "handlers.PutObjectHandler")
 
@@ -70,6 +71,7 @@ func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 	proxy.ServeHTTP(w, r)
 }
 
+// GetObjectHandler handles the client request for getting an object.
 func (h *handlers) GetObjectHandler(w http.ResponseWriter, r *http.Request) {
 	_, err := h.requestEventFactory.CreateRequestEvent(w, r)
 	if err == client.ErrInvalidProtocol {
@@ -79,6 +81,7 @@ func (h *handlers) GetObjectHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "not implemented", http.StatusNotImplemented)
 }
 
+// DeleteObjectHandler handles the client request for deleting an object.
 func (h *handlers) DeleteObjectHandler(w http.ResponseWriter, r *http.Request) {
 	_, err := h.requestEventFactory.CreateRequestEvent(w, r)
 	if err == client.ErrInvalidProtocol {

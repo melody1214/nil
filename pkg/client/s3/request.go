@@ -10,6 +10,7 @@ import (
 	s3lib "github.com/chanyoung/nil/pkg/s3"
 )
 
+// S3RequestEvent is used to handling s3 type of requests.
 type S3RequestEvent struct {
 	protocol client.Protocol
 
@@ -19,6 +20,7 @@ type S3RequestEvent struct {
 	authArgs *s3lib.SignV4
 }
 
+// NewS3RequestEvent creates a new s3 request event.
 func NewS3RequestEvent(w http.ResponseWriter, r *http.Request) (client.RequestEvent, error) {
 	authArgs, s3err := getAuthArgsV4(r.Header.Get("Authorization"))
 	if s3err != s3lib.ErrNone {
@@ -33,30 +35,37 @@ func NewS3RequestEvent(w http.ResponseWriter, r *http.Request) (client.RequestEv
 	}, nil
 }
 
+// Protocol is a getter of protocol type.
 func (r *S3RequestEvent) Protocol() client.Protocol {
 	return r.protocol
 }
 
+// ResponseWriter is a getter of http response writer.
 func (r *S3RequestEvent) ResponseWriter() http.ResponseWriter {
 	return r.httpWriter
 }
 
+// Request is a getter of http request.
 func (r *S3RequestEvent) Request() *http.Request {
 	return r.httpRequest
 }
 
+// AccessKey is a getter of access key.
 func (r *S3RequestEvent) AccessKey() string {
 	return r.authArgs.Credential.AccessKey
 }
 
+// Region is a getter of region.
 func (r *S3RequestEvent) Region() string {
 	return r.authArgs.Credential.Region
 }
 
+// Bucket is a getter of bucket.
 func (r *S3RequestEvent) Bucket() string {
 	return strings.Trim(r.httpRequest.RequestURI, "/")
 }
 
+// Auth checks the given secret key is same with the encoded secret key in the http request.
 func (r *S3RequestEvent) Auth(secretKey string) bool {
 	// Task 1: Create a Canonical Request for Signature Version 4.
 	// https://docs.aws.amazon.com/ko_kr/general/latest/gr/sigv4-create-canonical-request.html
@@ -91,19 +100,23 @@ func (r *S3RequestEvent) Auth(secretKey string) bool {
 	return true
 }
 
+// SendInternalError sends s3 internal error to the client.
 func (r *S3RequestEvent) SendInternalError() {
 	s3lib.SendError(r.httpWriter, s3lib.ErrInternalError, r.httpRequest.RequestURI, "")
 }
 
+// SendIncorrectKey sends s3 incorrect key error to the client.
 func (r *S3RequestEvent) SendIncorrectKey() {
 	// TODO: implement
 	s3lib.SendError(r.httpWriter, s3lib.ErrInvalidAccessKeyId, r.httpRequest.RequestURI, "")
 }
 
+// SendNoSuchKey sends s3 no such key error to the client.
 func (r *S3RequestEvent) SendNoSuchKey() {
 	s3lib.SendError(r.httpWriter, s3lib.ErrInvalidAccessKeyId, r.httpRequest.RequestURI, "")
 }
 
+// SendInvalidURI sends s3 invalud uri error to the client.
 func (r *S3RequestEvent) SendInvalidURI() {
 	s3lib.SendError(r.httpWriter, s3lib.ErrInvalidURI, r.httpRequest.RequestURI, "")
 }

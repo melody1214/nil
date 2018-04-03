@@ -22,6 +22,7 @@ type handlers struct {
 	cMap                *cmap.CMap
 }
 
+// NewHandlers creates a client handlers with necessary dependencies.
 func NewHandlers(f *request.RequestEventFactory, authHandlers auth.Handlers) delivery.ClientHandlers {
 	log = mlog.GetLogger().WithField("package", "gw/usecase/client")
 

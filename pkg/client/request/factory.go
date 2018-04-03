@@ -4,6 +4,7 @@ import "net/http"
 import "github.com/chanyoung/nil/pkg/client"
 import "github.com/chanyoung/nil/pkg/client/s3"
 
+// NewRequestEventFactory returns a new request event factory.
 func NewRequestEventFactory(opts ...Option) *RequestEventFactory {
 	f := &RequestEventFactory{
 		o: defaultOptions,
@@ -16,10 +17,12 @@ func NewRequestEventFactory(opts ...Option) *RequestEventFactory {
 	return f
 }
 
+// RequestEventFactory creates handles for request event.
 type RequestEventFactory struct {
 	o options
 }
 
+// CreateRequestEvent creates a validated request event.
 func (f *RequestEventFactory) CreateRequestEvent(w http.ResponseWriter, r *http.Request) (client.RequestEvent, error) {
 	switch classifyProtocol(r.Header) {
 	case client.S3:

@@ -27,6 +27,7 @@ type Service struct {
 	httpSrv     *http.Server
 }
 
+// NewDeliveryService creates a delivery service with necessary dependencies.
 func NewDeliveryService(cfg *config.Gw, ah AdminHandlers, ch ClientHandlers) (*Service, error) {
 	l := mlog.GetLogger()
 	if l == nil {
@@ -115,10 +116,12 @@ func (s *Service) handleAdmin() {
 	}
 }
 
+// AdminHandlers is the interface that provides admin rpc handlers.
 type AdminHandlers interface {
 	Proxying(conn net.Conn)
 }
 
+// ClientHandlers is the interface that provides client http handlers.
 type ClientHandlers interface {
 	MakeBucketHandler(w http.ResponseWriter, r *http.Request)
 	RemoveBucketHandler(w http.ResponseWriter, r *http.Request)

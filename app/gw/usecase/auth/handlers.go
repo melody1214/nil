@@ -13,6 +13,7 @@ import (
 
 var log *logrus.Entry
 
+// Handlers provides access an authentication domain.
 type Handlers interface {
 	GetSecretKey(accessKey string) (secretKey string, err error)
 }
@@ -22,6 +23,7 @@ type handlers struct {
 	cMap  *cmap.CMap
 }
 
+// NewHandlers creates an authentication handlers with necessary dependencies.
 func NewHandlers(repo Repository) Handlers {
 	log = mlog.GetLogger().WithField("package", "gw/usecase/auth")
 
@@ -31,6 +33,7 @@ func NewHandlers(repo Repository) Handlers {
 	}
 }
 
+// GetSecretKey returns a matched secret key with the given access key.
 func (h *handlers) GetSecretKey(accessKey string) (secretKey string, err error) {
 	sk, ok := h.cache.Find(accessKey)
 	if ok {
