@@ -20,7 +20,7 @@ type handlers struct {
 	cMap *cmap.CMap
 }
 
-func NewAdminHandlers() delivery.AdminHandlers {
+func NewHandlers() delivery.AdminHandlers {
 	log = mlog.GetLogger().WithField("package", "gw/usecase/admin")
 
 	return &handlers{

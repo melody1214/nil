@@ -6,7 +6,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func makeHandler(bh BucketHandlers, oh ObjectHandlers) http.Handler {
+func makeHandler(ch ClientHandlers) http.Handler {
 	r := mux.NewRouter()
 
 	// API routers.
@@ -15,13 +15,13 @@ func makeHandler(bh BucketHandlers, oh ObjectHandlers) http.Handler {
 	or := br.PathPrefix("/{object:.+}").Subrouter()
 
 	// Bucket request handlers
-	br.Methods("PUT").HandlerFunc(bh.MakeBucketHandler)
-	br.Methods("DELETE").HandlerFunc(bh.RemoveBucketHandler)
+	br.Methods("PUT").HandlerFunc(ch.MakeBucketHandler)
+	br.Methods("DELETE").HandlerFunc(ch.RemoveBucketHandler)
 
 	// Object request handlers
-	or.Methods("PUT").HandlerFunc(oh.PutObjectHandler)
-	or.Methods("GET").HandlerFunc(oh.GetObjectHandler)
-	or.Methods("DELETE").HandlerFunc(oh.DeleteObjectHandler)
+	or.Methods("PUT").HandlerFunc(ch.PutObjectHandler)
+	or.Methods("GET").HandlerFunc(ch.GetObjectHandler)
+	or.Methods("DELETE").HandlerFunc(ch.DeleteObjectHandler)
 
 	return r
 }

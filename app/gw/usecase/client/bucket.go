@@ -1,38 +1,16 @@
-package bucket
+package client
 
 import (
 	"net/http"
 	"net/rpc"
 	"time"
 
-	"github.com/chanyoung/nil/app/gw/delivery"
 	"github.com/chanyoung/nil/app/gw/usecase/auth"
 	"github.com/chanyoung/nil/pkg/client"
-	"github.com/chanyoung/nil/pkg/client/request"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/s3"
-	"github.com/chanyoung/nil/pkg/util/mlog"
-	"github.com/sirupsen/logrus"
 )
-
-var log *logrus.Entry
-
-type handlers struct {
-	requestEventFactory *request.RequestEventFactory
-	authHandlers        auth.Handlers
-	cMap                *cmap.CMap
-}
-
-func NewBucketHandlers(f *request.RequestEventFactory, authHandlers auth.Handlers) delivery.BucketHandlers {
-	log = mlog.GetLogger().WithField("package", "gw/usecase/bucket")
-
-	return &handlers{
-		requestEventFactory: f,
-		authHandlers:        authHandlers,
-		cMap:                cmap.New(),
-	}
-}
 
 func (h *handlers) MakeBucketHandler(w http.ResponseWriter, r *http.Request) {
 	ctxLogger := log.WithField("method", "handlers.MakeBucketHandler")
@@ -116,17 +94,4 @@ func (h *handlers) RemoveBucketHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Error(w, "not implemented", http.StatusNotImplemented)
-}
-
-// updateClusterMap retrieves the latest cluster map from the mds.
-func (h *handlers) updateClusterMap() {
-	ctxLogger := log.WithField("method", "handlers.updateClusterMap")
-
-	m, err := cmap.GetLatest(cmap.WithFromRemote(true))
-	if err != nil {
-		ctxLogger.Error(err)
-		return
-	}
-
-	h.cMap = m
 }

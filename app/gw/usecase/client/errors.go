@@ -1,4 +1,4 @@
-package bucket
+package client
 
 import "errors"
 

@@ -22,7 +22,7 @@ type handlers struct {
 	cMap  *cmap.CMap
 }
 
-func NewAuthHandlers(repo Repository) Handlers {
+func NewHandlers(repo Repository) Handlers {
 	log = mlog.GetLogger().WithField("package", "gw/usecase/auth")
 
 	return &handlers{

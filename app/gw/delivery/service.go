@@ -16,8 +16,7 @@ var log *logrus.Entry
 
 type Service struct {
 	ah AdminHandlers
-	bh BucketHandlers
-	oh ObjectHandlers
+	ch ClientHandlers
 
 	nilMux *nilmux.NilMux
 
@@ -28,7 +27,7 @@ type Service struct {
 	httpSrv     *http.Server
 }
 
-func NewDeliveryService(cfg *config.Gw, ah AdminHandlers, bh BucketHandlers, oh ObjectHandlers) (*Service, error) {
+func NewDeliveryService(cfg *config.Gw, ah AdminHandlers, ch ClientHandlers) (*Service, error) {
 	l := mlog.GetLogger()
 	if l == nil {
 		return nil, errors.New("failed to get logger")
@@ -37,7 +36,7 @@ func NewDeliveryService(cfg *config.Gw, ah AdminHandlers, bh BucketHandlers, oh 
 
 	addr := cfg.ServerAddr + ":" + cfg.ServerPort
 
-	if cfg == nil || ah == nil || bh == nil || oh == nil {
+	if cfg == nil || ah == nil || ch == nil {
 		return nil, errors.New("invalid nil arguments")
 	}
 
@@ -57,7 +56,7 @@ func NewDeliveryService(cfg *config.Gw, ah AdminHandlers, bh BucketHandlers, oh 
 	m.RegisterLayer(httpL)
 
 	// 4. Create a http handler.
-	h := makeHandler(bh, oh)
+	h := makeHandler(ch)
 
 	// 5. Create http server.
 	hsrv := &http.Server{
@@ -69,8 +68,7 @@ func NewDeliveryService(cfg *config.Gw, ah AdminHandlers, bh BucketHandlers, oh 
 
 	return &Service{
 		ah: ah,
-		bh: bh,
-		oh: oh,
+		ch: ch,
 
 		nilMux: m,
 
@@ -121,12 +119,10 @@ type AdminHandlers interface {
 	Proxying(conn net.Conn)
 }
 
-type BucketHandlers interface {
+type ClientHandlers interface {
 	MakeBucketHandler(w http.ResponseWriter, r *http.Request)
 	RemoveBucketHandler(w http.ResponseWriter, r *http.Request)
-}
 
-type ObjectHandlers interface {
 	PutObjectHandler(w http.ResponseWriter, r *http.Request)
 	GetObjectHandler(w http.ResponseWriter, r *http.Request)
 	DeleteObjectHandler(w http.ResponseWriter, r *http.Request)
