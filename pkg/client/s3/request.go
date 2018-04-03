@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"net/http"
+	"strings"
 
 	"github.com/chanyoung/nil/pkg/client"
 	s3lib "github.com/chanyoung/nil/pkg/s3"
@@ -48,6 +49,14 @@ func (r *S3RequestEvent) AccessKey() string {
 	return r.authArgs.Credential.AccessKey
 }
 
+func (r *S3RequestEvent) Region() string {
+	return r.authArgs.Credential.Region
+}
+
+func (r *S3RequestEvent) Bucket() string {
+	return strings.Trim(r.httpRequest.RequestURI, "/")
+}
+
 func (r *S3RequestEvent) Auth(secretKey string) bool {
 	// Task 1: Create a Canonical Request for Signature Version 4.
 	// https://docs.aws.amazon.com/ko_kr/general/latest/gr/sigv4-create-canonical-request.html
@@ -80,6 +89,23 @@ func (r *S3RequestEvent) Auth(secretKey string) bool {
 	}
 
 	return true
+}
+
+func (r *S3RequestEvent) SendInternalError() {
+	s3lib.SendError(r.httpWriter, s3lib.ErrInternalError, r.httpRequest.RequestURI, "")
+}
+
+func (r *S3RequestEvent) SendIncorrectKey() {
+	// TODO: implement
+	s3lib.SendError(r.httpWriter, s3lib.ErrInvalidAccessKeyId, r.httpRequest.RequestURI, "")
+}
+
+func (r *S3RequestEvent) SendNoSuchKey() {
+	s3lib.SendError(r.httpWriter, s3lib.ErrInvalidAccessKeyId, r.httpRequest.RequestURI, "")
+}
+
+func (r *S3RequestEvent) SendInvalidURI() {
+	s3lib.SendError(r.httpWriter, s3lib.ErrInvalidURI, r.httpRequest.RequestURI, "")
 }
 
 func getAuthArgsV4(authString string) (*s3lib.SignV4, s3lib.ErrorCode) {

@@ -25,12 +25,9 @@ func gwRun(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	g, err := gw.New(&gwCfg)
-	if err != nil {
+	if err := gw.Bootstrap(gwCfg); err != nil {
 		log.Fatal(err)
 	}
-
-	g.Start()
 }
 
 func init() {

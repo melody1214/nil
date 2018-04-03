@@ -5,19 +5,19 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 var log *logrus.Entry
 
 type Service struct {
-	as AdminService
-	bs BucketService
-	os ObjectService
+	ah AdminHandlers
+	bh BucketHandlers
+	oh ObjectHandlers
 
 	nilMux *nilmux.NilMux
 
@@ -28,7 +28,7 @@ type Service struct {
 	httpSrv     *http.Server
 }
 
-func NewDeliveryService(cfg *config.Gw, as AdminService, bs BucketService, os ObjectService) (*Service, error) {
+func NewDeliveryService(cfg *config.Gw, ah AdminHandlers, bh BucketHandlers, oh ObjectHandlers) (*Service, error) {
 	l := mlog.GetLogger()
 	if l == nil {
 		return nil, errors.New("failed to get logger")
@@ -37,7 +37,7 @@ func NewDeliveryService(cfg *config.Gw, as AdminService, bs BucketService, os Ob
 
 	addr := cfg.ServerAddr + ":" + cfg.ServerPort
 
-	if cfg == nil || as == nil || bs == nil || os == nil {
+	if cfg == nil || ah == nil || bh == nil || oh == nil {
 		return nil, errors.New("invalid nil arguments")
 	}
 
@@ -57,7 +57,7 @@ func NewDeliveryService(cfg *config.Gw, as AdminService, bs BucketService, os Ob
 	m.RegisterLayer(httpL)
 
 	// 4. Create a http handler.
-	h := makeHandler(bs, os)
+	h := makeHandler(bh, oh)
 
 	// 5. Create http server.
 	hsrv := &http.Server{
@@ -68,9 +68,9 @@ func NewDeliveryService(cfg *config.Gw, as AdminService, bs BucketService, os Ob
 	}
 
 	return &Service{
-		as: as,
-		bs: bs,
-		os: os,
+		ah: ah,
+		bh: bh,
+		oh: oh,
 
 		nilMux: m,
 
@@ -113,20 +113,20 @@ func (s *Service) handleAdmin() {
 			return
 		}
 
-		go s.as.Proxying(conn)
+		go s.ah.Proxying(conn)
 	}
 }
 
-type AdminService interface {
+type AdminHandlers interface {
 	Proxying(conn net.Conn)
 }
 
-type BucketService interface {
+type BucketHandlers interface {
 	MakeBucketHandler(w http.ResponseWriter, r *http.Request)
 	RemoveBucketHandler(w http.ResponseWriter, r *http.Request)
 }
 
-type ObjectService interface {
+type ObjectHandlers interface {
 	PutObjectHandler(w http.ResponseWriter, r *http.Request)
 	GetObjectHandler(w http.ResponseWriter, r *http.Request)
 	DeleteObjectHandler(w http.ResponseWriter, r *http.Request)

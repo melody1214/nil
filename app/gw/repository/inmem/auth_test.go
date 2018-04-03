@@ -2,16 +2,14 @@ package inmem
 
 import (
 	"testing"
-
-	"github.com/chanyoung/nil/pkg/s3"
 )
 
 func TestAuth(t *testing.T) {
 	r := NewAuthRepository()
 
 	testCases := []struct {
-		accesskey s3.AccessKey
-		secretKey s3.SecretKey
+		accesskey string
+		secretKey string
 	}{
 		{"accessKey1", "secretKey1"},
 		{"accessKey2", "secretKey2"},
