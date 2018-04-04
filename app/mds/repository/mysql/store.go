@@ -13,7 +13,9 @@ import (
 	"github.com/chanyoung/nil/app/mds/usecase/object"
 	"github.com/chanyoung/nil/app/mds/usecase/recovery"
 	"github.com/chanyoung/nil/pkg/util/config"
+	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/hashicorp/raft"
+	"github.com/pkg/errors"
 )
 
 // store is a mysql store, which stores nil meta data.
@@ -40,11 +42,39 @@ type store struct {
 }
 
 // New creates a Store object.
-func New(cfg *config.Mds, transport raft.StreamLayer) repository.Store {
+func New(cfg *config.Mds) repository.Store {
 	return &store{
-		cfg:       cfg,
-		transport: transport,
+		cfg: cfg,
 	}
+}
+
+// Close cleans up the store.
+func (s *store) Close() {
+	// Close mysql connection.
+	s.db.Close()
+	s.raft.Shutdown()
+}
+
+// Join joins a node, identified by nodeID and located at addr, to this store.
+// The node must be ready to respond to Raft communications at that address.
+func (s *store) Join(nodeID, addr string) error {
+	mlog.GetLogger().Infof("received join request for remote node %s at %s", nodeID, addr)
+
+	if s.raft.State() != raft.Leader {
+		return errors.New("not leader")
+	}
+
+	f := s.raft.AddVoter(raft.ServerID(nodeID), raft.ServerAddress(addr), 0, 0)
+	if f.Error() != nil {
+		return f.Error()
+	}
+
+	if err := s.addRegion(nodeID, addr); err != nil {
+		return err
+	}
+
+	mlog.GetLogger().Infof("node %s at %s joined successfully", nodeID, addr)
+	return nil
 }
 
 // NewAdminRepository returns a new instance of a mysql admin repository.

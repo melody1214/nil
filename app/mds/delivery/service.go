@@ -3,6 +3,7 @@ package delivery
 import (
 	"net"
 
+	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/pkg/errors"
@@ -30,4 +31,13 @@ func NewDeliveryService(cfg *config.Mds) (*Service, error) {
 	_ = rAddr
 
 	return &Service{}, nil
+}
+
+// AdminHandlers is the interface that provides admin domain's rpc handlers.
+type AdminHandlers interface {
+	Join(req *nilrpc.JoinRequest, res *nilrpc.JoinResponse) error
+	AddUser(req *nilrpc.AddUserRequest, res *nilrpc.AddUserResponse) error
+	GetLocalChain(req *nilrpc.GetLocalChainRequest, res *nilrpc.GetLocalChainResponse) error
+	GetAllChain(req *nilrpc.GetAllChainRequest, res *nilrpc.GetAllChainResponse) error
+	GetAllVolume(req *nilrpc.GetAllVolumeRequest, res *nilrpc.GetAllVolumeResponse) error
 }
