@@ -1,4 +1,4 @@
-package encoder
+package object
 
 import (
 	"net/rpc"
@@ -26,7 +26,7 @@ type encodeGroup struct {
 	parityVolNodeAddr string
 }
 
-func (e *Encoder) updateGroup() {
+func (e *encoder) updateGroup() {
 	m, err := cmap.GetLatest(cmap.WithFromRemote(true))
 	if err != nil {
 		mlog.GetLogger().Error(err)

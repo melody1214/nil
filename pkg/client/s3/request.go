@@ -100,6 +100,11 @@ func (r *S3RequestEvent) Auth(secretKey string) bool {
 	return true
 }
 
+// SendSuccess sends success message to the client.
+func (r *S3RequestEvent) SendSuccess() {
+	s3lib.SendSuccess(r.httpWriter)
+}
+
 // SendInternalError sends s3 internal error to the client.
 func (r *S3RequestEvent) SendInternalError() {
 	s3lib.SendError(r.httpWriter, s3lib.ErrInternalError, r.httpRequest.RequestURI, "")

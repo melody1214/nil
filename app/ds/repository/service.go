@@ -1,9 +1,4 @@
-package store
-
-import (
-	"github.com/chanyoung/nil/app/ds/store/request"
-	"github.com/chanyoung/nil/app/ds/store/volume"
-)
+package repository
 
 // Service is a backend store interface.
 type Service interface {
@@ -14,8 +9,8 @@ type Service interface {
 	Stop()
 
 	// AddVolume adds a new volume into the store list.
-	AddVolume(v *volume.Vol) error
+	AddVolume(v *Vol) error
 
 	// Push pushes an io request into the scheduling queue.
-	Push(c *request.Request) error
+	Push(c *Request) error
 }

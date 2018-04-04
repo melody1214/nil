@@ -2,7 +2,6 @@ package swim
 
 import (
 	"fmt"
-	"log"
 	"net/rpc"
 	"runtime"
 	"sync/atomic"
@@ -152,7 +151,6 @@ func (s *Server) serve() {
 	for {
 		conn, err := s.trans.Accept()
 		if err != nil {
-			log.Println(err)
 			return
 		}
 		go s.rpcSrv.ServeConn(conn)

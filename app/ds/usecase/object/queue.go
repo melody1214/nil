@@ -1,31 +1,29 @@
-package lvstore
+package object
 
 import (
 	"sync"
-
-	"github.com/chanyoung/nil/app/ds/store/request"
 )
 
 // queue is a FIFO queue for handling io requests(struct request.Call).
 type queue struct {
-	requests []*request.Request
+	requests []*request
 	mu       sync.Mutex
 }
 
 func newRequestsQueue() *queue {
 	return &queue{
-		requests: make([]*request.Request, 0),
+		requests: make([]*request, 0),
 	}
 }
 
-func (q *queue) push(r *request.Request) {
+func (q *queue) push(r *request) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
 	q.requests = append(q.requests, r)
 }
 
-func (q *queue) pop() (r *request.Request) {
+func (q *queue) pop() (r *request) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 

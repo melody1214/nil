@@ -1,26 +1,49 @@
-package rpchandling
+package admin
 
 import (
 	"net/rpc"
 	"time"
 
-	"github.com/chanyoung/nil/app/ds/store/volume"
+	"github.com/chanyoung/nil/app/ds/delivery"
+	"github.com/chanyoung/nil/app/ds/repository"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
+	"github.com/chanyoung/nil/pkg/util/config"
+	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
+var log *logrus.Entry
+
+type handlers struct {
+	cfg   *config.Ds
+	store Repository
+	cMap  *cmap.CMap
+}
+
+// NewHandlers creates a client handlers with necessary dependencies.
+func NewHandlers(cfg *config.Ds, s Repository) delivery.AdminHandlers {
+	log = mlog.GetLogger().WithField("package", "ds/usecase/admin")
+
+	return &handlers{
+		cfg:   cfg,
+		store: s,
+		cMap:  cmap.New(),
+	}
+}
+
 // AddVolume adds a new volume with the given device path.
-func (h *Handler) AddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVolumeResponse) error {
-	lv, err := volume.NewVol(req.DevicePath)
+func (h *handlers) AddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVolumeResponse) error {
+	lv, err := repository.NewVol(req.DevicePath)
 	if err != nil {
 		return err
 	}
 
-	mds, err := h.clusterMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
+	mds, err := h.cMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
 	if err != nil {
 		h.updateClusterMap()
-		mds, err = h.clusterMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
+		mds, err = h.cMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
 		if err != nil {
 			log.Error(err)
 			return errors.Wrap(err, "failed to register volume")
@@ -34,7 +57,7 @@ func (h *Handler) AddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVolumeR
 	defer conn.Close()
 
 	registerReq := &nilrpc.RegisterVolumeRequest{
-		Ds:     h.nodeID,
+		Ds:     h.cfg.ID,
 		Size:   lv.Size,
 		Free:   lv.Free,
 		Used:   lv.Used,
@@ -74,12 +97,14 @@ func (h *Handler) AddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVolumeR
 }
 
 // updateClusterMap retrieves the latest cluster map from the mds.
-func (h *Handler) updateClusterMap() {
+func (h *handlers) updateClusterMap() {
+	ctxLogger := log.WithField("method", "handlers.updateClusterMap")
+
 	m, err := cmap.GetLatest(cmap.WithFromRemote(true))
 	if err != nil {
-		log.Error(err)
+		ctxLogger.Error(err)
 		return
 	}
 
-	h.clusterMap = m
+	h.cMap = m
 }

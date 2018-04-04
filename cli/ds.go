@@ -23,12 +23,9 @@ func dsRun(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	d, err := ds.New(&dsCfg)
-	if err != nil {
+	if err := ds.Bootstrap(dsCfg); err != nil {
 		log.Fatal(err)
 	}
-
-	d.Start()
 }
 
 func init() {

@@ -7,10 +7,13 @@ import (
 	"time"
 
 	"github.com/chanyoung/nil/app/ds/repository"
+	"github.com/chanyoung/nil/app/ds/usecase/admin"
+	"github.com/chanyoung/nil/app/ds/usecase/object"
+	"github.com/chanyoung/nil/app/ds/usecase/recovery"
 )
 
-// Service is the backend store service.
-type Service struct {
+// service is the backend store service.
+type service struct {
 	lvs          map[string]*lv
 	basePath     string
 	requestQueue queue
@@ -18,8 +21,18 @@ type Service struct {
 }
 
 // NewService returns a new backend store service.
-func NewService(basePath string) *Service {
-	return &Service{
+func NewService(basePath string) repository.Service {
+	return &service{
+		basePath: basePath,
+		lvs:      map[string]*lv{},
+		pushCh:   make(chan interface{}, 1),
+	}
+}
+
+// newService returns a new backend store service.
+// This is only for unit test. Do not use in real service.
+func newService(basePath string) *service {
+	return &service{
 		basePath: basePath,
 		lvs:      map[string]*lv{},
 		pushCh:   make(chan interface{}, 1),
@@ -27,7 +40,7 @@ func NewService(basePath string) *Service {
 }
 
 // Run starts to serve backend store service.
-func (s *Service) Run() {
+func (s *service) Run() {
 	checkTicker := time.NewTicker(100 * time.Millisecond)
 
 	// TODO: change to do not polling.
@@ -46,19 +59,18 @@ func (s *Service) Run() {
 }
 
 // Stop supports graceful stop of backend store service.
-func (s *Service) Stop() {
+func (s *service) Stop() {
 	// TODO: graceful stop.
 	// Tracking all jobs and wait them until finished.
 
 	// Deletes all volumes in the store.
-	for name, lv := range s.lvs {
-		delete(s.lvs, name)
+	for _, lv := range s.lvs {
 		lv.Umount()
 	}
 }
 
 // Push pushes an io request into the scheduling queue.
-func (s *Service) Push(r *repository.Request) error {
+func (s *service) Push(r *repository.Request) error {
 	if err := r.Verify(); err != nil {
 		return err
 	}
@@ -71,7 +83,7 @@ func (s *Service) Push(r *repository.Request) error {
 }
 
 // AddVolume adds a volume into the lv map.
-func (s *Service) AddVolume(v *repository.Vol) error {
+func (s *service) AddVolume(v *repository.Vol) error {
 	if _, ok := s.lvs[v.Name]; ok {
 		return fmt.Errorf("Volume name %s already exists", v.Name)
 	}
@@ -99,7 +111,7 @@ func (s *Service) AddVolume(v *repository.Vol) error {
 	return nil
 }
 
-func (s *Service) handleCall(r *repository.Request) {
+func (s *service) handleCall(r *repository.Request) {
 	defer r.Wg.Done()
 
 	switch r.Op {
@@ -112,7 +124,7 @@ func (s *Service) handleCall(r *repository.Request) {
 	}
 }
 
-func (s *Service) read(r *repository.Request) {
+func (s *service) read(r *repository.Request) {
 	if r.Oid == "" {
 		s.readAll(r)
 		return
@@ -166,7 +178,7 @@ func (s *Service) read(r *repository.Request) {
 	}
 }
 
-func (s *Service) readAll(r *repository.Request) {
+func (s *service) readAll(r *repository.Request) {
 	lv, ok := s.lvs[r.Vol]
 	if !ok {
 		r.Err = fmt.Errorf("no such lv: %s", r.Vol)
@@ -192,7 +204,7 @@ func (s *Service) readAll(r *repository.Request) {
 	}
 }
 
-func (s *Service) write(r *repository.Request) error {
+func (s *service) write(r *repository.Request) error {
 	lv, ok := s.lvs[r.Vol]
 	if !ok {
 		r.Err = fmt.Errorf("no such lv: %s", r.Vol)
@@ -251,7 +263,7 @@ func (s *Service) write(r *repository.Request) error {
 	return nil
 }
 
-func (s *Service) delete(r *repository.Request) {
+func (s *service) delete(r *repository.Request) {
 	lv, ok := s.lvs[r.Vol]
 	if !ok {
 		r.Err = fmt.Errorf("no such lv: %s", r.Vol)
@@ -259,4 +271,19 @@ func (s *Service) delete(r *repository.Request) {
 	}
 
 	r.Err = os.Remove(lv.MntPoint + "/" + r.LocGid + "/" + r.Cid)
+}
+
+// NewAdminRepository returns a new lv store inteface in a view of admin domain.
+func NewAdminRepository(store repository.Service) admin.Repository {
+	return store
+}
+
+// NewObjectRepository returns a new lv store inteface in a view of object domain.
+func NewObjectRepository(store repository.Service) object.Repository {
+	return store
+}
+
+// NewRecoveryRepository returns a new lv store inteface in a view of recovery domain.
+func NewRecoveryRepository(store repository.Service) recovery.Repository {
+	return store
 }

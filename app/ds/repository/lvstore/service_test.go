@@ -41,7 +41,7 @@ func TestServiceAPIs(t *testing.T) {
 		},
 	}
 
-	s := NewService(dir)
+	s := newService(dir)
 	s.lvs[lv1.Name] = lv1
 	s.lvs[lv2.Name] = lv2
 

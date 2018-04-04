@@ -1,4 +1,4 @@
-package encoder
+package object
 
 import (
 	"fmt"
@@ -10,17 +10,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/chanyoung/nil/app/ds/store"
-	"github.com/chanyoung/nil/app/ds/store/request"
+	"github.com/chanyoung/nil/app/ds/repository"
 	"github.com/chanyoung/nil/pkg/security"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/chanyoung/nil/pkg/util/uuid"
 )
 
-type Encoder struct {
+type encoder struct {
 	chunkMap map[string]*chunkMap
 	emap     map[string]encodeGroup
-	s        store.Service
+	s        Repository
 	q        *queue
 	pushCh   chan interface{}
 }
@@ -30,8 +29,8 @@ type chunkMap struct {
 	seq     int
 }
 
-func NewEncoder(s store.Service) *Encoder {
-	return &Encoder{
+func newEncoder(s Repository) *encoder {
+	return &encoder{
 		chunkMap: make(map[string]*chunkMap),
 		emap:     make(map[string]encodeGroup),
 		s:        s,
@@ -40,7 +39,7 @@ func NewEncoder(s store.Service) *Encoder {
 	}
 }
 
-func (e *Encoder) Run() {
+func (e *encoder) Run() {
 	updateMapNoti := time.NewTicker(5 * time.Second)
 
 	for {
@@ -53,13 +52,13 @@ func (e *Encoder) Run() {
 	}
 }
 
-func (e *Encoder) Push(r *Request) {
+func (e *encoder) Push(r *request) {
 	e.q.push(r)
 	r.wg.Add(1)
 	e.pushCh <- nil
 }
 
-func (e *Encoder) doAll() {
+func (e *encoder) doAll() {
 	for {
 		if r := e.q.pop(); r != nil {
 			e.do(r)
@@ -70,10 +69,10 @@ func (e *Encoder) doAll() {
 	}
 }
 
-func (e *Encoder) do(r *Request) {
+func (e *encoder) do(r *request) {
 	defer r.wg.Done()
 
-	lcid := r.R.Header.Get("Local-Chain-Id")
+	lcid := r.r.Header.Get("Local-Chain-Id")
 	lc, ok := e.emap[lcid]
 	if !ok {
 		r.err = fmt.Errorf("no such local chain")
@@ -88,22 +87,22 @@ func (e *Encoder) do(r *Request) {
 		}
 	}
 
-	osize, err := strconv.ParseInt(r.R.Header.Get("Content-Length"), 10, 64)
+	osize, err := strconv.ParseInt(r.r.Header.Get("Content-Length"), 10, 64)
 	if err != nil {
 		r.err = err
 		return
 	}
 
 	parityCID := e.chunkMap[lcid].chunkID + "-" + strconv.Itoa(e.chunkMap[lcid].seq)
-	req := &request.Request{
-		Op:     request.Write,
-		Vol:    r.R.Header.Get("Volume-Id"),
+	req := &repository.Request{
+		Op:     repository.Write,
+		Vol:    r.r.Header.Get("Volume-Id"),
 		LocGid: lcid,
-		Oid:    strings.Replace(strings.Trim(r.R.RequestURI, "/"), "/", ".", -1),
+		Oid:    strings.Replace(strings.Trim(r.r.RequestURI, "/"), "/", ".", -1),
 		Cid:    parityCID,
 		Osize:  osize,
 
-		In: r.R.Body,
+		In: r.r.Body,
 	}
 
 	r.err = e.s.Push(req)
@@ -117,7 +116,7 @@ func (e *Encoder) do(r *Request) {
 		if e.chunkMap[lcid].seq == 2 {
 			cm := e.chunkMap[lcid]
 			go func() {
-				e.encode(cm, r.R.Header.Get("Volume-Id"), lcid)
+				e.encode(cm, r.r.Header.Get("Volume-Id"), lcid)
 				// Do encode
 			}()
 
@@ -147,10 +146,10 @@ func (e *Encoder) do(r *Request) {
 		r.err = fmt.Errorf("vol seq error")
 		return
 	}
-	addr = addr + r.R.RequestURI
+	addr = addr + r.r.RequestURI
 
 	pipeReader, pipeWriter := io.Pipe()
-	copyReq, err := http.NewRequest(r.R.Method, addr, pipeReader)
+	copyReq, err := http.NewRequest(r.r.Method, addr, pipeReader)
 	if err != nil {
 		r.err = err
 		return
@@ -178,11 +177,11 @@ func (e *Encoder) do(r *Request) {
 	// mlog.GetLogger().Errorf("%+v", *r.R)
 	// mlog.GetLogger().Errorf("%+v", *copyReq)
 
-	req = &request.Request{
-		Op:     request.Read,
-		Vol:    r.R.Header.Get("Volume-Id"),
+	req = &repository.Request{
+		Op:     repository.Read,
+		Vol:    r.r.Header.Get("Volume-Id"),
 		LocGid: lcid,
-		Oid:    strings.Replace(strings.Trim(r.R.RequestURI, "/"), "/", ".", -1),
+		Oid:    strings.Replace(strings.Trim(r.r.RequestURI, "/"), "/", ".", -1),
 		// Cid:   e.chunkMap[lcid].chunkID,
 		Cid:   parityCID,
 		Osize: osize,
@@ -194,7 +193,7 @@ func (e *Encoder) do(r *Request) {
 		return
 	}
 
-	go func(readReq *request.Request) {
+	go func(readReq *repository.Request) {
 		defer pipeWriter.Close()
 		err := readReq.Wait()
 		if err != nil {
@@ -225,12 +224,12 @@ func (e *Encoder) do(r *Request) {
 	mlog.GetLogger().Infof("%+v", string(b))
 }
 
-func (e *Encoder) encode(chunkmap *chunkMap, volID, lgid string) {
+func (e *encoder) encode(chunkmap *chunkMap, volID, lgid string) {
 	mlog.GetLogger().Info("Start encoding")
 
 	pr1, pw1 := io.Pipe()
-	req1 := &request.Request{
-		Op:     request.Read,
+	req1 := &repository.Request{
+		Op:     repository.Read,
 		Vol:    volID,
 		LocGid: lgid,
 		Cid:    chunkmap.chunkID + "-0",
@@ -238,7 +237,7 @@ func (e *Encoder) encode(chunkmap *chunkMap, volID, lgid string) {
 		Out:    pw1,
 	}
 	e.s.Push(req1)
-	go func(readReq *request.Request) {
+	go func(readReq *repository.Request) {
 		defer pw1.Close()
 		err := readReq.Wait()
 		if err != nil {
@@ -252,8 +251,8 @@ func (e *Encoder) encode(chunkmap *chunkMap, volID, lgid string) {
 	mlog.GetLogger().Info("Encoding step 1")
 
 	pr2, pw2 := io.Pipe()
-	req2 := &request.Request{
-		Op:     request.Read,
+	req2 := &repository.Request{
+		Op:     repository.Read,
 		Vol:    volID,
 		LocGid: lgid,
 		Cid:    chunkmap.chunkID + "-1",
@@ -261,7 +260,7 @@ func (e *Encoder) encode(chunkmap *chunkMap, volID, lgid string) {
 		Out:    pw2,
 	}
 	e.s.Push(req2)
-	go func(readReq *request.Request) {
+	go func(readReq *repository.Request) {
 		defer pw2.Close()
 		err := readReq.Wait()
 		if err != nil {
@@ -275,8 +274,8 @@ func (e *Encoder) encode(chunkmap *chunkMap, volID, lgid string) {
 	mlog.GetLogger().Info("Encoding step 2")
 
 	pr3, pw3 := io.Pipe()
-	req3 := &request.Request{
-		Op:     request.Read,
+	req3 := &repository.Request{
+		Op:     repository.Read,
 		Vol:    volID,
 		LocGid: lgid,
 		Cid:    chunkmap.chunkID + "-2",
@@ -284,7 +283,7 @@ func (e *Encoder) encode(chunkmap *chunkMap, volID, lgid string) {
 		Out:    pw3,
 	}
 	e.s.Push(req3)
-	go func(readReq *request.Request) {
+	go func(readReq *repository.Request) {
 		defer pw2.Close()
 		err := readReq.Wait()
 		if err != nil {
@@ -298,8 +297,8 @@ func (e *Encoder) encode(chunkmap *chunkMap, volID, lgid string) {
 	mlog.GetLogger().Info("Encoding step 3")
 
 	pr4, pw4 := io.Pipe()
-	req4 := &request.Request{
-		Op:     request.Write,
+	req4 := &repository.Request{
+		Op:     repository.Write,
 		Vol:    volID,
 		LocGid: lgid,
 		Cid:    chunkmap.chunkID,
@@ -329,22 +328,22 @@ func (e *Encoder) encode(chunkmap *chunkMap, volID, lgid string) {
 
 	mlog.GetLogger().Info("Encoding step 5")
 
-	req1 = &request.Request{
-		Op:     request.Delete,
+	req1 = &repository.Request{
+		Op:     repository.Delete,
 		Vol:    volID,
 		LocGid: lgid,
 		Cid:    chunkmap.chunkID + "-0",
 		Oid:    chunkmap.chunkID + "-0",
 	}
-	req2 = &request.Request{
-		Op:     request.Delete,
+	req2 = &repository.Request{
+		Op:     repository.Delete,
 		Vol:    volID,
 		LocGid: lgid,
 		Cid:    chunkmap.chunkID + "-1",
 		Oid:    chunkmap.chunkID + "-1",
 	}
-	req3 = &request.Request{
-		Op:     request.Delete,
+	req3 = &repository.Request{
+		Op:     repository.Delete,
 		Vol:    volID,
 		LocGid: lgid,
 		Cid:    chunkmap.chunkID + "-2",

@@ -15,6 +15,7 @@ type RequestEvent interface {
 	Auth(secretKey string) bool
 
 	// Methods for handling errors.
+	SendSuccess()
 	SendInternalError()
 	SendIncorrectKey()
 	SendNoSuchKey()
