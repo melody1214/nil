@@ -117,6 +117,7 @@ func (s *Service) Run() error {
 	}
 
 	go s.meh.Run()
+	go s.rebalancer()
 	return nil
 }
 

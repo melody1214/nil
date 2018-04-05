@@ -28,12 +28,6 @@ func mdsRun(cmd *cobra.Command, args []string) {
 	if err := mds.Bootstrap(mdscfg); err != nil {
 		log.Fatal(err)
 	}
-
-	// m, err := mds.New(&mdscfg)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// m.Start()
 }
 
 func init() {
