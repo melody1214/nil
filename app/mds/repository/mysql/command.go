@@ -43,7 +43,7 @@ func (s *store) QueryRow(query string, args ...interface{}) *sql.Row {
 	if s.db == nil {
 		return nil
 	}
-	return s.db.QueryRow(query, args...)
+	return s.db.queryRow(query, args...)
 }
 
 // Query executes a query that returns rows.
@@ -51,7 +51,7 @@ func (s *store) Query(query string, args ...interface{}) (*sql.Rows, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("mysql is not connected yet")
 	}
-	return s.db.Query(query, args...)
+	return s.db.query(query, args...)
 }
 
 // Execute executes a query in the local cluster.
@@ -59,7 +59,7 @@ func (s *store) Execute(query string) (sql.Result, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("mysql is not connected yet")
 	}
-	return s.db.Execute(query)
+	return s.db.execute(query)
 }
 
 func (s *store) addRegion(region, addr string) error {

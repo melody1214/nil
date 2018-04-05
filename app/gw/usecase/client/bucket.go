@@ -74,7 +74,7 @@ func (h *handlers) makeBucket(accessKey, region, bucket string) error {
 
 	// Call 'AddBucket' procedure and handling errors.
 	cli := rpc.NewClient(conn)
-	if err := cli.Call(nilrpc.AddBucket.String(), req, res); err != nil {
+	if err := cli.Call(nilrpc.MdsBucketAddBucket.String(), req, res); err != nil {
 		// Not mysql error, unknown error.
 		ctxLogger.Error(err)
 		return errInternal

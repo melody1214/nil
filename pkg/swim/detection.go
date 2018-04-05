@@ -22,7 +22,7 @@ func (s *Server) ping(pec chan PingError) {
 		pec <- PingError{
 			Type:   Ping,
 			DestID: fetched[0].ID,
-			Err:    err,
+			Err:    err.Error(),
 		}
 		return
 	}
@@ -39,7 +39,7 @@ func (s *Server) pingRequest(dstID ServerID, pec chan PingError) {
 		pec <- PingError{
 			Type:   PingRequest,
 			DestID: dstID,
-			Err:    ErrNotFound,
+			Err:    ErrNotFound.Error(),
 		}
 		return
 	}
@@ -79,7 +79,7 @@ func (s *Server) pingRequest(dstID ServerID, pec chan PingError) {
 	pec <- PingError{
 		Type:   PingRequest,
 		DestID: dstID,
-		Err:    ErrPingReq,
+		Err:    ErrPingReq.Error(),
 	}
 }
 

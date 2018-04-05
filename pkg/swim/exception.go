@@ -22,7 +22,7 @@ var (
 type PingError struct {
 	Type   MethodName
 	DestID ServerID
-	Err    error
+	Err    string
 }
 
 // handleErr handles ping errors to check and disseminate status.

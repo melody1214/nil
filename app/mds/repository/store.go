@@ -1,6 +1,10 @@
 package repository
 
-import "database/sql"
+import (
+	"database/sql"
+
+	"github.com/chanyoung/nil/pkg/nilmux"
+)
 
 // Store is a persistent data store for mds.
 type Store interface {
@@ -9,4 +13,6 @@ type Store interface {
 	Query(query string, args ...interface{}) (*sql.Rows, error)
 	QueryRow(query string, args ...interface{}) *sql.Row
 	Execute(query string) (sql.Result, error)
+	Open(raftL *nilmux.Layer) error
+	Close() error
 }

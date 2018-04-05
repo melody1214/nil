@@ -75,7 +75,7 @@ func (s *Server) updateMemberList(meml []Member) {
 	// Sends a notification that the membership list is updated.
 	if updated {
 		s.c <- PingError{
-			Err: ErrChanged,
+			Err: ErrChanged.Error(),
 		}
 	}
 }

@@ -64,7 +64,7 @@ func NewServer(conf *Config, trans Transport) (*Server, error) {
 // Serve starts gossiping.
 func (s *Server) Serve(c chan PingError) {
 	if s.canStart() == false {
-		c <- PingError{Err: ErrRunning}
+		c <- PingError{Err: ErrRunning.Error()}
 		return
 	}
 
@@ -77,7 +77,7 @@ func (s *Server) Serve(c chan PingError) {
 	// Try to join the membership.
 	// If failed, sends error message thru channel and stop serving.
 	if err := s.join(); err != nil {
-		s.c <- PingError{Err: err}
+		s.c <- PingError{Err: err.Error()}
 		return
 	}
 

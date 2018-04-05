@@ -25,7 +25,7 @@ func (f *fsm) Apply(l *raft.Log) interface{} {
 
 	switch c.Op {
 	case "execute":
-		r, err := f.db.Execute(c.Query)
+		r, err := f.db.execute(c.Query)
 		return &fsmExecuteResponse{result: r, err: err}
 	default:
 		panic(fmt.Errorf("unrecognized command op: %s", c.Op))

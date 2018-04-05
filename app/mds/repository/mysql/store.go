@@ -1,21 +1,32 @@
 package mysql
 
 import (
+	"os"
+	"path/filepath"
 	"sync"
+	"time"
 
-	"github.com/chanyoung/nil/app/mds/mysql"
 	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/app/mds/usecase/admin"
 	"github.com/chanyoung/nil/app/mds/usecase/auth"
 	"github.com/chanyoung/nil/app/mds/usecase/bucket"
 	"github.com/chanyoung/nil/app/mds/usecase/clustermap"
+	"github.com/chanyoung/nil/app/mds/usecase/consensus"
 	"github.com/chanyoung/nil/app/mds/usecase/membership"
 	"github.com/chanyoung/nil/app/mds/usecase/object"
 	"github.com/chanyoung/nil/app/mds/usecase/recovery"
+	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/hashicorp/raft"
+	raftboltdb "github.com/hashicorp/raft-boltdb"
 	"github.com/pkg/errors"
+)
+
+const (
+	retainSnapshotCount = 2
+	maxPool             = 3
+	timeout             = 10 * time.Second
 )
 
 // store is a mysql store, which stores nil meta data.
@@ -32,7 +43,7 @@ type store struct {
 	raft *raft.Raft
 
 	// Mysql store.
-	db *mysql.MySQL
+	db *mySQL
 
 	// Custom transport layer that can encrypts RPCs.
 	transport raft.StreamLayer
@@ -48,11 +59,84 @@ func New(cfg *config.Mds) repository.Store {
 	}
 }
 
+// Open opens the store.
+func (s *store) Open(raftL *nilmux.Layer) error {
+	s.transport = nilmux.NewRaftTransportLayer(raftL)
+
+	// Connect and initiate to mysql server.
+	db, err := newMySQL(s.cfg)
+	if err != nil {
+		return err
+	}
+	s.db = db
+
+	// Setup Raft configuration.
+	config := raft.DefaultConfig()
+	config.LocalID = raft.ServerID(s.cfg.Raft.LocalClusterRegion)
+	config.LogOutput = mlog.GetLogger().Writer()
+
+	// Create Raft log store directory.
+	if s.cfg.Raft.RaftDir == "" {
+		return errors.New("open raft: no raft storage directory specified")
+	}
+	os.MkdirAll(s.cfg.Raft.RaftDir, 0755)
+
+	// Setup Raft communication
+	transport := raft.NewNetworkTransport(s.transport, maxPool, timeout, mlog.GetLogger().Writer())
+
+	// Create the snapshot store. This allows the Raft to truncate the log.
+	snapshots, err := raft.NewFileSnapshotStore(s.cfg.Raft.RaftDir, retainSnapshotCount, mlog.GetLogger().Writer())
+	if err != nil {
+		return errors.Wrap(err, "open raft: failed to make new snapshot store")
+	}
+
+	// Create the log store and stable store.
+	logStore, err := raftboltdb.NewBoltStore(filepath.Join(s.cfg.Raft.RaftDir, "raft.db"))
+	if err != nil {
+		return errors.Wrap(err, "open raft: failed to make new boltdb store")
+	}
+
+	// Instantiate the Raft systems.
+	ra, err := raft.NewRaft(config, (*fsm)(s), logStore, logStore, snapshots, transport)
+	if err != nil {
+		return errors.Wrap(err, "open raft: failed to make new raft")
+	}
+	s.raft = ra
+
+	// If LocalClusterAddr is same with GlobalClusterAddr then this node
+	// becomes the first node, and therefore leader of the cluster.
+	if s.cfg.Raft.LocalClusterAddr == s.cfg.Raft.GlobalClusterAddr {
+		configuration := raft.Configuration{
+			Servers: []raft.Server{
+				raft.Server{
+					ID:      config.LocalID,
+					Address: transport.LocalAddr(),
+				},
+			},
+		}
+		ra.BootstrapCluster(configuration)
+
+		// Waiting until become raft leader.
+		for s.raft.State() != raft.Leader {
+			time.Sleep(10 * time.Millisecond)
+		}
+		// Add my region.
+		return s.addRegion(
+			s.cfg.Raft.LocalClusterRegion,
+			s.cfg.Raft.LocalClusterAddr,
+		)
+	}
+
+	return nil
+}
+
 // Close cleans up the store.
-func (s *store) Close() {
+func (s *store) Close() error {
 	// Close mysql connection.
-	s.db.Close()
+	s.db.close()
 	s.raft.Shutdown()
+
+	return nil
 }
 
 // Join joins a node, identified by nodeID and located at addr, to this store.
@@ -89,6 +173,11 @@ func NewAuthRepository(s repository.Store) auth.Repository {
 
 // NewBucketRepository returns a new instance of a mysql bucket repository.
 func NewBucketRepository(s repository.Store) bucket.Repository {
+	return s
+}
+
+// NewConsensusRepository returns a new instance of a mysql cluster map repository.
+func NewConsensusRepository(s repository.Store) consensus.Repository {
 	return s
 }
 

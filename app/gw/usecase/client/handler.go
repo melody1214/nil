@@ -54,7 +54,7 @@ func (h *handlers) getLocalChain() (*nilrpc.GetLocalChainResponse, error) {
 
 	// 4. Request the secret key.
 	cli := rpc.NewClient(conn)
-	if err := cli.Call(nilrpc.GetLocalChain.String(), req, res); err != nil {
+	if err := cli.Call(nilrpc.MdsAdminGetLocalChain.String(), req, res); err != nil {
 		return nil, errors.Wrap(err, "mds rpc client calling failed")
 	}
 

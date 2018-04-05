@@ -50,7 +50,7 @@ func (e *encoder) updateGroup() {
 	vres := &nilrpc.GetAllVolumeResponse{}
 
 	cli := rpc.NewClient(conn)
-	if err := cli.Call(nilrpc.GetAllVolume.String(), vreq, vres); err != nil {
+	if err := cli.Call(nilrpc.MdsAdminGetAllVolume.String(), vreq, vres); err != nil {
 		mlog.GetLogger().Error(err)
 	}
 
@@ -62,7 +62,7 @@ func (e *encoder) updateGroup() {
 	creq := &nilrpc.GetAllChainRequest{}
 	cres := &nilrpc.GetAllChainResponse{}
 
-	if err := cli.Call(nilrpc.GetAllChain.String(), creq, cres); err != nil {
+	if err := cli.Call(nilrpc.MdsAdminGetAllChain.String(), creq, cres); err != nil {
 		mlog.GetLogger().Error(err)
 	}
 

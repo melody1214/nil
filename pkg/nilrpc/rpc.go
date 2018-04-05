@@ -7,28 +7,50 @@ import (
 
 	"github.com/chanyoung/nil/pkg/s3"
 	"github.com/chanyoung/nil/pkg/security"
+	"github.com/chanyoung/nil/pkg/swim"
 )
 
-// MDSRPCPrefix is the prefix for calling mds rpc methods.
-const MDSRPCPrefix = "MDS"
+// MDSADMINPrefix is the prefix for calling mds rpc methods.
+const (
+	MdsAdminPrefix      = "MDS_ADMIN"
+	MdsAuthPrefix       = "MDS_AUTH"
+	MdsBucketPrefix     = "MDS_BUCKET"
+	MdsClustermapPrefix = "MDS_CLUSTERMAP"
+	MdsMembershipPrefix = "MDS_MEMBERSHIP"
+	MdsRecoveryPrefix   = "MDS_RECOVERY"
+
+	DSRPCPrefix = "DS"
+)
 
 // DSRPCPrefix is the prefix for calling ds rpc methods.
-const DSRPCPrefix = "DS"
 
 // MethodName indicates what procedure will be called.
 type MethodName int
 
 const (
-	// MDS methods.
-	Join MethodName = iota
-	AddUser
-	GetCredential
-	AddBucket
-	GetClusterMap
-	RegisterVolume
-	GetLocalChain
-	GetAllChain
-	GetAllVolume
+	// MDS admin domain methods.
+	MdsAdminJoin MethodName = iota
+	MdsAdminGetLocalChain
+	MdsAdminGetAllChain
+	MdsAdminGetAllVolume
+	MdsAdminAddUser
+	MdsAdminRegisterVolume
+
+	// MDS auth domain methods.
+	MdsAuthGetCredential
+
+	// MDS bucket domain methods.
+	MdsBucketAddBucket
+
+	// MDS clustermap domain methods.
+	MdsClustermapGetClusterMap
+
+	// MDS membership domain methods.
+	MdsMembershipGetMembershipList
+
+	// MDS recovery domain methods
+	MdsRecoveryRecover
+	MdsRecoveryRebalance
 
 	// DS methods.
 	AddVolume
@@ -36,24 +58,36 @@ const (
 
 func (m MethodName) String() string {
 	switch m {
-	case Join:
-		return MDSRPCPrefix + "." + "Join"
-	case AddUser:
-		return MDSRPCPrefix + "." + "AddUser"
-	case GetCredential:
-		return MDSRPCPrefix + "." + "GetCredential"
-	case AddBucket:
-		return MDSRPCPrefix + "." + "AddBucket"
-	case GetClusterMap:
-		return MDSRPCPrefix + "." + "GetClusterMap"
-	case RegisterVolume:
-		return MDSRPCPrefix + "." + "RegisterVolume"
-	case GetLocalChain:
-		return MDSRPCPrefix + "." + "GetLocalChain"
-	case GetAllChain:
-		return MDSRPCPrefix + "." + "GetAllChain"
-	case GetAllVolume:
-		return MDSRPCPrefix + "." + "GetAllVolume"
+	case MdsAdminJoin:
+		return MdsAdminPrefix + "." + "Join"
+	case MdsAdminGetLocalChain:
+		return MdsAdminPrefix + "." + "GetLocalChain"
+	case MdsAdminGetAllChain:
+		return MdsAdminPrefix + "." + "GetAllChain"
+	case MdsAdminGetAllVolume:
+		return MdsAdminPrefix + "." + "GetAllVolume"
+	case MdsAdminAddUser:
+		return MdsAdminPrefix + "." + "AddUser"
+	case MdsAdminRegisterVolume:
+		return MdsAdminPrefix + "." + "RegisterVolume"
+
+	case MdsAuthGetCredential:
+		return MdsAuthPrefix + "." + "GetCredential"
+
+	case MdsBucketAddBucket:
+		return MdsBucketPrefix + "." + "AddBucket"
+
+	case MdsClustermapGetClusterMap:
+		return MdsClustermapPrefix + "." + "GetClusterMap"
+
+	case MdsMembershipGetMembershipList:
+		return MdsMembershipPrefix + "." + "GetMembershipList"
+
+	case MdsRecoveryRecover:
+		return MdsRecoveryPrefix + "." + "Recover"
+	case MdsRecoveryRebalance:
+		return MdsRecoveryPrefix + "." + "Rebalance"
+
 	case AddVolume:
 		return DSRPCPrefix + "." + "AddVolume"
 	default:
@@ -192,6 +226,19 @@ type GetAllVolumeRequest struct{}
 type GetAllVolumeResponse struct {
 	Volumes []Volume
 }
+
+type GetMembershipListRequest struct{}
+type GetMembershipListResponse struct {
+	Nodes []swim.Member
+}
+
+type RecoverRequest struct {
+	Pe swim.PingError
+}
+type RecoverResponse struct{}
+
+type RebalanceRequest struct{}
+type RebalanceResponse struct{}
 
 // Dial dials with the given rpc type connection to the address.
 func Dial(addr string, rpcType RPCType, timeout time.Duration) (net.Conn, error) {

@@ -67,7 +67,7 @@ func (h *handlers) AddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVolume
 	registerRes := &nilrpc.RegisterVolumeResponse{}
 
 	cli := rpc.NewClient(conn)
-	if err := cli.Call(nilrpc.RegisterVolume.String(), registerReq, registerRes); err != nil {
+	if err := cli.Call(nilrpc.MdsAdminRegisterVolume.String(), registerReq, registerRes); err != nil {
 		return err
 	}
 
@@ -86,7 +86,7 @@ func (h *handlers) AddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVolume
 	registerReq.Used = lv.Used
 	registerReq.Speed = lv.Speed.String()
 	registerReq.Status = lv.Status.String()
-	if err := cli.Call(nilrpc.RegisterVolume.String(), registerReq, registerRes); err != nil {
+	if err := cli.Call(nilrpc.MdsAdminRegisterVolume.String(), registerReq, registerRes); err != nil {
 		// TODO: remove added volume in the mds and ds.
 		return err
 	}
