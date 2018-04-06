@@ -12,7 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var log *logrus.Entry
+var logger *logrus.Entry
 
 type handlers struct {
 	cfg   *config.Mds
@@ -21,7 +21,7 @@ type handlers struct {
 
 // NewHandlers creates a client handlers with necessary dependencies.
 func NewHandlers(cfg *config.Mds, s Repository) delivery.ConsensusHandlers {
-	log = mlog.GetLogger().WithField("package", "mds/usecase/bucket")
+	logger = mlog.GetPackageLogger("app/mds/usecase/consensus")
 
 	return &handlers{
 		cfg:   cfg,

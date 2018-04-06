@@ -12,7 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var log *logrus.Entry
+var logger *logrus.Entry
 
 type handlers struct {
 	cfg   *config.Mds
@@ -24,7 +24,7 @@ type handlers struct {
 
 // NewHandlers creates a client handlers with necessary dependencies.
 func NewHandlers(cfg *config.Mds, s Repository) delivery.RecoveryHandlers {
-	log = mlog.GetLogger().WithField("package", "mds/usecase/recovery")
+	logger = mlog.GetPackageLogger("app/mds/usecase/recovery")
 
 	return &handlers{
 		cfg:   cfg,
@@ -37,8 +37,10 @@ func (h *handlers) Recover(req *nilrpc.RecoverRequest, res *nilrpc.RecoverRespon
 	h.l.Lock()
 	defer h.l.Unlock()
 
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.Recover")
+
 	// 1. Logging the error.
-	log.WithFields(logrus.Fields{
+	ctxLogger.WithFields(logrus.Fields{
 		"server":       "swim",
 		"message type": req.Pe.Type,
 		"destID":       req.Pe.DestID,
@@ -50,13 +52,13 @@ func (h *handlers) Recover(req *nilrpc.RecoverRequest, res *nilrpc.RecoverRespon
 	// 3. Get the new version of cluster map.
 	newCMap, err := h.updateClusterMap()
 	if err != nil {
-		log.Error(err)
+		ctxLogger.Error(err)
 	}
 
 	// 4. Save the new cluster map.
 	err = newCMap.Save()
 	if err != nil {
-		log.Error(err)
+		ctxLogger.Error(err)
 	}
 
 	// 5. If the error message is occured because just simple membership
@@ -73,14 +75,16 @@ func (h *handlers) Rebalance(req *nilrpc.RebalanceRequest, res *nilrpc.Rebalance
 	h.l.Lock()
 	defer h.l.Unlock()
 
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.Rebalance")
+
 	if !h.needRebalance() {
-		log.Info("no need rebalance")
+		ctxLogger.Info("no need rebalance")
 		return nil
 	}
 
-	log.Info("do rebalance")
+	ctxLogger.Info("do rebalance")
 	if err := h.rebalance(); err != nil {
-		log.Error(err)
+		ctxLogger.Error(err)
 	}
 
 	return nil

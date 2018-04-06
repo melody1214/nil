@@ -8,12 +8,15 @@ import (
 
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/swim"
+	"github.com/chanyoung/nil/pkg/util/mlog"
 )
 
 func (h *handlers) updateMembership() {
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.updateMembership")
+
 	conn, err := nilrpc.Dial(h.cfg.ServerAddr+":"+h.cfg.ServerPort, nilrpc.RPCNil, time.Duration(2*time.Second))
 	if err != nil {
-		log.Error(err)
+		ctxLogger.Error(err)
 		return
 	}
 	defer conn.Close()
@@ -23,7 +26,7 @@ func (h *handlers) updateMembership() {
 
 	cli := rpc.NewClient(conn)
 	if err := cli.Call(nilrpc.MdsMembershipGetMembershipList.String(), req, res); err != nil {
-		log.Error(err)
+		ctxLogger.Error(err)
 	}
 
 	membership := res.Nodes
@@ -36,6 +39,8 @@ func (h *handlers) updateMembership() {
 }
 
 func (h *handlers) doUpdateMembership(sm swim.Member) {
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.doUpdateMembership")
+
 	q := fmt.Sprintf(
 		`
 		SELECT
@@ -51,7 +56,7 @@ func (h *handlers) doUpdateMembership(sm swim.Member) {
 	var oldStat, oldAddr string
 	row := h.store.QueryRow(q)
 	if row == nil {
-		log.WithField("func", "doUpdateMembership").Error("mysql is not connected yet")
+		ctxLogger.Error("mysql is not connected yet")
 		return
 	}
 
@@ -65,13 +70,14 @@ func (h *handlers) doUpdateMembership(sm swim.Member) {
 		// Member not exists, add into the database.
 		h.insertNewMember(sm)
 	} else {
-		log.Error(err)
+		ctxLogger.Error(err)
 		return
 	}
 }
 
 func (h *handlers) insertNewMember(sm swim.Member) {
-	log.Infof("insert a new member %v", sm)
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.insertNewMember")
+	ctxLogger.Infof("insert a new member %v", sm)
 
 	q := fmt.Sprintf(
 		`
@@ -82,12 +88,13 @@ func (h *handlers) insertNewMember(sm swim.Member) {
 
 	_, err := h.store.Execute(q)
 	if err != nil {
-		log.WithField("func", "insertNewMember").Error(err)
+		ctxLogger.Error(err)
 	}
 }
 
 func (h *handlers) updateMember(sm swim.Member) {
-	log.Infof("update a member %v", sm)
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.updateMember")
+	ctxLogger.Infof("update a member %v", sm)
 
 	q := fmt.Sprintf(
 		`
@@ -99,6 +106,6 @@ func (h *handlers) updateMember(sm swim.Member) {
 
 	_, err := h.store.Execute(q)
 	if err != nil {
-		log.WithField("func", "updateMember").Error(err)
+		ctxLogger.Error(err)
 	}
 }

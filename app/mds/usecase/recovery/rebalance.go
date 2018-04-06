@@ -5,9 +5,13 @@ import (
 	"fmt"
 	"math/rand"
 	"sort"
+
+	"github.com/chanyoung/nil/pkg/util/mlog"
 )
 
 func (h *handlers) needRebalance() bool {
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.needRebalance")
+
 	q := fmt.Sprintf(
 		`
 		SELECT
@@ -20,7 +24,7 @@ func (h *handlers) needRebalance() bool {
 
 	rows, err := h.store.Query(q)
 	if err != nil {
-		log.Error(err)
+		ctxLogger.Error(err)
 		return false
 	}
 	defer rows.Close()
@@ -28,7 +32,7 @@ func (h *handlers) needRebalance() bool {
 	for rows.Next() {
 		var chain, maxChain int
 		if err = rows.Scan(&chain, &maxChain); err != nil {
-			log.Error(err)
+			ctxLogger.Error(err)
 			return false
 		}
 
@@ -53,11 +57,13 @@ func isVolumeUnbalanced(chain, maxChain int) bool {
 }
 
 func (h *handlers) rebalance() error {
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.rebalance")
+
 	speedLv := []string{"low", "mid", "high"}
 
 	for _, speed := range speedLv {
 		if err := h.rebalanceSpeedGroup(speed); err != nil {
-			log.Error(err)
+			ctxLogger.Error(err)
 		}
 	}
 
@@ -65,6 +71,8 @@ func (h *handlers) rebalance() error {
 }
 
 func (h *handlers) rebalanceSpeedGroup(speed string) error {
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.rebalanceSpeedGroup")
+
 	q := fmt.Sprintf(
 		`
 		SELECT
@@ -113,7 +121,7 @@ func (h *handlers) rebalanceSpeedGroup(speed string) error {
 	for _, vol := range vols {
 		if vol.Unbalanced {
 			if err := h.doRebalance(vol, vols); err != nil {
-				log.Error(err)
+				ctxLogger.Error(err)
 			}
 		}
 	}
@@ -139,6 +147,8 @@ func (h *handlers) doRebalance(target *Volume, group []*Volume) error {
 }
 
 func (h *handlers) newLocalChain(primary *Volume, vols []*Volume) error {
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.newLocalChain")
+
 	const localChainNum = 4
 	if len(vols) < localChainNum {
 		return fmt.Errorf("lack of volumes for make local chain: %+v", vols)
@@ -255,7 +265,7 @@ func (h *handlers) newLocalChain(primary *Volume, vols []*Volume) error {
 		return err
 	}
 
-	log.Errorf("%+v", selected)
+	ctxLogger.Errorf("%+v", selected)
 	for _, v := range selected {
 		q := fmt.Sprintf(
 			`
@@ -267,14 +277,14 @@ func (h *handlers) newLocalChain(primary *Volume, vols []*Volume) error {
 
 		_, err := h.store.Execute(q)
 		if err != nil {
-			log.Error(err)
+			ctxLogger.Error(err)
 		}
 
 		// v.Chain++
 		v.Chain = v.Chain + 1
 	}
 
-	log.Infof("create local chain %+v", c)
+	ctxLogger.Infof("create local chain %+v", c)
 
 	return nil
 }

@@ -7,10 +7,13 @@ import (
 
 	"github.com/chanyoung/nil/app/ds/repository"
 	"github.com/chanyoung/nil/pkg/client"
+	"github.com/chanyoung/nil/pkg/util/mlog"
 )
 
 // PutObjectHandler handles the client request for creating an object.
 func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.PutObjectHandler")
+
 	req, err := h.requestEventFactory.CreateRequestEvent(w, r)
 	if err == client.ErrInvalidProtocol {
 		// http.Error(w, err.Error(), http.StatusBadRequest)
@@ -48,7 +51,7 @@ func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 	encReq := newRequest(r)
 	h.encoder.Push(encReq)
 	if err := encReq.wait(); err != nil {
-		log.Error(err)
+		ctxLogger.Error(err)
 		req.SendInternalError()
 		return
 	}

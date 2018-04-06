@@ -14,7 +14,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var log *logrus.Entry
+var logger *logrus.Entry
 
 type handlers struct {
 	cMap *cmap.CMap
@@ -22,7 +22,7 @@ type handlers struct {
 
 // NewHandlers creates an admin handlers with necessary dependencies.
 func NewHandlers() delivery.AdminHandlers {
-	log = mlog.GetLogger().WithField("package", "gw/usecase/admin")
+	logger = mlog.GetPackageLogger("app/gw/usecase/admin")
 
 	return &handlers{
 		cMap: cmap.New(),
@@ -31,7 +31,7 @@ func NewHandlers() delivery.AdminHandlers {
 
 // Proxying forwards the rpc connection to the mds.
 func (h *handlers) Proxying(conn net.Conn) {
-	ctxLogger := log.WithField("method", "handlers.Proxying")
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.Proxying")
 
 	// 1. Prepare dialer with security config.
 	dialer := &net.Dialer{Timeout: 2 * time.Second}
@@ -62,7 +62,7 @@ func (h *handlers) Proxying(conn net.Conn) {
 
 // updateClusterMap retrieves the latest cluster map from the mds.
 func (h *handlers) updateClusterMap() {
-	ctxLogger := log.WithField("method", "handlers.updateClusterMap")
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.updateClusterMap")
 
 	m, err := cmap.GetLatest(cmap.WithFromRemote(true))
 	if err != nil {

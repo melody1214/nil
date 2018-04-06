@@ -41,8 +41,17 @@ func Init(location string) error {
 	return nil
 }
 
-// GetLogger returns static logger variable.
-// Logging with this logger at any packages.
-func GetLogger() *logrus.Logger {
-	return l.Logger
+// GetPackageLogger returns logger entry with package info field.
+func GetPackageLogger(pkg string) *logrus.Entry {
+	return l.WithField("package", pkg)
+}
+
+// GetMethodLogger returns logger entry with method info field.
+func GetMethodLogger(logger *logrus.Entry, method string) *logrus.Entry {
+	return logger.WithField("method", method)
+}
+
+// GetFunctionLogger returns logger entry with function info field.
+func GetFunctionLogger(logger *logrus.Entry, function string) *logrus.Entry {
+	return logger.WithField("function", function)
 }

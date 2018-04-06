@@ -21,7 +21,10 @@ import (
 	"github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
+
+var logger *logrus.Entry
 
 const (
 	retainSnapshotCount = 2
@@ -54,6 +57,8 @@ type store struct {
 
 // New creates a Store object.
 func New(cfg *config.Mds) repository.Store {
+	logger = mlog.GetPackageLogger("app/mds/repository/mysql")
+
 	return &store{
 		cfg: cfg,
 	}
@@ -73,7 +78,7 @@ func (s *store) Open(raftL *nilmux.Layer) error {
 	// Setup Raft configuration.
 	config := raft.DefaultConfig()
 	config.LocalID = raft.ServerID(s.cfg.Raft.LocalClusterRegion)
-	config.LogOutput = mlog.GetLogger().Writer()
+	config.LogOutput = logger.Writer()
 
 	// Create Raft log store directory.
 	if s.cfg.Raft.RaftDir == "" {
@@ -82,10 +87,10 @@ func (s *store) Open(raftL *nilmux.Layer) error {
 	os.MkdirAll(s.cfg.Raft.RaftDir, 0755)
 
 	// Setup Raft communication
-	transport := raft.NewNetworkTransport(s.transport, maxPool, timeout, mlog.GetLogger().Writer())
+	transport := raft.NewNetworkTransport(s.transport, maxPool, timeout, logger.Writer())
 
 	// Create the snapshot store. This allows the Raft to truncate the log.
-	snapshots, err := raft.NewFileSnapshotStore(s.cfg.Raft.RaftDir, retainSnapshotCount, mlog.GetLogger().Writer())
+	snapshots, err := raft.NewFileSnapshotStore(s.cfg.Raft.RaftDir, retainSnapshotCount, logger.Writer())
 	if err != nil {
 		return errors.Wrap(err, "open raft: failed to make new snapshot store")
 	}
@@ -142,7 +147,8 @@ func (s *store) Close() error {
 // Join joins a node, identified by nodeID and located at addr, to this store.
 // The node must be ready to respond to Raft communications at that address.
 func (s *store) Join(nodeID, addr string) error {
-	mlog.GetLogger().Infof("received join request for remote node %s at %s", nodeID, addr)
+	ctxLogger := mlog.GetMethodLogger(logger, "store.Join")
+	ctxLogger.Infof("received join request for remote node %s at %s", nodeID, addr)
 
 	if s.raft.State() != raft.Leader {
 		return errors.New("not leader")
@@ -157,7 +163,7 @@ func (s *store) Join(nodeID, addr string) error {
 		return err
 	}
 
-	mlog.GetLogger().Infof("node %s at %s joined successfully", nodeID, addr)
+	ctxLogger.Infof("node %s at %s joined successfully", nodeID, addr)
 	return nil
 }
 

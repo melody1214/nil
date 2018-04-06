@@ -12,7 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var log *logrus.Entry
+var logger *logrus.Entry
 
 type handlers struct {
 	cfg  *config.Ds
@@ -24,7 +24,7 @@ type handlers struct {
 
 // NewHandlers creates a client handlers with necessary dependencies.
 func NewHandlers(cfg *config.Ds) delivery.MembershipHandlers {
-	log = mlog.GetLogger().WithField("package", "ds/usecase/admin")
+	logger = mlog.GetPackageLogger("app/ds/usecase/membership")
 
 	return &handlers{
 		cfg:  cfg,
@@ -34,6 +34,8 @@ func NewHandlers(cfg *config.Ds) delivery.MembershipHandlers {
 
 // Create makes swim server.
 func (h *handlers) Create(swimL *nilmux.Layer) (err error) {
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.Create")
+
 	h.swimTransL = nilmux.NewSwimTransportLayer(swimL)
 
 	// Setup configuration.
@@ -42,12 +44,12 @@ func (h *handlers) Create(swimL *nilmux.Layer) (err error) {
 	swimConf.Address = swim.ServerAddress(h.cfg.ServerAddr + ":" + h.cfg.ServerPort)
 	swimConf.Coordinator = swim.ServerAddress(h.cfg.Swim.CoordinatorAddr)
 	if t, err := time.ParseDuration(h.cfg.Swim.Period); err != nil {
-		log.Error(err)
+		ctxLogger.Error(err)
 	} else {
 		swimConf.PingPeriod = t
 	}
 	if t, err := time.ParseDuration(h.cfg.Swim.Expire); err != nil {
-		log.Error(err)
+		ctxLogger.Error(err)
 	} else {
 		swimConf.PingExpire = t
 	}
@@ -55,7 +57,7 @@ func (h *handlers) Create(swimL *nilmux.Layer) (err error) {
 
 	h.swimSrv, err = swim.NewServer(swimConf, h.swimTransL)
 	if err != nil {
-		log.Error(err)
+		ctxLogger.Error(err)
 		return
 	}
 
@@ -64,13 +66,15 @@ func (h *handlers) Create(swimL *nilmux.Layer) (err error) {
 
 // Run starts swim service.
 func (h *handlers) Run() {
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.Run")
+
 	sc := make(chan swim.PingError, 1)
 	go h.swimSrv.Serve(sc)
 
 	for {
 		select {
 		case err := <-sc:
-			log.WithFields(logrus.Fields{
+			ctxLogger.WithFields(logrus.Fields{
 				"server":       "swim",
 				"message type": err.Type,
 				"destID":       err.DestID,
@@ -81,7 +85,7 @@ func (h *handlers) Run() {
 
 // updateClusterMap retrieves the latest cluster map from the mds.
 func (h *handlers) updateClusterMap() {
-	ctxLogger := log.WithField("method", "handlers.updateClusterMap")
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.updateClusterMap")
 
 	m, err := cmap.GetLatest(cmap.WithFromRemote(true))
 	if err != nil {

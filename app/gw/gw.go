@@ -19,7 +19,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var log *logrus.Entry
+var logger *logrus.Entry
 
 // Bootstrap build up the gateway service.
 func Bootstrap(cfg config.Gw) error {
@@ -27,14 +27,13 @@ func Bootstrap(cfg config.Gw) error {
 	if err := mlog.Init(cfg.LogLocation); err != nil {
 		return errors.Wrap(err, "init log failed")
 	}
-	log = mlog.GetLogger().WithField("package", "gw")
+	logger = mlog.GetPackageLogger("app/gw")
 
-	ctxLogger := log.WithField("method", "New")
-	ctxLogger.Info("Setting logger succeeded")
+	ctxLogger := mlog.GetFunctionLogger(logger, "Bootstrap")
+	ctxLogger.Info("start bootstrap gw ...")
 
 	// Generates gateway ID.
 	cfg.ID = uuid.Gen()
-	ctxLogger.WithField("uuid", cfg.ID).Info("Generating gateway UUID succeeded")
 
 	// Setup repository.
 	authCache := inmem.NewAuthRepository()
@@ -57,7 +56,9 @@ func Bootstrap(cfg config.Gw) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to setup delivery")
 	}
-	go delivery.Run()
+	delivery.Run()
+
+	ctxLogger.Info("bootstrap gw succeeded")
 
 	// Make channel for Ctrl-C or other terminate signal is received.
 	sigc := make(chan os.Signal, 1)

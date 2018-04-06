@@ -72,6 +72,8 @@ func (e *encoder) doAll() {
 func (e *encoder) do(r *request) {
 	defer r.wg.Done()
 
+	ctxLogger := mlog.GetMethodLogger(logger, "encoder.do")
+
 	lcid := r.r.Header.Get("Local-Chain-Id")
 	lc, ok := e.emap[lcid]
 	if !ok {
@@ -128,7 +130,7 @@ func (e *encoder) do(r *request) {
 		e.do(r)
 		return
 	} else if r.err != nil {
-		mlog.GetLogger().Error(r.err)
+		ctxLogger.Error(r.err)
 		r.err = err
 		return
 	}
@@ -142,7 +144,7 @@ func (e *encoder) do(r *request) {
 	case 2:
 		addr = addr + lc.thirdVolNodeAddr
 	default:
-		mlog.GetLogger().Error("no such volume seq")
+		ctxLogger.Error("no such volume seq")
 		r.err = fmt.Errorf("vol seq error")
 		return
 	}
@@ -164,18 +166,14 @@ func (e *encoder) do(r *request) {
 	case 2:
 		volID = strconv.FormatInt(lc.thirdVolID, 10)
 	default:
-		mlog.GetLogger().Error("no such volume seq")
+		ctxLogger.Error("no such volume seq")
 		r.err = fmt.Errorf("vol seq error")
 		return
 	}
-	// copyReq.RequestURI = r.R.RequestURI
 	copyReq.Header.Add("Local-Chain-Id", lcid)
 	copyReq.Header.Add("Volume-Id", volID)
 	copyReq.Header.Add("Chunk-Id", e.chunkMap[lcid].chunkID)
 	copyReq.ContentLength = osize
-
-	// mlog.GetLogger().Errorf("%+v", *r.R)
-	// mlog.GetLogger().Errorf("%+v", *copyReq)
 
 	req = &repository.Request{
 		Op:     repository.Read,
@@ -197,7 +195,7 @@ func (e *encoder) do(r *request) {
 		defer pipeWriter.Close()
 		err := readReq.Wait()
 		if err != nil {
-			mlog.GetLogger().Errorf("%+v", err)
+			ctxLogger.Errorf("%+v", err)
 			return
 		}
 	}(req)
@@ -216,16 +214,17 @@ func (e *encoder) do(r *request) {
 	resp, err := netClient.Do(copyReq)
 	if err != nil {
 		r.err = err
-		mlog.GetLogger().Errorf("%+v", r.err)
+		ctxLogger.Errorf("%+v", r.err)
 		return
 	}
 
 	b, _ := ioutil.ReadAll(resp.Body)
-	mlog.GetLogger().Infof("%+v", string(b))
+	ctxLogger.Infof("%+v", string(b))
 }
 
 func (e *encoder) encode(chunkmap *chunkMap, volID, lgid string) {
-	mlog.GetLogger().Info("Start encoding")
+	ctxLogger := mlog.GetMethodLogger(logger, "encode.encode")
+	ctxLogger.Info("start encoding")
 
 	pr1, pw1 := io.Pipe()
 	req1 := &repository.Request{
@@ -241,14 +240,12 @@ func (e *encoder) encode(chunkmap *chunkMap, volID, lgid string) {
 		defer pw1.Close()
 		err := readReq.Wait()
 		if err != nil {
-			mlog.GetLogger().Errorf("%+v", err)
+			ctxLogger.Errorf("%+v", err)
 			return
 		}
 	}(req1)
 	buf1 := make([]byte, 20000)
 	pr1.Read(buf1)
-
-	mlog.GetLogger().Info("Encoding step 1")
 
 	pr2, pw2 := io.Pipe()
 	req2 := &repository.Request{
@@ -264,14 +261,12 @@ func (e *encoder) encode(chunkmap *chunkMap, volID, lgid string) {
 		defer pw2.Close()
 		err := readReq.Wait()
 		if err != nil {
-			mlog.GetLogger().Errorf("%+v", err)
+			ctxLogger.Errorf("%+v", err)
 			return
 		}
 	}(req2)
 	buf2 := make([]byte, 20000)
 	pr2.Read(buf2)
-
-	mlog.GetLogger().Info("Encoding step 2")
 
 	pr3, pw3 := io.Pipe()
 	req3 := &repository.Request{
@@ -287,14 +282,12 @@ func (e *encoder) encode(chunkmap *chunkMap, volID, lgid string) {
 		defer pw2.Close()
 		err := readReq.Wait()
 		if err != nil {
-			mlog.GetLogger().Errorf("%+v", err)
+			ctxLogger.Errorf("%+v", err)
 			return
 		}
 	}(req3)
 	buf3 := make([]byte, 20000)
 	pr3.Read(buf3)
-
-	mlog.GetLogger().Info("Encoding step 3")
 
 	pr4, pw4 := io.Pipe()
 	req4 := &repository.Request{
@@ -313,20 +306,16 @@ func (e *encoder) encode(chunkmap *chunkMap, volID, lgid string) {
 		buf4[i] = buf1[i] ^ buf2[i] ^ buf3[i]
 	}
 
-	mlog.GetLogger().Info("Encoding step 4")
-
 	_, err := pw4.Write(buf4)
 	if err != nil {
-		mlog.GetLogger().Errorf("error in pw4: %v", err)
+		ctxLogger.Errorf("error in pw4: %+v", err)
 	}
 	pw4.Close()
 
 	err = req4.Wait()
 	if err != nil {
-		mlog.GetLogger().Errorf("error in pw4: %v", err)
+		ctxLogger.Errorf("error in pw4: %+v", err)
 	}
-
-	mlog.GetLogger().Info("Encoding step 5")
 
 	req1 = &repository.Request{
 		Op:     repository.Delete,
@@ -353,5 +342,5 @@ func (e *encoder) encode(chunkmap *chunkMap, volID, lgid string) {
 	e.s.Push(req2)
 	e.s.Push(req3)
 
-	mlog.GetLogger().Info("Finish encoding")
+	ctxLogger.Info("finish encoding")
 }

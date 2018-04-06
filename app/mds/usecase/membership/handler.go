@@ -14,7 +14,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var log *logrus.Entry
+var logger *logrus.Entry
 
 type handlers struct {
 	cfg   *config.Mds
@@ -27,7 +27,7 @@ type handlers struct {
 
 // NewHandlers creates a client handlers with necessary dependencies.
 func NewHandlers(cfg *config.Mds, s Repository) delivery.MembershipHandlers {
-	log = mlog.GetLogger().WithField("package", "mds/usecase/admin")
+	logger = mlog.GetPackageLogger("app/mds/usecase/membership")
 
 	return &handlers{
 		cfg:   cfg,
@@ -43,6 +43,8 @@ func (h *handlers) GetMembershipList(req *nilrpc.GetMembershipListRequest, res *
 
 // Create makes swim server.
 func (h *handlers) Create(swimL *nilmux.Layer) (err error) {
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.Create")
+
 	h.swimTransL = nilmux.NewSwimTransportLayer(swimL)
 
 	// Setup configuration.
@@ -51,12 +53,12 @@ func (h *handlers) Create(swimL *nilmux.Layer) (err error) {
 	swimConf.Address = swim.ServerAddress(h.cfg.ServerAddr + ":" + h.cfg.ServerPort)
 	swimConf.Coordinator = swim.ServerAddress(h.cfg.Swim.CoordinatorAddr)
 	if t, err := time.ParseDuration(h.cfg.Swim.Period); err != nil {
-		log.Error(err)
+		ctxLogger.Error(err)
 	} else {
 		swimConf.PingPeriod = t
 	}
 	if t, err := time.ParseDuration(h.cfg.Swim.Expire); err != nil {
-		log.Error(err)
+		ctxLogger.Error(err)
 	} else {
 		swimConf.PingExpire = t
 	}
@@ -64,7 +66,7 @@ func (h *handlers) Create(swimL *nilmux.Layer) (err error) {
 
 	h.swimSrv, err = swim.NewServer(swimConf, h.swimTransL)
 	if err != nil {
-		log.Error(err)
+		ctxLogger.Error(err)
 		return
 	}
 
@@ -87,7 +89,7 @@ func (h *handlers) Run() {
 
 // updateClusterMap retrieves the latest cluster map from the mds.
 func (h *handlers) updateClusterMap() {
-	ctxLogger := log.WithField("method", "handlers.updateClusterMap")
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.updateClusterMap")
 
 	m, err := cmap.GetLatest(cmap.WithFromRemote(true))
 	if err != nil {

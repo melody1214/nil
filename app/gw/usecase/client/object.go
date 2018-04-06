@@ -1,7 +1,7 @@
 package client
 
 import (
-	golog "log"
+	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -10,12 +10,13 @@ import (
 
 	"github.com/chanyoung/nil/pkg/client"
 	"github.com/chanyoung/nil/pkg/cmap"
+	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/pkg/errors"
 )
 
 // PutObjectHandler handles the client request for creating an object.
 func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
-	ctxLogger := log.WithField("method", "handlers.PutObjectHandler")
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.PutObjectHandler")
 
 	req, err := h.requestEventFactory.CreateRequestEvent(w, r)
 	if err == client.ErrInvalidProtocol {
@@ -67,7 +68,7 @@ func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 	proxy := httputil.NewSingleHostReverseProxy(rpURL)
 	r.Header.Add("Volume-Id", strconv.FormatInt(res.ParityVolumeID, 10))
 	r.Header.Add("Local-Chain-Id", strconv.FormatInt(res.LocalChainID, 10))
-	proxy.ErrorLog = golog.New(log.Writer(), "http reverse proxy", golog.Lshortfile)
+	proxy.ErrorLog = log.New(logger.Writer(), "http reverse proxy", log.Lshortfile)
 	proxy.ServeHTTP(w, r)
 }
 

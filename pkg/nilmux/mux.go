@@ -13,7 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var logger *logrus.Logger
+var logger *logrus.Entry
 
 // NilMux is a default mux for nil communicatoins.
 // Listen for tls tcp connection and handle it.
@@ -26,7 +26,7 @@ type NilMux struct {
 
 // NewNilMux creates a NilMux object.
 func NewNilMux(addr string, secuCfg *config.Security) *NilMux {
-	logger = mlog.GetLogger()
+	logger = mlog.GetPackageLogger("pkg/nilmux")
 
 	return &NilMux{
 		addr:    addr,

@@ -11,7 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var log *logrus.Entry
+var logger *logrus.Entry
 
 // Handlers provides access an authentication domain.
 type Handlers interface {
@@ -25,7 +25,7 @@ type handlers struct {
 
 // NewHandlers creates an authentication handlers with necessary dependencies.
 func NewHandlers(repo Repository) Handlers {
-	log = mlog.GetLogger().WithField("package", "gw/usecase/auth")
+	logger = mlog.GetPackageLogger("app/gw/usecase/auth")
 
 	return &handlers{
 		cache: repo,
@@ -53,7 +53,7 @@ func (h *handlers) GetSecretKey(accessKey string) (secretKey string, err error) 
 }
 
 func (h *handlers) getSecretKeyFromRemote(accessKey string) (secretKey string, err error) {
-	ctxLogger := log.WithField("method", "handlers.getSecretKeyFromRemote")
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.getSecretKeyFromRemote")
 
 	// 1. Lookup mds from cluster map.
 	mds, err := h.cMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
@@ -94,7 +94,7 @@ func (h *handlers) getSecretKeyFromRemote(accessKey string) (secretKey string, e
 
 // updateClusterMap retrieves the latest cluster map from the mds.
 func (h *handlers) updateClusterMap() {
-	ctxLogger := log.WithField("method", "handlers.updateClusterMap")
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.updateClusterMap")
 
 	m, err := cmap.GetLatest(cmap.WithFromRemote(true))
 	if err != nil {

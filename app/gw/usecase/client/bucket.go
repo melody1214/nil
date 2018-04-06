@@ -10,11 +10,12 @@ import (
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/s3"
+	"github.com/chanyoung/nil/pkg/util/mlog"
 )
 
 // MakeBucketHandler handles the client request for making a new bucket.
 func (h *handlers) MakeBucketHandler(w http.ResponseWriter, r *http.Request) {
-	ctxLogger := log.WithField("method", "handlers.MakeBucketHandler")
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.MakeBucketHandler")
 
 	req, err := h.requestEventFactory.CreateRequestEvent(w, r)
 	if err == client.ErrInvalidProtocol {
@@ -43,7 +44,7 @@ func (h *handlers) MakeBucketHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handlers) makeBucket(accessKey, region, bucket string) error {
-	ctxLogger := log.WithField("method", "handlers.makeBucket")
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.makeBucket")
 
 	// 1. Lookup mds from cluster map.
 	mds, err := h.cMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()

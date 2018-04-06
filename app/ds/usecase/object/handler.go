@@ -8,7 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var log *logrus.Entry
+var logger *logrus.Entry
 
 type handlers struct {
 	requestEventFactory *cr.RequestEventFactory
@@ -19,7 +19,7 @@ type handlers struct {
 
 // NewHandlers creates a client handlers with necessary dependencies.
 func NewHandlers(f *cr.RequestEventFactory, s Repository) delivery.ObjectHandlers {
-	log = mlog.GetLogger().WithField("package", "ds/usecase/object")
+	logger = mlog.GetPackageLogger("app/ds/usecase/object")
 
 	enc := newEncoder(s)
 	go enc.Run()
@@ -34,7 +34,7 @@ func NewHandlers(f *cr.RequestEventFactory, s Repository) delivery.ObjectHandler
 
 // updateClusterMap retrieves the latest cluster map from the mds.
 func (h *handlers) updateClusterMap() {
-	ctxLogger := log.WithField("method", "handlers.updateClusterMap")
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.updateClusterMap")
 
 	m, err := cmap.GetLatest(cmap.WithFromRemote(true))
 	if err != nil {

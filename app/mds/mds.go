@@ -25,7 +25,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var log *logrus.Entry
+var logger *logrus.Entry
 
 // Bootstrap build up the metadata server.
 func Bootstrap(cfg config.Mds) error {
@@ -33,14 +33,13 @@ func Bootstrap(cfg config.Mds) error {
 	if err := mlog.Init(cfg.LogLocation); err != nil {
 		return errors.Wrap(err, "init log failed")
 	}
-	log = mlog.GetLogger().WithField("package", "mds")
+	logger = mlog.GetPackageLogger("app/mds")
 
-	ctxLogger := log.WithField("method", "Bootstrap")
-	ctxLogger.Info("Setting logger succeeded")
+	ctxLogger := mlog.GetFunctionLogger(logger, "Bootstrap")
+	ctxLogger.Info("start bootstrap mds ...")
 
 	// Generates mds ID.
 	cfg.ID = uuid.Gen()
-	ctxLogger.WithField("uuid", cfg.ID).Info("Generating metadata server UUID succeeded")
 
 	// Setup repositories.
 	var (
@@ -94,6 +93,8 @@ func Bootstrap(cfg config.Mds) error {
 	if err := delivery.Run(); err != nil {
 		return err
 	}
+
+	ctxLogger.Info("bootstrap gw succeeded")
 
 	// Make channel for Ctrl-C or other terminate signal is received.
 	sigc := make(chan os.Signal, 1)

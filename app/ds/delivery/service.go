@@ -1,7 +1,7 @@
 package delivery
 
 import (
-	golog "log"
+	"log"
 	"net"
 	"net/http"
 	"net/rpc"
@@ -15,7 +15,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var log *logrus.Entry
+var logger *logrus.Entry
 
 type Service struct {
 	nilMux *nilmux.NilMux
@@ -35,19 +35,13 @@ type Service struct {
 
 // NewDeliveryService creates a delivery service with necessary dependencies.
 func NewDeliveryService(cfg *config.Ds, ah AdminHandlers, oh ObjectHandlers, mh MembershipHandlers) (*Service, error) {
-	l := mlog.GetLogger()
-	if l == nil {
-		return nil, errors.New("failed to get logger")
-	}
-	log = l.WithField("package", "delivery")
-
-	addr := cfg.ServerAddr + ":" + cfg.ServerPort
-
 	if cfg == nil {
 		return nil, errors.New("invalid nil arguments")
 	}
+	logger = mlog.GetPackageLogger("app/ds/delivery")
 
 	// Resolve gateway address.
+	addr := cfg.ServerAddr + ":" + cfg.ServerPort
 	rAddr, err := net.ResolveTCPAddr("tcp", addr)
 	if err != nil {
 		return nil, errors.Wrap(err, "resolve gateway address failed")
@@ -73,7 +67,7 @@ func NewDeliveryService(cfg *config.Ds, ah AdminHandlers, oh ObjectHandlers, mh 
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
-		ErrorLog:       golog.New(log.Writer(), "http server", golog.Lshortfile),
+		ErrorLog:       log.New(logger.Writer(), "http server", log.Lshortfile),
 	}
 
 	// Create swim server.
@@ -105,7 +99,7 @@ func NewDeliveryService(cfg *config.Ds, ah AdminHandlers, oh ObjectHandlers, mh 
 
 // Run starts the gateway delivery service.
 func (s *Service) Run() {
-	ctxLogger := log.WithField("method", "Service.Run")
+	ctxLogger := mlog.GetMethodLogger(logger, "Service.Run")
 	ctxLogger.Info("Start gateway delivery service ...")
 
 	go s.nilMux.ListenAndServeTLS()
@@ -116,6 +110,9 @@ func (s *Service) Run() {
 
 // Stop cleans up the services and shut down the server.
 func (s *Service) Stop() error {
+	ctxLogger := mlog.GetMethodLogger(logger, "Service.Stop")
+	ctxLogger.Info("Stop gateway delivery service ...")
+
 	// nilMux will closes listener and all the registered layers.
 	if err := s.nilMux.Close(); err != nil {
 		return errors.Wrap(err, "close nil mux failed")
@@ -126,7 +123,7 @@ func (s *Service) Stop() error {
 }
 
 func (s *Service) serveAdmin() {
-	ctxLogger := log.WithField("method", "Service.handleAdmin")
+	ctxLogger := mlog.GetMethodLogger(logger, "Service.serveAdmin")
 
 	for {
 		conn, err := s.adminL.Accept()

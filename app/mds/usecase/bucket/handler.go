@@ -12,7 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var log *logrus.Entry
+var logger *logrus.Entry
 
 type handlers struct {
 	store Repository
@@ -21,7 +21,7 @@ type handlers struct {
 
 // NewHandlers creates a client handlers with necessary dependencies.
 func NewHandlers(s Repository) delivery.BucketHandlers {
-	log = mlog.GetLogger().WithField("package", "mds/usecase/bucket")
+	logger = mlog.GetPackageLogger("app/mds/usecase/bucket")
 
 	return &handlers{
 		store: s,
@@ -66,7 +66,7 @@ func (h *handlers) AddBucket(req *nilrpc.AddBucketRequest, res *nilrpc.AddBucket
 
 // updateClusterMap retrieves the latest cluster map from the mds.
 func (h *handlers) updateClusterMap() {
-	ctxLogger := log.WithField("method", "handlers.updateClusterMap")
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.updateClusterMap")
 
 	m, err := cmap.GetLatest(cmap.WithFromRemote(true))
 	if err != nil {

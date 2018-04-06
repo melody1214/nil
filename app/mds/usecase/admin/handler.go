@@ -13,7 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var log *logrus.Entry
+var logger *logrus.Entry
 
 type handlers struct {
 	cfg   *config.Mds
@@ -23,7 +23,7 @@ type handlers struct {
 
 // NewHandlers creates a client handlers with necessary dependencies.
 func NewHandlers(cfg *config.Mds, s Repository) delivery.AdminHandlers {
-	log = mlog.GetLogger().WithField("package", "mds/usecase/admin")
+	logger = mlog.GetPackageLogger("app/mds/usecase/admin")
 
 	return &handlers{
 		cfg:   cfg,
@@ -53,14 +53,6 @@ func (h *handlers) GetLocalChain(req *nilrpc.GetLocalChainRequest, res *nilrpc.G
 	    ORDER BY rand() limit 1;
 		`,
 	)
-	// q := fmt.Sprintf(
-	// 	`
-	// 	SELECT
-	//         local_chain_id, parity_volume_id
-	// 	FROM
-	//         local_chain
-	// 	`,
-	// )
 
 	row := h.store.QueryRow(q)
 	if row == nil {
@@ -151,7 +143,7 @@ func (h *handlers) GetAllVolume(req *nilrpc.GetAllVolumeRequest, res *nilrpc.Get
 
 // updateClusterMap retrieves the latest cluster map from the mds.
 func (h *handlers) updateClusterMap() {
-	ctxLogger := log.WithField("method", "handlers.updateClusterMap")
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.updateClusterMap")
 
 	m, err := cmap.GetLatest(cmap.WithFromRemote(true))
 	if err != nil {
@@ -197,7 +189,7 @@ func (h *handlers) RegisterVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc
 }
 
 func (h *handlers) updateVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.RegisterVolumeResponse) error {
-	log.Infof("update a member %v", req)
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.updateVolume")
 
 	q := fmt.Sprintf(
 		`
@@ -209,14 +201,13 @@ func (h *handlers) updateVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.R
 
 	_, err := h.store.Execute(q)
 	if err != nil {
-		log.Error(err)
+		ctxLogger.Error(err)
 	}
-
-	return nil
+	return err
 }
 
 func (h *handlers) insertNewVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.RegisterVolumeResponse) error {
-	log.Infof("insert a new volume %v", req)
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.insertNewVolume")
 
 	q := fmt.Sprintf(
 		`
@@ -227,11 +218,13 @@ func (h *handlers) insertNewVolume(req *nilrpc.RegisterVolumeRequest, res *nilrp
 
 	r, err := h.store.Execute(q)
 	if err != nil {
+		ctxLogger.Error(err)
 		return err
 	}
 
 	id, err := r.LastInsertId()
 	if err != nil {
+		ctxLogger.Error(err)
 		return err
 	}
 	res.ID = strconv.FormatInt(id, 10)

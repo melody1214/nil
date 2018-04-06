@@ -14,7 +14,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var log *logrus.Entry
+var logger *logrus.Entry
 
 type handlers struct {
 	cfg   *config.Ds
@@ -24,7 +24,7 @@ type handlers struct {
 
 // NewHandlers creates a client handlers with necessary dependencies.
 func NewHandlers(cfg *config.Ds, s Repository) delivery.AdminHandlers {
-	log = mlog.GetLogger().WithField("package", "ds/usecase/admin")
+	logger = mlog.GetPackageLogger("app/ds/usecase/admin")
 
 	return &handlers{
 		cfg:   cfg,
@@ -35,6 +35,8 @@ func NewHandlers(cfg *config.Ds, s Repository) delivery.AdminHandlers {
 
 // AddVolume adds a new volume with the given device path.
 func (h *handlers) AddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVolumeResponse) error {
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.AddVolume")
+
 	lv, err := repository.NewVol(req.DevicePath)
 	if err != nil {
 		return err
@@ -45,7 +47,7 @@ func (h *handlers) AddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVolume
 		h.updateClusterMap()
 		mds, err = h.cMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
 		if err != nil {
-			log.Error(err)
+			ctxLogger.Error(err)
 			return errors.Wrap(err, "failed to register volume")
 		}
 	}
@@ -91,14 +93,13 @@ func (h *handlers) AddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVolume
 		return err
 	}
 
-	log.Infof("%+v", lv)
-
+	ctxLogger.Infof("add volume %s succeeded", lv.Name)
 	return nil
 }
 
 // updateClusterMap retrieves the latest cluster map from the mds.
 func (h *handlers) updateClusterMap() {
-	ctxLogger := log.WithField("method", "handlers.updateClusterMap")
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.updateClusterMap")
 
 	m, err := cmap.GetLatest(cmap.WithFromRemote(true))
 	if err != nil {

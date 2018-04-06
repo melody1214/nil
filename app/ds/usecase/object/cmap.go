@@ -27,9 +27,11 @@ type encodeGroup struct {
 }
 
 func (e *encoder) updateGroup() {
+	ctxLogger := mlog.GetMethodLogger(logger, "encoder.updateGroup")
+
 	m, err := cmap.GetLatest(cmap.WithFromRemote(true))
 	if err != nil {
-		mlog.GetLogger().Error(err)
+		ctxLogger.Error(err)
 	}
 	if m == nil {
 		return
@@ -37,12 +39,12 @@ func (e *encoder) updateGroup() {
 
 	mds, err := m.SearchCall().Type(cmap.MDS).Do()
 	if err != nil {
-		mlog.GetLogger().Error(err)
+		ctxLogger.Error(err)
 	}
 
 	conn, err := nilrpc.Dial(mds.Addr, nilrpc.RPCNil, time.Duration(2*time.Second))
 	if err != nil {
-		mlog.GetLogger().Error(err)
+		ctxLogger.Error(err)
 	}
 	defer conn.Close()
 
@@ -51,7 +53,7 @@ func (e *encoder) updateGroup() {
 
 	cli := rpc.NewClient(conn)
 	if err := cli.Call(nilrpc.MdsAdminGetAllVolume.String(), vreq, vres); err != nil {
-		mlog.GetLogger().Error(err)
+		ctxLogger.Error(err)
 	}
 
 	volumeMap := make(map[int64]int64)
@@ -63,7 +65,7 @@ func (e *encoder) updateGroup() {
 	cres := &nilrpc.GetAllChainResponse{}
 
 	if err := cli.Call(nilrpc.MdsAdminGetAllChain.String(), creq, cres); err != nil {
-		mlog.GetLogger().Error(err)
+		ctxLogger.Error(err)
 	}
 
 	for _, c := range cres.Chains {
@@ -77,12 +79,12 @@ func (e *encoder) updateGroup() {
 
 		id, ok := volumeMap[c.FirstVolumeID]
 		if !ok {
-			mlog.GetLogger().Error("no such first volume")
+			ctxLogger.Error("no such first volume")
 			continue
 		}
 		n, err := m.SearchCall().ID(cmap.ID(id)).Do()
 		if err != nil {
-			mlog.GetLogger().Error(err)
+			ctxLogger.Error(err)
 			continue
 		}
 		g.firstVolNodeID = id
@@ -90,12 +92,12 @@ func (e *encoder) updateGroup() {
 
 		id, ok = volumeMap[c.SecondVolumeID]
 		if !ok {
-			mlog.GetLogger().Error("no such second volume")
+			ctxLogger.Error("no such second volume")
 			continue
 		}
 		n, err = m.SearchCall().ID(cmap.ID(id)).Do()
 		if err != nil {
-			mlog.GetLogger().Error(err)
+			ctxLogger.Error(err)
 			continue
 		}
 		g.secondVolNodeID = id
@@ -103,12 +105,12 @@ func (e *encoder) updateGroup() {
 
 		id, ok = volumeMap[c.ThirdVolumeID]
 		if !ok {
-			mlog.GetLogger().Error("no such third volume")
+			ctxLogger.Error("no such third volume")
 			continue
 		}
 		n, err = m.SearchCall().ID(cmap.ID(id)).Do()
 		if err != nil {
-			mlog.GetLogger().Error(err)
+			ctxLogger.Error(err)
 			continue
 		}
 		g.thirdVolNodeID = id
@@ -116,12 +118,12 @@ func (e *encoder) updateGroup() {
 
 		id, ok = volumeMap[c.ParityVolumeID]
 		if !ok {
-			mlog.GetLogger().Error("no such volume")
+			ctxLogger.Error("no such volume")
 			continue
 		}
 		n, err = m.SearchCall().ID(cmap.ID(id)).Do()
 		if err != nil {
-			mlog.GetLogger().Error(err)
+			ctxLogger.Error(err)
 			continue
 		}
 		g.parityVolNodeID = id

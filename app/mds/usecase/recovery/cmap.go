@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/chanyoung/nil/pkg/cmap"
+	"github.com/chanyoung/nil/pkg/util/mlog"
 )
 
 func (h *handlers) updateClusterMap() (*cmap.CMap, error) {
@@ -39,6 +40,8 @@ func (h *handlers) getNewClusterMapVer() (int64, error) {
 }
 
 func (h *handlers) createClusterMap(ver int64) (*cmap.CMap, error) {
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.createClusterMap")
+
 	q := fmt.Sprintf(
 		`
 		SELECT
@@ -67,7 +70,7 @@ func (h *handlers) createClusterMap(ver int64) (*cmap.CMap, error) {
 		n := cmap.Node{}
 
 		if err := rows.Scan(&n.ID, &n.Name, &n.Type, &n.Stat, &n.Addr); err != nil {
-			log.Error(err)
+			ctxLogger.Error(err)
 		}
 
 		cm.Nodes = append(cm.Nodes, n)

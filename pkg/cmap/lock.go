@@ -20,7 +20,7 @@ func lock() {
 	for {
 		f, err := os.OpenFile(lockFile, os.O_RDWR|os.O_CREATE|os.O_EXCL, os.FileMode(0444))
 		if err != nil {
-			mlog.GetLogger().WithField("pkg", "cmap").Info("file lock waiting")
+			mlog.GetPackageLogger("pkg/cmap").Info("file lock waiting")
 
 			time.Sleep(100 * time.Millisecond)
 			continue

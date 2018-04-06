@@ -13,7 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var log *logrus.Entry
+var logger *logrus.Entry
 
 type Service struct {
 	cfg *config.Mds
@@ -39,8 +39,7 @@ func NewDeliveryService(cfg *config.Mds, adh AdminHandlers, auh AuthHandlers, bu
 	if cfg == nil {
 		return nil, errors.New("invalid argument")
 	}
-
-	log = mlog.GetLogger().WithField("package", "delivery")
+	logger = mlog.GetPackageLogger("app/mds/delivery")
 
 	// Resolve gateway address.
 	rAddr, err := net.ResolveTCPAddr("tcp", cfg.ServerAddr+":"+cfg.ServerPort)
@@ -126,10 +125,12 @@ func (s *Service) Stop() error {
 }
 
 func (s *Service) rebalancer() {
+	ctxLogger := mlog.GetMethodLogger(logger, "Service.rebalancer")
+
 	// Make ticker for routinely rebalancing.
 	t, err := time.ParseDuration(s.cfg.Rebalance)
 	if err != nil {
-		log.Fatal(err)
+		ctxLogger.Fatal(err)
 	}
 	rebalanceNoti := time.NewTicker(t)
 
@@ -145,10 +146,12 @@ func (s *Service) rebalancer() {
 }
 
 func (s *Service) serveNilRPC() {
+	ctxLogger := mlog.GetMethodLogger(logger, "Service.serveNilRPC")
+
 	for {
 		conn, err := s.nilLayer.Accept()
 		if err != nil {
-			log.Error(err)
+			ctxLogger.Error(err)
 			return
 		}
 		go s.nilRPCSrv.ServeConn(conn)
