@@ -17,15 +17,15 @@ import (
 var logger *logrus.Entry
 
 type handlers struct {
-	cMap *cmap.CMap
+	cMap *cmap.Controller
 }
 
 // NewHandlers creates an admin handlers with necessary dependencies.
-func NewHandlers() delivery.AdminHandlers {
+func NewHandlers(cMap *cmap.Controller) delivery.AdminHandlers {
 	logger = mlog.GetPackageLogger("app/gw/usecase/admin")
 
 	return &handlers{
-		cMap: cmap.New(),
+		cMap: cMap,
 	}
 }
 
@@ -40,12 +40,8 @@ func (h *handlers) Proxying(conn net.Conn) {
 	// 2. Lookup mds from cluster map.
 	mds, err := h.cMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
 	if err != nil {
-		h.updateClusterMap()
-		mds, err = h.cMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
-		if err != nil {
-			ctxLogger.Error(errors.Wrap(err, "find alive mds failed"))
-			return
-		}
+		ctxLogger.Error(errors.Wrap(err, "find alive mds failed"))
+		return
 	}
 
 	// 3. Dial with tls.
@@ -58,17 +54,4 @@ func (h *handlers) Proxying(conn net.Conn) {
 	// 4. Forwarding.
 	go io.Copy(conn, remote)
 	go io.Copy(remote, conn)
-}
-
-// updateClusterMap retrieves the latest cluster map from the mds.
-func (h *handlers) updateClusterMap() {
-	ctxLogger := mlog.GetMethodLogger(logger, "handlers.updateClusterMap")
-
-	m, err := cmap.GetLatest(cmap.WithFromRemote(true))
-	if err != nil {
-		ctxLogger.Error(err)
-		return
-	}
-
-	h.cMap = m
 }

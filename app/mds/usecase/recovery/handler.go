@@ -17,19 +17,19 @@ var logger *logrus.Entry
 type handlers struct {
 	cfg   *config.Mds
 	store Repository
-	cMap  *cmap.CMap
+	cMap  *cmap.Controller
 
 	l sync.RWMutex
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cfg *config.Mds, s Repository) delivery.RecoveryHandlers {
+func NewHandlers(cfg *config.Mds, cMap *cmap.Controller, s Repository) delivery.RecoveryHandlers {
 	logger = mlog.GetPackageLogger("app/mds/usecase/recovery")
 
 	return &handlers{
 		cfg:   cfg,
 		store: s,
-		cMap:  cmap.New(),
+		cMap:  cMap,
 	}
 }
 
@@ -39,29 +39,22 @@ func (h *handlers) Recover(req *nilrpc.RecoverRequest, res *nilrpc.RecoverRespon
 
 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.Recover")
 
-	// 1. Logging the error.
+	// Logging the error.
 	ctxLogger.WithFields(logrus.Fields{
 		"server":       "swim",
 		"message type": req.Pe.Type,
 		"destID":       req.Pe.DestID,
 	}).Warn(req.Pe.Err)
 
-	// 2. Updates membership.
+	// Updates membership.
 	h.updateMembership()
 
-	// 3. Get the new version of cluster map.
-	newCMap, err := h.updateClusterMap()
-	if err != nil {
+	// Get the new version of cluster map.
+	if err := h.updateClusterMap(); err != nil {
 		ctxLogger.Error(err)
 	}
 
-	// 4. Save the new cluster map.
-	err = newCMap.Save()
-	if err != nil {
-		ctxLogger.Error(err)
-	}
-
-	// 5. If the error message is occured because just simple membership
+	// If the error message is occured because just simple membership
 	// changed, then finish the recover routine here.
 	if req.Pe.Err == swim.ErrChanged.Error() {
 		return nil

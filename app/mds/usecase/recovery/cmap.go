@@ -7,18 +7,23 @@ import (
 	"github.com/chanyoung/nil/pkg/util/mlog"
 )
 
-func (h *handlers) updateClusterMap() (*cmap.CMap, error) {
-	// 1. Get new map version.
+func (h *handlers) updateClusterMap() error {
+	// Get new map version.
 	ver, err := h.getNewClusterMapVer()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	// 2. Create a cluster map with the new version.
-	return h.createClusterMap(ver)
+	// Create a cluster map with the new version.
+	cm, err := h.createClusterMap(ver)
+	if err != nil {
+		return err
+	}
+
+	return h.cMap.Update(cmap.WithFile(cm))
 }
 
-func (h *handlers) getNewClusterMapVer() (int64, error) {
+func (h *handlers) getNewClusterMapVer() (cmap.Version, error) {
 	q := fmt.Sprintf(
 		`
 		INSERT INTO cmap (cmap_id)
@@ -36,10 +41,10 @@ func (h *handlers) getNewClusterMapVer() (int64, error) {
 		return -1, err
 	}
 
-	return ver, nil
+	return cmap.Version(ver), nil
 }
 
-func (h *handlers) createClusterMap(ver int64) (*cmap.CMap, error) {
+func (h *handlers) createClusterMap(ver cmap.Version) (*cmap.CMap, error) {
 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.createClusterMap")
 
 	q := fmt.Sprintf(

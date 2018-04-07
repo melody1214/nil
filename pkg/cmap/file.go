@@ -111,3 +111,21 @@ func decode(path string) (CMap, error) {
 
 	return m, nil
 }
+
+func store(m *CMap) error {
+	// 1. Get store file path.
+	path := filePath(m.Version.Int64())
+
+	// 2. Create empty file with the version.
+	if err := createFile(path); err != nil {
+		return err
+	}
+
+	// 3. Encode map data into the created file.
+	if err := encode(*m, path); err != nil {
+		removeFile(path)
+		return err
+	}
+
+	return nil
+}

@@ -10,6 +10,7 @@ import (
 	"github.com/chanyoung/nil/app/gw/usecase/admin"
 	"github.com/chanyoung/nil/app/gw/usecase/auth"
 	"github.com/chanyoung/nil/app/gw/usecase/client"
+	"github.com/chanyoung/nil/app/gw/usecase/clustermap"
 	"github.com/chanyoung/nil/pkg/client/request"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -41,15 +42,20 @@ func Bootstrap(cfg config.Gw) error {
 	// Setup request event factory.
 	requestEventFactory := request.NewRequestEventFactory()
 
-	// Setup each usecase handlers.
-	authHandlers := auth.NewHandlers(authCache)
-	adminHandlers := admin.NewHandlers()
-	clientHandlers := client.NewHandlers(requestEventFactory, authHandlers)
-
 	// Setup cluster map.
-	if err := cmap.Initial(cfg.FirstMds); err != nil {
+	clusterMap, err := cmap.NewController(cfg.FirstMds)
+	if err != nil {
 		return errors.Wrap(err, "failed to init cluster map")
 	}
+
+	// Setup each usecase handlers.
+	authHandlers := auth.NewHandlers(clusterMap, authCache)
+	adminHandlers := admin.NewHandlers(clusterMap)
+	clientHandlers := client.NewHandlers(clusterMap, requestEventFactory, authHandlers)
+	clustermapService := clustermap.NewService(clusterMap)
+
+	// Starts to update cluster map.
+	clustermapService.Run()
 
 	// Setup delivery service.
 	delivery, err := delivery.NewDeliveryService(&cfg, adminHandlers, clientHandlers)

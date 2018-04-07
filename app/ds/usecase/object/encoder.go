@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/chanyoung/nil/app/ds/repository"
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/security"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/chanyoung/nil/pkg/util/uuid"
@@ -19,6 +20,7 @@ import (
 type encoder struct {
 	chunkMap map[string]*chunkMap
 	emap     map[string]encodeGroup
+	cMap     *cmap.Controller
 	s        Repository
 	q        *queue
 	pushCh   chan interface{}
@@ -29,10 +31,11 @@ type chunkMap struct {
 	seq     int
 }
 
-func newEncoder(s Repository) *encoder {
+func newEncoder(cMap *cmap.Controller, s Repository) *encoder {
 	return &encoder{
 		chunkMap: make(map[string]*chunkMap),
 		emap:     make(map[string]encodeGroup),
+		cMap:     cMap,
 		s:        s,
 		q:        newRequestsQueue(),
 		pushCh:   make(chan interface{}, 1),

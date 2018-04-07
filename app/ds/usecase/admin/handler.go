@@ -19,17 +19,17 @@ var logger *logrus.Entry
 type handlers struct {
 	cfg   *config.Ds
 	store Repository
-	cMap  *cmap.CMap
+	cMap  *cmap.Controller
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cfg *config.Ds, s Repository) delivery.AdminHandlers {
+func NewHandlers(cfg *config.Ds, cMap *cmap.Controller, s Repository) delivery.AdminHandlers {
 	logger = mlog.GetPackageLogger("app/ds/usecase/admin")
 
 	return &handlers{
 		cfg:   cfg,
 		store: s,
-		cMap:  cmap.New(),
+		cMap:  cMap,
 	}
 }
 
@@ -44,12 +44,8 @@ func (h *handlers) AddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVolume
 
 	mds, err := h.cMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
 	if err != nil {
-		h.updateClusterMap()
-		mds, err = h.cMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
-		if err != nil {
-			ctxLogger.Error(err)
-			return errors.Wrap(err, "failed to register volume")
-		}
+		ctxLogger.Error(err)
+		return errors.Wrap(err, "failed to register volume")
 	}
 
 	conn, err := nilrpc.Dial(mds.Addr, nilrpc.RPCNil, time.Duration(2*time.Second))
@@ -95,17 +91,4 @@ func (h *handlers) AddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVolume
 
 	ctxLogger.Infof("add volume %s succeeded", lv.Name)
 	return nil
-}
-
-// updateClusterMap retrieves the latest cluster map from the mds.
-func (h *handlers) updateClusterMap() {
-	ctxLogger := mlog.GetMethodLogger(logger, "handlers.updateClusterMap")
-
-	m, err := cmap.GetLatest(cmap.WithFromRemote(true))
-	if err != nil {
-		ctxLogger.Error(err)
-		return
-	}
-
-	h.cMap = m
 }

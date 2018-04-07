@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/chanyoung/nil/app/mds/delivery"
-	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/s3"
 	"github.com/chanyoung/nil/pkg/util/mlog"
@@ -16,7 +15,6 @@ var logger *logrus.Entry
 
 type handlers struct {
 	store Repository
-	cMap  *cmap.CMap
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
@@ -25,7 +23,6 @@ func NewHandlers(s Repository) delivery.BucketHandlers {
 
 	return &handlers{
 		store: s,
-		cMap:  cmap.New(),
 	}
 }
 
@@ -62,17 +59,4 @@ func (h *handlers) AddBucket(req *nilrpc.AddBucketRequest, res *nilrpc.AddBucket
 		res.S3ErrCode = s3.ErrInternalError
 	}
 	return nil
-}
-
-// updateClusterMap retrieves the latest cluster map from the mds.
-func (h *handlers) updateClusterMap() {
-	ctxLogger := mlog.GetMethodLogger(logger, "handlers.updateClusterMap")
-
-	m, err := cmap.GetLatest(cmap.WithFromRemote(true))
-	if err != nil {
-		ctxLogger.Error(err)
-		return
-	}
-
-	h.cMap = m
 }

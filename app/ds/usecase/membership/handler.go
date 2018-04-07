@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/chanyoung/nil/app/ds/delivery"
-	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/swim"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -15,8 +14,7 @@ import (
 var logger *logrus.Entry
 
 type handlers struct {
-	cfg  *config.Ds
-	cMap *cmap.CMap
+	cfg *config.Ds
 
 	swimSrv    *swim.Server
 	swimTransL *nilmux.SwimTransportLayer
@@ -27,8 +25,7 @@ func NewHandlers(cfg *config.Ds) delivery.MembershipHandlers {
 	logger = mlog.GetPackageLogger("app/ds/usecase/membership")
 
 	return &handlers{
-		cfg:  cfg,
-		cMap: cmap.New(),
+		cfg: cfg,
 	}
 }
 
@@ -81,17 +78,4 @@ func (h *handlers) Run() {
 			}).Error(err.Err)
 		}
 	}
-}
-
-// updateClusterMap retrieves the latest cluster map from the mds.
-func (h *handlers) updateClusterMap() {
-	ctxLogger := mlog.GetMethodLogger(logger, "handlers.updateClusterMap")
-
-	m, err := cmap.GetLatest(cmap.WithFromRemote(true))
-	if err != nil {
-		ctxLogger.Error(err)
-		return
-	}
-
-	h.cMap = m
 }

@@ -12,27 +12,24 @@ var logger *logrus.Entry
 
 type handlers struct {
 	store Repository
-	cMap  *cmap.CMap
+	cMap  *cmap.Controller
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(s Repository) delivery.ClustermapHandlers {
+func NewHandlers(cMap *cmap.Controller, s Repository) delivery.ClustermapHandlers {
 	logger = mlog.GetPackageLogger("app/mds/usecase/clustermap")
 
 	return &handlers{
 		store: s,
-		cMap:  cmap.New(),
+		cMap:  cMap,
 	}
 }
 
 // GetClusterMap returns a current local cluster map.
 func (h *handlers) GetClusterMap(req *nilrpc.GetClusterMapRequest, res *nilrpc.GetClusterMapResponse) error {
-	cm, err := cmap.GetLatest()
-	if err != nil {
-		return err
-	}
+	cm := h.cMap.LatestCMap()
 
-	res.Version = cm.Version
+	res.Version = cm.Version.Int64()
 	for _, n := range cm.Nodes {
 		res.Nodes = append(
 			res.Nodes,
@@ -47,17 +44,4 @@ func (h *handlers) GetClusterMap(req *nilrpc.GetClusterMapRequest, res *nilrpc.G
 	}
 
 	return nil
-}
-
-// updateClusterMap retrieves the latest cluster map from the mds.
-func (h *handlers) updateClusterMap() {
-	ctxLogger := mlog.GetMethodLogger(logger, "handlers.updateClusterMap")
-
-	m, err := cmap.GetLatest(cmap.WithFromRemote(true))
-	if err != nil {
-		ctxLogger.Error(err)
-		return
-	}
-
-	h.cMap = m
 }

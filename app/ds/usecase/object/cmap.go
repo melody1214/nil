@@ -29,22 +29,16 @@ type encodeGroup struct {
 func (e *encoder) updateGroup() {
 	ctxLogger := mlog.GetMethodLogger(logger, "encoder.updateGroup")
 
-	m, err := cmap.GetLatest(cmap.WithFromRemote(true))
+	mds, err := e.cMap.SearchCall().Type(cmap.MDS).Do()
 	if err != nil {
 		ctxLogger.Error(err)
-	}
-	if m == nil {
 		return
-	}
-
-	mds, err := m.SearchCall().Type(cmap.MDS).Do()
-	if err != nil {
-		ctxLogger.Error(err)
 	}
 
 	conn, err := nilrpc.Dial(mds.Addr, nilrpc.RPCNil, time.Duration(2*time.Second))
 	if err != nil {
 		ctxLogger.Error(err)
+		return
 	}
 	defer conn.Close()
 
@@ -54,6 +48,7 @@ func (e *encoder) updateGroup() {
 	cli := rpc.NewClient(conn)
 	if err := cli.Call(nilrpc.MdsAdminGetAllVolume.String(), vreq, vres); err != nil {
 		ctxLogger.Error(err)
+		return
 	}
 
 	volumeMap := make(map[int64]int64)
@@ -66,6 +61,7 @@ func (e *encoder) updateGroup() {
 
 	if err := cli.Call(nilrpc.MdsAdminGetAllChain.String(), creq, cres); err != nil {
 		ctxLogger.Error(err)
+		return
 	}
 
 	for _, c := range cres.Chains {
@@ -82,7 +78,7 @@ func (e *encoder) updateGroup() {
 			ctxLogger.Error("no such first volume")
 			continue
 		}
-		n, err := m.SearchCall().ID(cmap.ID(id)).Do()
+		n, err := e.cMap.SearchCall().ID(cmap.ID(id)).Do()
 		if err != nil {
 			ctxLogger.Error(err)
 			continue
@@ -95,7 +91,7 @@ func (e *encoder) updateGroup() {
 			ctxLogger.Error("no such second volume")
 			continue
 		}
-		n, err = m.SearchCall().ID(cmap.ID(id)).Do()
+		n, err = e.cMap.SearchCall().ID(cmap.ID(id)).Do()
 		if err != nil {
 			ctxLogger.Error(err)
 			continue
@@ -108,7 +104,7 @@ func (e *encoder) updateGroup() {
 			ctxLogger.Error("no such third volume")
 			continue
 		}
-		n, err = m.SearchCall().ID(cmap.ID(id)).Do()
+		n, err = e.cMap.SearchCall().ID(cmap.ID(id)).Do()
 		if err != nil {
 			ctxLogger.Error(err)
 			continue
@@ -121,7 +117,7 @@ func (e *encoder) updateGroup() {
 			ctxLogger.Error("no such volume")
 			continue
 		}
-		n, err = m.SearchCall().ID(cmap.ID(id)).Do()
+		n, err = e.cMap.SearchCall().ID(cmap.ID(id)).Do()
 		if err != nil {
 			ctxLogger.Error(err)
 			continue

@@ -14,13 +14,13 @@ func TestGetLatestMapFile(t *testing.T) {
 	}
 
 	defer os.RemoveAll(baseDir)
-	latestVer := int64(0)
+	latestVer := Version(0)
 	for _, c := range testCases {
 		if latestVer < c.Version {
 			latestVer = c.Version
 		}
 
-		path := filePath(c.Version)
+		path := filePath(c.Version.Int64())
 
 		if err := createFile(path); err != nil {
 			t.Fatal(err)
@@ -32,8 +32,8 @@ func TestGetLatestMapFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if f != filePath(latestVer) {
-		t.Errorf("got %s, expected %s", f, filePath(latestVer))
+	if f != filePath(latestVer.Int64()) {
+		t.Errorf("got %s, expected %s", f, filePath(latestVer.Int64()))
 	}
 }
 

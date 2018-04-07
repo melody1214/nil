@@ -4,46 +4,18 @@ import (
 	"fmt"
 )
 
+// Version is the version of cluster map.
+type Version int64
+
+// Int64 returns built-in int64 type of cmap.Version
+func (v Version) Int64() int64 {
+	return int64(v)
+}
+
 // CMap is a cluster map which includes the information about nodes.
 type CMap struct {
-	Version int64  `xml:"version"`
-	Nodes   []Node `xml:"node"`
-}
-
-// New returns an empty cluster map.
-func New() *CMap {
-	return &CMap{
-		Version: 0,
-		Nodes:   make([]Node, 0),
-	}
-}
-
-// Initial creates an initial cluster map with the given coordinator address.
-func Initial(coordinator string) error {
-	// 1. Create an empty map.
-	m := &CMap{
-		Version: 0,
-		Nodes:   make([]Node, 1),
-	}
-
-	// 2. Set the mds.
-	m.Nodes[0] = Node{
-		Addr: coordinator,
-		Type: MDS,
-		Stat: Alive,
-	}
-
-	// 3. Save to local.
-	return m.Save()
-}
-
-// SearchCall returns a new search call.
-func (m *CMap) SearchCall() *SearchCall {
-	return &SearchCall{
-		m: m,
-		i: ID(-1),
-		n: "",
-	}
+	Version Version `xml:"version"`
+	Nodes   []Node  `xml:"node"`
 }
 
 // HumanReadable returns a human readable map of the cluster.

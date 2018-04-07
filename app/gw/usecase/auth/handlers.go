@@ -20,16 +20,16 @@ type Handlers interface {
 
 type handlers struct {
 	cache Repository
-	cMap  *cmap.CMap
+	cMap  *cmap.Controller
 }
 
 // NewHandlers creates an authentication handlers with necessary dependencies.
-func NewHandlers(repo Repository) Handlers {
+func NewHandlers(cMap *cmap.Controller, repo Repository) Handlers {
 	logger = mlog.GetPackageLogger("app/gw/usecase/auth")
 
 	return &handlers{
 		cache: repo,
-		cMap:  cmap.New(),
+		cMap:  cMap,
 	}
 }
 
@@ -58,12 +58,8 @@ func (h *handlers) getSecretKeyFromRemote(accessKey string) (secretKey string, e
 	// 1. Lookup mds from cluster map.
 	mds, err := h.cMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
 	if err != nil {
-		h.updateClusterMap()
-		mds, err = h.cMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
-		if err != nil {
-			ctxLogger.Error(errors.Wrap(err, "failed to find alive mds"))
-			return "", ErrInternal
-		}
+		ctxLogger.Error(errors.Wrap(err, "failed to find alive mds"))
+		return "", ErrInternal
 	}
 
 	// 2. Try dial to mds.
@@ -90,17 +86,4 @@ func (h *handlers) getSecretKeyFromRemote(accessKey string) (secretKey string, e
 	}
 
 	return res.SecretKey, nil
-}
-
-// updateClusterMap retrieves the latest cluster map from the mds.
-func (h *handlers) updateClusterMap() {
-	ctxLogger := mlog.GetMethodLogger(logger, "handlers.updateClusterMap")
-
-	m, err := cmap.GetLatest(cmap.WithFromRemote(true))
-	if err != nil {
-		ctxLogger.Error(errors.Wrap(err, "failed to get the latest cluster map from remote"))
-		return
-	}
-
-	h.cMap = m
 }

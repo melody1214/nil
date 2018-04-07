@@ -42,9 +42,15 @@ func TestSearchCall(t *testing.T) {
 		Nodes:   testNodes,
 	}
 
+	ct, err := NewController("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ct.Update(WithFile(&testMap))
+
 	for _, n := range testMap.Nodes {
 		// 1. Search with the all conditions are matched.
-		c := testMap.SearchCall()
+		c := ct.SearchCall()
 		c.ID(n.ID).Name(n.Name).Type(n.Type).Status(n.Stat)
 
 		if find, err := c.Do(); err != nil {
@@ -54,7 +60,7 @@ func TestSearchCall(t *testing.T) {
 		}
 
 		// 2. Search with only condition for id.
-		c = testMap.SearchCall()
+		c = ct.SearchCall()
 		c.ID(n.ID)
 
 		if find, err := c.Do(); err != nil {
@@ -64,7 +70,7 @@ func TestSearchCall(t *testing.T) {
 		}
 
 		// 3. Search with wrong contition.
-		c = testMap.SearchCall()
+		c = ct.SearchCall()
 		c.Name(n.Name + "wrong name")
 
 		if _, err := c.Do(); err == nil {
@@ -72,7 +78,7 @@ func TestSearchCall(t *testing.T) {
 		}
 
 		// 4. Search with type and status.
-		c = testMap.SearchCall()
+		c = ct.SearchCall()
 		c.Type(n.Type).Status(n.Stat)
 
 		if find, err := c.Do(); err != nil {

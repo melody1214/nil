@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"github.com/chanyoung/nil/app/mds/delivery"
-	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/security"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -18,7 +17,6 @@ var logger *logrus.Entry
 type handlers struct {
 	cfg   *config.Mds
 	store Repository
-	cMap  *cmap.CMap
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
@@ -28,7 +26,6 @@ func NewHandlers(cfg *config.Mds, s Repository) delivery.AdminHandlers {
 	return &handlers{
 		cfg:   cfg,
 		store: s,
-		cMap:  cmap.New(),
 	}
 }
 
@@ -139,19 +136,6 @@ func (h *handlers) GetAllVolume(req *nilrpc.GetAllVolumeRequest, res *nilrpc.Get
 	}
 
 	return nil
-}
-
-// updateClusterMap retrieves the latest cluster map from the mds.
-func (h *handlers) updateClusterMap() {
-	ctxLogger := mlog.GetMethodLogger(logger, "handlers.updateClusterMap")
-
-	m, err := cmap.GetLatest(cmap.WithFromRemote(true))
-	if err != nil {
-		ctxLogger.Error(err)
-		return
-	}
-
-	h.cMap = m
 }
 
 // AddUser adds a new user with the given name.

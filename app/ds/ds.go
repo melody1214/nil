@@ -10,6 +10,7 @@ import (
 	"github.com/chanyoung/nil/app/ds/repository"
 	"github.com/chanyoung/nil/app/ds/repository/lvstore"
 	"github.com/chanyoung/nil/app/ds/usecase/admin"
+	"github.com/chanyoung/nil/app/ds/usecase/clustermap"
 	"github.com/chanyoung/nil/app/ds/usecase/membership"
 	"github.com/chanyoung/nil/app/ds/usecase/object"
 	"github.com/chanyoung/nil/app/ds/usecase/recovery"
@@ -59,15 +60,20 @@ func Bootstrap(cfg config.Ds) error {
 	// Setup request event factory.
 	requestEventFactory := request.NewRequestEventFactory()
 
-	// Setup each usecase handlers.
-	adminHandlers := admin.NewHandlers(&cfg, adminStore)
-	objectHandlers := object.NewHandlers(requestEventFactory, objectStore)
-	membershipHandlers := membership.NewHandlers(&cfg)
-
 	// Setup cluster map.
-	if err := cmap.Initial(cfg.Swim.CoordinatorAddr); err != nil {
+	clusterMap, err := cmap.NewController(cfg.Swim.CoordinatorAddr)
+	if err != nil {
 		return errors.Wrap(err, "failed to init cluster map")
 	}
+
+	// Setup each usecase handlers.
+	adminHandlers := admin.NewHandlers(&cfg, clusterMap, adminStore)
+	objectHandlers := object.NewHandlers(clusterMap, requestEventFactory, objectStore)
+	membershipHandlers := membership.NewHandlers(&cfg)
+	clustermapService := clustermap.NewService(clusterMap)
+
+	// Starts to update cluster map.
+	clustermapService.Run()
 
 	// Setup delivery service.
 	delivery, err := delivery.NewDeliveryService(&cfg, adminHandlers, objectHandlers, membershipHandlers)

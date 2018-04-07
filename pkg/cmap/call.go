@@ -6,7 +6,7 @@ import (
 
 // SearchCall is a handle of search call operation.
 type SearchCall struct {
-	m *CMap
+	m *Controller
 	i ID
 	n string
 	t Type
@@ -39,7 +39,8 @@ func (c *SearchCall) Status(s Status) *SearchCall {
 
 // Do returns the search result.
 func (c *SearchCall) Do() (Node, error) {
-	for _, n := range c.m.Nodes {
+	m := c.m.cMaps[c.m.latest]
+	for _, n := range m.Nodes {
 		// If search condition for ID is set, but the ID is not matched.
 		if c.i != ID(-1) && n.ID != c.i {
 			continue

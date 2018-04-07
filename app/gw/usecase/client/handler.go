@@ -19,28 +19,24 @@ var logger *logrus.Entry
 type handlers struct {
 	requestEventFactory *request.RequestEventFactory
 	authHandlers        auth.Handlers
-	cMap                *cmap.CMap
+	cMap                *cmap.Controller
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(f *request.RequestEventFactory, authHandlers auth.Handlers) delivery.ClientHandlers {
+func NewHandlers(cMap *cmap.Controller, f *request.RequestEventFactory, authHandlers auth.Handlers) delivery.ClientHandlers {
 	logger = mlog.GetPackageLogger("app/gw/usecase/client")
 
 	return &handlers{
 		requestEventFactory: f,
 		authHandlers:        authHandlers,
-		cMap:                cmap.New(),
+		cMap:                cMap,
 	}
 }
 
 func (h *handlers) getLocalChain() (*nilrpc.GetLocalChainResponse, error) {
 	mds, err := h.cMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
 	if err != nil {
-		h.updateClusterMap()
-		mds, err = h.cMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
-		if err != nil {
-			return nil, errors.Wrap(err, "find alive mds failed")
-		}
+		return nil, errors.Wrap(err, "find alive mds failed")
 	}
 
 	conn, err := nilrpc.Dial(mds.Addr, nilrpc.RPCNil, time.Duration(2*time.Second))
@@ -59,17 +55,4 @@ func (h *handlers) getLocalChain() (*nilrpc.GetLocalChainResponse, error) {
 	}
 
 	return res, nil
-}
-
-// updateClusterMap retrieves the latest cluster map from the mds.
-func (h *handlers) updateClusterMap() {
-	ctxLogger := mlog.GetMethodLogger(logger, "handlers.updateClusterMap")
-
-	m, err := cmap.GetLatest(cmap.WithFromRemote(true))
-	if err != nil {
-		ctxLogger.Error(err)
-		return
-	}
-
-	h.cMap = m
 }

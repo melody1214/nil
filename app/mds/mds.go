@@ -68,19 +68,20 @@ func Bootstrap(cfg config.Mds) error {
 	}
 	_ = objectStore
 
+	// Setup cluster map.
+	clusterMap, err := cmap.NewController(cfg.ServerAddr + ":" + cfg.ServerPort)
+	if err != nil {
+		return errors.Wrap(err, "failed to init cluster map")
+	}
+
 	// Setup usecase handlers.
 	adminHandlers := admin.NewHandlers(&cfg, adminStore)
 	authHandlers := auth.NewHandlers(authStore)
 	bucketHandlers := bucket.NewHandlers(bucketStore)
 	consensusHandlers := consensus.NewHandlers(&cfg, consensusStore)
-	clustermapHandlers := clustermap.NewHandlers(clustermapStore)
+	clustermapHandlers := clustermap.NewHandlers(clusterMap, clustermapStore)
 	membershipHandlers := membership.NewHandlers(&cfg, membershipStore)
-	recoveryHandlers := recovery.NewHandlers(&cfg, recoveryStore)
-
-	// Setup cluster map.
-	if err := cmap.Initial(cfg.ServerAddr + ":" + cfg.ServerPort); err != nil {
-		return err
-	}
+	recoveryHandlers := recovery.NewHandlers(&cfg, clusterMap, recoveryStore)
 
 	// Setup delivery service.
 	delivery, err := delivery.NewDeliveryService(

@@ -49,12 +49,8 @@ func (h *handlers) makeBucket(accessKey, region, bucket string) error {
 	// 1. Lookup mds from cluster map.
 	mds, err := h.cMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
 	if err != nil {
-		h.updateClusterMap()
-		mds, err = h.cMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
-		if err != nil {
-			ctxLogger.Error(err)
-			return errInternal
-		}
+		ctxLogger.Error(err)
+		return errInternal
 	}
 
 	// Dialing to mds for making rpc connection.
