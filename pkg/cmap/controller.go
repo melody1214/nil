@@ -10,8 +10,9 @@ import (
 
 // Controller is the object for access multiple versions of cluster maps.
 type Controller struct {
-	latest Version
-	cMaps  map[Version]*CMap
+	latest       Version
+	cMaps        map[Version]*CMap
+	notiChannels map[time.Time](chan interface{})
 
 	mu sync.RWMutex
 }
@@ -38,7 +39,10 @@ func NewController(coordinator string) (*Controller, error) {
 		return nil, err
 	}
 
-	c := &Controller{cMaps: make(map[Version]*CMap)}
+	c := &Controller{
+		cMaps:        make(map[Version]*CMap),
+		notiChannels: make(map[time.Time](chan interface{})),
+	}
 	c.cMaps[cm.Version] = cm
 	c.latest = cm.Version
 
@@ -103,7 +107,44 @@ func (c *Controller) Update(opts ...Option) error {
 	c.cMaps[cm.Version] = cm
 	c.latest = cm.Version
 
+	c.sendUpdateNotiToAll()
+
 	return nil
+}
+
+// GetUpdatedNoti returns a channel which will send notification when
+// the higher version of cluster map is created.
+func (c *Controller) GetUpdatedNoti(ver Version) <-chan interface{} {
+	// Make buffered channel is important because not to be blocked
+	// while in the send noti progress if the receiver had been timeout.
+	notiC := make(chan interface{}, 2)
+
+	go func() {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+
+		// Add notification channel.
+		if c.latest <= ver {
+			c.notiChannels[time.Now()] = notiC
+			return
+		}
+
+		// Already have the higher version of cluster map.
+		// Send notification and close the channel.
+		notiC <- nil
+		close(notiC)
+		return
+	}()
+
+	return notiC
+}
+
+func (c *Controller) sendUpdateNotiToAll() {
+	for i, ch := range c.notiChannels {
+		ch <- nil
+		close(ch)
+		delete(c.notiChannels, i)
+	}
 }
 
 // SearchCall returns a new search call.

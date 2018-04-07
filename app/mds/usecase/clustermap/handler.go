@@ -1,6 +1,9 @@
 package clustermap
 
 import (
+	"errors"
+	"time"
+
 	"github.com/chanyoung/nil/app/mds/delivery"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
@@ -44,4 +47,18 @@ func (h *handlers) GetClusterMap(req *nilrpc.GetClusterMapRequest, res *nilrpc.G
 	}
 
 	return nil
+}
+
+func (h *handlers) IsUpdated(req *nilrpc.ClusterMapIsUpdatedRequest, res *nilrpc.ClusterMapIsUpdatedResponse) error {
+	notiC := h.cMap.GetUpdatedNoti(cmap.Version(req.Version))
+
+	timeout := time.After(10 * time.Minute)
+	for {
+		select {
+		case <-notiC:
+			return nil
+		case <-timeout:
+			return errors.New("timeout, try again")
+		}
+	}
 }

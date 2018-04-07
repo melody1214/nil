@@ -44,6 +44,7 @@ const (
 
 	// MDS clustermap domain methods.
 	MdsClustermapGetClusterMap
+	MdsClustermapIsUpdated
 
 	// MDS membership domain methods.
 	MdsMembershipGetMembershipList
@@ -79,6 +80,8 @@ func (m MethodName) String() string {
 
 	case MdsClustermapGetClusterMap:
 		return MdsClustermapPrefix + "." + "GetClusterMap"
+	case MdsClustermapIsUpdated:
+		return MdsClustermapPrefix + "." + "IsUpdated"
 
 	case MdsMembershipGetMembershipList:
 		return MdsMembershipPrefix + "." + "GetMembershipList"
@@ -165,6 +168,16 @@ type GetClusterMapResponse struct {
 	Version int64
 	Nodes   []ClusterNode
 }
+
+// ClusterMapIsUpdatedRequest requests to receive notification
+// when the cluster map is updated. Gives some notification if
+// has higher than given version of cluster map.
+type ClusterMapIsUpdatedRequest struct {
+	Version int64
+}
+
+// ClusterMapIsUpdatedResponse will response the cluster map is updated.
+type ClusterMapIsUpdatedResponse struct{}
 
 // ClusterNode represents the nodes.
 type ClusterNode struct {

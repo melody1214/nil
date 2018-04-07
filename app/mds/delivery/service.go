@@ -181,6 +181,7 @@ type BucketHandlers interface {
 // ClustermapHandlers is the interface that provides clustermap domain's rpc handlers.
 type ClustermapHandlers interface {
 	GetClusterMap(req *nilrpc.GetClusterMapRequest, res *nilrpc.GetClusterMapResponse) error
+	IsUpdated(req *nilrpc.ClusterMapIsUpdatedRequest, res *nilrpc.ClusterMapIsUpdatedResponse) error
 }
 
 // ConsensusHandlers is the interface that provides consensus domain's rpc handlers.
