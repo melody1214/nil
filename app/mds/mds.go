@@ -95,7 +95,7 @@ func Bootstrap(cfg config.Mds) error {
 		return err
 	}
 
-	ctxLogger.Info("bootstrap gw succeeded")
+	ctxLogger.Info("bootstrap mds succeeded")
 
 	// Make channel for Ctrl-C or other terminate signal is received.
 	sigc := make(chan os.Signal, 1)
