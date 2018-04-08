@@ -78,4 +78,16 @@ var generateSQLBase = []string{
 			PRIMARY KEY (cmap_id)
 		) ENGINE=InnoDB DEFAULT CHARSET=ascii
 	`,
+	`
+		CREATE TABLE IF NOT EXISTS object (
+			obj_id bigint unsigned NOT NULL AUTO_INCREMENT,
+			obj_name varchar(255) NOT NULL,
+			obj_bucket bigint unsigned NOT NULL,
+			obj_encoding_group bigint unsigned NOT NULL,
+			obj_encoding_group_volume varchar(32) CHARACTER SET ascii NOT NULL,
+			PRIMARY KEY (obj_id),
+			FOREIGN KEY (obj_bucket) REFERENCES bucket (bk_id),
+			FOREIGN KEY (obj_encoding_group) REFERENCES encoding_group (eg_id)
+		) ENGINE=InnoDB DEFAULT CHARSET=ascii
+	`,
 }

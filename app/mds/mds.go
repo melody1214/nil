@@ -66,7 +66,6 @@ func Bootstrap(cfg config.Mds) error {
 	} else {
 		return fmt.Errorf("not supported store type")
 	}
-	_ = objectStore
 
 	// Setup cluster map.
 	clusterMap, err := cmap.NewController(cfg.ServerAddr + ":" + cfg.ServerPort)
@@ -81,12 +80,13 @@ func Bootstrap(cfg config.Mds) error {
 	consensusHandlers := consensus.NewHandlers(&cfg, consensusStore)
 	clustermapHandlers := clustermap.NewHandlers(clusterMap, clustermapStore)
 	membershipHandlers := membership.NewHandlers(&cfg, membershipStore)
+	objectHandlers := object.NewHandlers(objectStore)
 	recoveryHandlers := recovery.NewHandlers(&cfg, clusterMap, recoveryStore)
 
 	// Setup delivery service.
 	delivery, err := delivery.NewDeliveryService(
 		&cfg, adminHandlers, authHandlers, bucketHandlers, consensusHandlers,
-		clustermapHandlers, membershipHandlers, recoveryHandlers,
+		clustermapHandlers, membershipHandlers, objectHandlers, recoveryHandlers,
 	)
 	if err != nil {
 		return err

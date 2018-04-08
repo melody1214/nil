@@ -118,6 +118,7 @@ function purge() {
     rm -rf $DIR
 
     for region in ${REGIONS[@]}; do
+	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS object;"
 	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS bucket;"
 	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS region;"
 	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS user;"

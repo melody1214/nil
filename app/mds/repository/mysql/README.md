@@ -8,6 +8,7 @@ This is a list of database tables and field prefixes.
 | cmap           | cmap_        | The cmap table is where nil stores the version information about cmaps.     |
 | encoding_group | eg_          | The encoding_group table is used to store local encoding group information. |
 | node           | node_        | The node table is where nil stores information about nodes.                 |
+| object         | obj_         | The object table is where nil stores information about objects.             |
 | region         | rg_          | The region table is where nil stores information about regions.             | 
 | user           | user_        | The user table is where nil stores information about users.                 |
 | volume         | vl_          | The volume table is where nil stores information about volumes.             |

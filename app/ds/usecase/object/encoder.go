@@ -164,10 +164,13 @@ func (e *encoder) do(r *request) {
 	switch e.chunkMap[lcid].seq {
 	case 0:
 		volID = strconv.FormatInt(lc.firstVolID, 10)
+		copyReq.Header.Add("Encoding-Group-Volume", "first")
 	case 1:
 		volID = strconv.FormatInt(lc.secondVolID, 10)
+		copyReq.Header.Add("Encoding-Group-Volume", "second")
 	case 2:
 		volID = strconv.FormatInt(lc.thirdVolID, 10)
+		copyReq.Header.Add("Encoding-Group-Volume", "third")
 	default:
 		ctxLogger.Error("no such volume seq")
 		r.err = fmt.Errorf("vol seq error")

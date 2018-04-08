@@ -24,6 +24,7 @@ type Service struct {
 	clh ClustermapHandlers
 	coh ConsensusHandlers
 	meh MembershipHandlers
+	obh ObjectHandlers
 	reh RecoveryHandlers
 
 	nilLayer        *nilmux.Layer
@@ -35,7 +36,7 @@ type Service struct {
 }
 
 // NewDeliveryService creates a delivery service with necessary dependencies.
-func NewDeliveryService(cfg *config.Mds, adh AdminHandlers, auh AuthHandlers, buh BucketHandlers, coh ConsensusHandlers, clh ClustermapHandlers, meh MembershipHandlers, reh RecoveryHandlers) (*Service, error) {
+func NewDeliveryService(cfg *config.Mds, adh AdminHandlers, auh AuthHandlers, buh BucketHandlers, coh ConsensusHandlers, clh ClustermapHandlers, meh MembershipHandlers, obh ObjectHandlers, reh RecoveryHandlers) (*Service, error) {
 	if cfg == nil {
 		return nil, errors.New("invalid argument")
 	}
@@ -80,6 +81,9 @@ func NewDeliveryService(cfg *config.Mds, adh AdminHandlers, auh AuthHandlers, bu
 	if err := rpcSrv.RegisterName(nilrpc.MdsMembershipPrefix, meh); err != nil {
 		return nil, err
 	}
+	if err := rpcSrv.RegisterName(nilrpc.MdsObjectPrefix, obh); err != nil {
+		return nil, err
+	}
 	if err := rpcSrv.RegisterName(nilrpc.MdsRecoveryPrefix, reh); err != nil {
 		return nil, err
 	}
@@ -93,6 +97,7 @@ func NewDeliveryService(cfg *config.Mds, adh AdminHandlers, auh AuthHandlers, bu
 		clh: clh,
 		coh: coh,
 		meh: meh,
+		obh: obh,
 		reh: reh,
 
 		nilLayer:        nilL,
@@ -196,6 +201,11 @@ type MembershipHandlers interface {
 	GetMembershipList(req *nilrpc.GetMembershipListRequest, res *nilrpc.GetMembershipListResponse) error
 	Create(swimL *nilmux.Layer) error
 	Run()
+}
+
+// ObjectHandlers is the interface that provides object domain's rpc handlers.
+type ObjectHandlers interface {
+	Put(req *nilrpc.ObjectPutRequest, res *nilrpc.ObjectPutResponse) error
 }
 
 // RecoveryHandlers is the interface that provides recovery domain's rpc handlers.

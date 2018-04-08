@@ -17,6 +17,7 @@ const (
 	MdsBucketPrefix     = "MDS_BUCKET"
 	MdsClustermapPrefix = "MDS_CLUSTERMAP"
 	MdsMembershipPrefix = "MDS_MEMBERSHIP"
+	MdsObjectPrefix     = "MDS_OBJECT"
 	MdsRecoveryPrefix   = "MDS_RECOVERY"
 
 	DSRPCPrefix = "DS"
@@ -48,6 +49,9 @@ const (
 
 	// MDS membership domain methods.
 	MdsMembershipGetMembershipList
+
+	// MDS object domain methods.
+	MdsObjectPut
 
 	// MDS recovery domain methods
 	MdsRecoveryRecover
@@ -85,6 +89,9 @@ func (m MethodName) String() string {
 
 	case MdsMembershipGetMembershipList:
 		return MdsMembershipPrefix + "." + "GetMembershipList"
+
+	case MdsObjectPut:
+		return MdsObjectPrefix + "." + "Put"
 
 	case MdsRecoveryRecover:
 		return MdsRecoveryPrefix + "." + "Recover"
@@ -252,6 +259,14 @@ type RecoverResponse struct{}
 
 type RebalanceRequest struct{}
 type RebalanceResponse struct{}
+
+type ObjectPutRequest struct {
+	Name                string
+	Bucket              string
+	EncodingGroup       string
+	EncodingGroupVolume string
+}
+type ObjectPutResponse struct{}
 
 // Dial dials with the given rpc type connection to the address.
 func Dial(addr string, rpcType RPCType, timeout time.Duration) (net.Conn, error) {

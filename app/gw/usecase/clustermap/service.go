@@ -64,6 +64,7 @@ func realtimeUpdater(c *cmap.Controller) {
 			err = c.Update()
 			if err != nil {
 				ctxLogger.Error(errors.Wrap(err, "failed to update cluster map"))
+				time.Sleep(10 * time.Second)
 			}
 		}
 	}

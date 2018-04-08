@@ -2,11 +2,15 @@ package object
 
 import (
 	"net/http"
+	"net/rpc"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/chanyoung/nil/app/ds/repository"
 	"github.com/chanyoung/nil/pkg/client"
+	"github.com/chanyoung/nil/pkg/cmap"
+	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 )
 
@@ -38,6 +42,33 @@ func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 
 		err = storeReq.Wait()
 		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		mds, err := h.cMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		conn, err := nilrpc.Dial(mds.Addr, nilrpc.RPCNil, time.Duration(2*time.Second))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		defer conn.Close()
+
+		req := &nilrpc.ObjectPutRequest{
+			Name:                storeReq.Oid,
+			Bucket:              strings.Split(strings.Trim(r.URL.Path, "/"), "/")[0],
+			EncodingGroup:       storeReq.LocGid,
+			EncodingGroupVolume: r.Header.Get("Encoding-Group-Volume"),
+		}
+		res := &nilrpc.ObjectPutResponse{}
+
+		cli := rpc.NewClient(conn)
+		if err := cli.Call(nilrpc.MdsObjectPut.String(), req, res); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
