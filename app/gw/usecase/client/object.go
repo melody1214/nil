@@ -74,12 +74,55 @@ func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 
 // GetObjectHandler handles the client request for getting an object.
 func (h *handlers) GetObjectHandler(w http.ResponseWriter, r *http.Request) {
-	_, err := h.requestEventFactory.CreateRequestEvent(w, r)
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.GetObjectHandler")
+
+	req, err := h.requestEventFactory.CreateRequestEvent(w, r)
 	if err == client.ErrInvalidProtocol {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
-	http.Error(w, "not implemented", http.StatusNotImplemented)
+	bucketAndObject := strings.SplitN(strings.Trim(r.RequestURI, "/"), "/", 2)
+	if len(bucketAndObject) < 2 {
+		ctxLogger.Error(err)
+		req.SendInvalidURI()
+		return
+	}
+
+	res, err := h.getObjectLocation(bucketAndObject[1], bucketAndObject[0])
+	if err != nil {
+		ctxLogger.Error(err)
+		req.SendInvalidURI()
+		return
+	}
+
+	// Test code
+	c := h.cMap.SearchCall()
+	node, err := c.ID(cmap.ID(res.DsID)).Do()
+	if err != nil {
+		ctxLogger.Error(err)
+		req.SendInternalError()
+		return
+	}
+
+	rpURL, err := url.Parse("https://" + node.Addr)
+	if err != nil {
+		ctxLogger.Error(
+			errors.Wrapf(
+				err,
+				"parse ds url failed, ds ID: %s, ds url: %s",
+				node.ID.String(),
+				node.Addr,
+			),
+		)
+		req.SendInternalError()
+		return
+	}
+
+	proxy := httputil.NewSingleHostReverseProxy(rpURL)
+	r.Header.Add("Volume-Id", strconv.FormatInt(res.EncodingGroupVolumeID, 10))
+	r.Header.Add("Local-Chain-Id", strconv.FormatInt(res.EncodingGroup, 10))
+	proxy.ErrorLog = log.New(logger.Writer(), "http reverse proxy", log.Lshortfile)
+	proxy.ServeHTTP(w, r)
 }
 
 // DeleteObjectHandler handles the client request for deleting an object.

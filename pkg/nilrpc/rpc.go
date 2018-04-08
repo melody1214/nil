@@ -52,6 +52,7 @@ const (
 
 	// MDS object domain methods.
 	MdsObjectPut
+	MdsObjectGet
 
 	// MDS recovery domain methods
 	MdsRecoveryRecover
@@ -92,6 +93,8 @@ func (m MethodName) String() string {
 
 	case MdsObjectPut:
 		return MdsObjectPrefix + "." + "Put"
+	case MdsObjectGet:
+		return MdsObjectPrefix + "." + "Get"
 
 	case MdsRecoveryRecover:
 		return MdsRecoveryPrefix + "." + "Recover"
@@ -267,6 +270,16 @@ type ObjectPutRequest struct {
 	EncodingGroupVolume string
 }
 type ObjectPutResponse struct{}
+
+type ObjectGetRequest struct {
+	Name   string
+	Bucket string
+}
+type ObjectGetResponse struct {
+	EncodingGroup         int64
+	EncodingGroupVolumeID int64
+	DsID                  int64
+}
 
 // Dial dials with the given rpc type connection to the address.
 func Dial(addr string, rpcType RPCType, timeout time.Duration) (net.Conn, error) {

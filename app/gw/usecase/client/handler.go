@@ -2,6 +2,7 @@ package client
 
 import (
 	"net/rpc"
+	"strings"
 	"time"
 
 	"github.com/chanyoung/nil/app/gw/delivery"
@@ -48,9 +49,35 @@ func (h *handlers) getLocalChain() (*nilrpc.GetLocalChainResponse, error) {
 	req := &nilrpc.GetLocalChainRequest{}
 	res := &nilrpc.GetLocalChainResponse{}
 
-	// 4. Request the secret key.
 	cli := rpc.NewClient(conn)
 	if err := cli.Call(nilrpc.MdsAdminGetLocalChain.String(), req, res); err != nil {
+		return nil, errors.Wrap(err, "mds rpc client calling failed")
+	}
+
+	return res, nil
+}
+
+func (h *handlers) getObjectLocation(oid, bucket string) (*nilrpc.ObjectGetResponse, error) {
+	mds, err := h.cMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
+	if err != nil {
+		return nil, errors.Wrap(err, "find alive mds failed")
+	}
+
+	conn, err := nilrpc.Dial(mds.Addr, nilrpc.RPCNil, time.Duration(2*time.Second))
+	if err != nil {
+		return nil, errors.Wrap(err, "dial to mds failed")
+	}
+	defer conn.Close()
+
+	req := &nilrpc.ObjectGetRequest{
+		Name:   bucket + "." + strings.Replace(oid, "/", ".", -1),
+		Bucket: bucket,
+	}
+	res := &nilrpc.ObjectGetResponse{}
+
+	cli := rpc.NewClient(conn)
+	if err := cli.Call(nilrpc.MdsObjectGet.String(), req, res); err != nil {
+		logger.Errorf("%+v", req)
 		return nil, errors.Wrap(err, "mds rpc client calling failed")
 	}
 

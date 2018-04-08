@@ -13,4 +13,7 @@ type Service interface {
 
 	// Push pushes an io request into the scheduling queue.
 	Push(c *Request) error
+
+	GetObjectSize(lvID, objID string) (int64, bool)
+	GetObjectMD5(lvID, objID string) (string, bool)
 }

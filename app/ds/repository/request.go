@@ -28,7 +28,8 @@ type Request struct {
 	Oid    string // Object ID
 	Cid    string // Chunk ID
 
-	Osize int64 // Object Size
+	Osize int64  // Object Size
+	Md5   string // MD5 string
 
 	In  io.Reader
 	Out io.Writer

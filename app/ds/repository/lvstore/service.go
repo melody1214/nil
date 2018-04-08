@@ -111,6 +111,34 @@ func (s *service) AddVolume(v *repository.Vol) error {
 	return nil
 }
 
+func (s *service) GetObjectSize(lvID, objID string) (int64, bool) {
+	lv, ok := s.lvs[lvID]
+	if ok == false {
+		return 0, false
+	}
+
+	obj, ok := lv.Objs[objID]
+	if ok == false {
+		return 0, false
+	}
+
+	return obj.Size, true
+}
+
+func (s *service) GetObjectMD5(lvID, objID string) (string, bool) {
+	lv, ok := s.lvs[lvID]
+	if ok == false {
+		return "", false
+	}
+
+	obj, ok := lv.Objs[objID]
+	if ok == false {
+		return "", false
+	}
+
+	return obj.MD5, true
+}
+
 func (s *service) handleCall(r *repository.Request) {
 	defer r.Wg.Done()
 
@@ -145,6 +173,10 @@ func (s *service) read(r *repository.Request) {
 	if !ok {
 		r.Err = fmt.Errorf("no such object: %s", r.Oid)
 		return
+	}
+
+	if r.Osize == 0 {
+		r.Osize = obj.Size
 	}
 
 	LocGrpDir := lv.MntPoint + "/" + r.LocGid
@@ -248,7 +280,12 @@ func (s *service) write(r *repository.Request) error {
 			if lv.ChunkSize-fChunkLen == r.Osize {
 				r.Err = fmt.Errorf("chunk full")
 			}
-			lv.Objs[r.Oid] = repository.ObjMap{Cid: r.Cid, Offset: fChunkLen}
+			lv.Objs[r.Oid] = repository.ObjMap{
+				Cid:    r.Cid,
+				Offset: fChunkLen,
+				Size:   r.Osize,
+				MD5:    r.Md5,
+			}
 		} else {
 			if err := fChunk.Truncate(lv.ChunkSize); err != nil {
 				r.Err = err

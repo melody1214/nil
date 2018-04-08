@@ -179,6 +179,7 @@ func (e *encoder) do(r *request) {
 	copyReq.Header.Add("Local-Chain-Id", lcid)
 	copyReq.Header.Add("Volume-Id", volID)
 	copyReq.Header.Add("Chunk-Id", e.chunkMap[lcid].chunkID)
+	copyReq.Header.Add("Md5", r.md5)
 	copyReq.ContentLength = osize
 
 	req = &repository.Request{

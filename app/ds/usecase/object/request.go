@@ -7,6 +7,7 @@ import (
 
 type request struct {
 	r   *http.Request
+	md5 string
 	wg  sync.WaitGroup
 	err error
 }

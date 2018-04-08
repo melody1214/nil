@@ -63,6 +63,8 @@ func (s Status) String() string {
 type ObjMap struct {
 	Cid    string
 	Offset int64
+	Size   int64
+	MD5    string
 }
 
 // Vol contains information about the volume.

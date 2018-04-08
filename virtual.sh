@@ -14,7 +14,7 @@ PENDINGCMD=$DIR/pending
 
 # Region names follow ISO-3166-1
 # REGIONS=("KR" "US" "HK" "SG" "JP" "DE")
-REGIONS=("KR" "US")
+REGIONS=("KR")
 GWBASEPORT=50000
 MDSBASEPORT=51000
 DSBASEPORT=52000
@@ -274,6 +274,22 @@ function putobjects() {
 
             for k in $(seq 1 10); do
                 s3cmd put virtual.sh s3://$bucket/obj$k --access_key=${!ak} --secret_key=${!sk} --region=${!region} --no-check-hostname
+            done
+        done
+    done
+}
+
+function getobjects() {
+    for i in $(seq 1 $TOTALUSERS); do
+        local ak=user$i[accesskey]
+        local sk=user$i[secretkey]
+        local region=user$i[bucketregion]
+
+        for j in $(seq 1 $BUCKETS); do
+            local bucket="user$i-bucket$j"
+
+            for k in $(seq 1 10); do
+                s3cmd get s3://$bucket/obj$k $DIR/$bucket-obj$k --access_key=${!ak} --secret_key=${!sk} --region=${!region} --no-check-hostname
             done
         done
     done

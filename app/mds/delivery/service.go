@@ -206,6 +206,7 @@ type MembershipHandlers interface {
 // ObjectHandlers is the interface that provides object domain's rpc handlers.
 type ObjectHandlers interface {
 	Put(req *nilrpc.ObjectPutRequest, res *nilrpc.ObjectPutResponse) error
+	Get(req *nilrpc.ObjectGetRequest, res *nilrpc.ObjectGetResponse) error
 }
 
 // RecoveryHandlers is the interface that provides recovery domain's rpc handlers.
