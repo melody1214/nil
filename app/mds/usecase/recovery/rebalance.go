@@ -15,8 +15,8 @@ func (h *handlers) needRebalance() bool {
 	q := fmt.Sprintf(
 		`
 		SELECT
-			chain,
-			max_chain
+			vl_encoding_group,
+			vl_max_encoding_group
 		FROM
 			volume
 		`,
@@ -76,16 +76,16 @@ func (h *handlers) rebalanceSpeedGroup(speed string) error {
 	q := fmt.Sprintf(
 		`
 		SELECT
-			volume_id,
-			volume_status,
-			node_id,
-			used,
-			chain,
-			max_chain
+			vl_id,
+			vl_status,
+			vl_node,
+			vl_used,
+			vl_encoding_group,
+			vl_max_encoding_group
 		FROM
 			volume
 		WHERE
-			speed = '%s'
+			vl_speed = '%s'
 		ORDER BY rand();
 		`, speed,
 	)
@@ -233,14 +233,14 @@ func (h *handlers) newLocalChain(primary *Volume, vols []*Volume) error {
 	q := fmt.Sprintf(
 		`
 		SELECT
-			local_chain_id
+			eg_id
 		FROM
-			local_chain
+			encoding_group
 		WHERE
-			first_volume_id = '%d' and
-			second_volume_id = '%d' and
-			third_volume_id = '%d' and
-			parity_volume_id = '%d'
+			eg_first_volume = '%d' and
+			eg_second_volume = '%d' and
+			eg_third_volume = '%d' and
+			eg_parity_volume = '%d'
 		`, c.firstVol, c.secondVol, c.thirdVol, c.parityVol,
 	)
 
@@ -256,7 +256,7 @@ func (h *handlers) newLocalChain(primary *Volume, vols []*Volume) error {
 
 	q = fmt.Sprintf(
 		`
-		INSERT INTO local_chain (local_chain_status, first_volume_id, second_volume_id, third_volume_id, parity_volume_id)
+		INSERT INTO encoding_group (eg_status, eg_first_volume, eg_second_volume, eg_third_volume, eg_parity_volume)
 		VALUES ('%s', '%d', '%d', '%d', '%d')
 		`, c.status, c.firstVol, c.secondVol, c.thirdVol, c.parityVol,
 	)
@@ -270,8 +270,8 @@ func (h *handlers) newLocalChain(primary *Volume, vols []*Volume) error {
 		q := fmt.Sprintf(
 			`
 		UPDATE volume
-		SET chain=chain+1
-		WHERE volume_id in ('%d')
+		SET vl_encoding_group=vl_encoding_group+1
+		WHERE vl_id in ('%d')
 		`, v.ID,
 		)
 

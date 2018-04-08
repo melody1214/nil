@@ -44,9 +44,9 @@ func (h *handlers) GetLocalChain(req *nilrpc.GetLocalChainRequest, res *nilrpc.G
 	q := fmt.Sprintf(
 		`
 		SELECT
-	        local_chain_id, parity_volume_id
+	        eg_id, eg_parity_volume
 		FROM
-	        local_chain
+	        encoding_group
 	    ORDER BY rand() limit 1;
 		`,
 	)
@@ -64,11 +64,11 @@ func (h *handlers) GetLocalChain(req *nilrpc.GetLocalChainRequest, res *nilrpc.G
 	q = fmt.Sprintf(
 		`
 		SELECT
-			node_id
+			vl_node
 			FROM
 			volume
  		WHERE
-			volume_id = '%d'
+			vl_id = '%d'
 		`, res.ParityVolumeID,
 	)
 
@@ -84,9 +84,9 @@ func (h *handlers) GetAllChain(req *nilrpc.GetAllChainRequest, res *nilrpc.GetAl
 	q := fmt.Sprintf(
 		`
 		SELECT
-			local_chain_id, first_volume_id, second_volume_id, third_volume_id, parity_volume_id
+			eg_id, eg_first_volume, eg_second_volume, eg_third_volume, eg_parity_volume
 		FROM
-			local_chain
+			encoding_group
 		`,
 	)
 
@@ -113,7 +113,7 @@ func (h *handlers) GetAllVolume(req *nilrpc.GetAllVolumeRequest, res *nilrpc.Get
 	q := fmt.Sprintf(
 		`
 		SELECT
-			volume_id, node_id
+			vl_id, vl_node
 		FROM
 			volume
 		`,
@@ -144,7 +144,7 @@ func (h *handlers) AddUser(req *nilrpc.AddUserRequest, res *nilrpc.AddUserRespon
 
 	q := fmt.Sprintf(
 		`
-		INSERT INTO user (user_name, access_key, secret_key)
+		INSERT INTO user (user_name, user_access_key, user_secret_key)
 		SELECT * FROM (SELECT '%s' AS un, '%s' AS ak, '%s' AS sk) AS tmp
 		WHERE NOT EXISTS (
 			SELECT user_name FROM user WHERE user_name = '%s'
@@ -178,8 +178,8 @@ func (h *handlers) updateVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.R
 	q := fmt.Sprintf(
 		`
 		UPDATE volume
-		SET volume_status='%s', size='%d', free='%d', used='%d', max_chain='%d', speed='%s' 
-		WHERE volume_id in ('%s')
+		SET vl_status='%s', vl_size='%d', vl_free='%d', vl_used='%d', vl_max_encoding_group='%d', vl_speed='%s' 
+		WHERE vl_id in ('%s')
 		`, req.Status, req.Size, req.Free, req.Used, calcMaxChain(req.Size), req.Speed, req.ID,
 	)
 
@@ -195,7 +195,7 @@ func (h *handlers) insertNewVolume(req *nilrpc.RegisterVolumeRequest, res *nilrp
 
 	q := fmt.Sprintf(
 		`
-		INSERT INTO volume (node_id, volume_status, size, free, used, chain, max_chain, speed)
+		INSERT INTO volume (vl_node, vl_status, vl_size, vl_free, vl_used, vl_encoding_group, vl_max_encoding_group, vl_speed)
 		SELECT node_id, '%s', '%d', '%d', '%d', '%d', '%d', '%s' FROM node WHERE node_name = '%s'
 		`, req.Status, req.Size, req.Free, req.Used, 0, calcMaxChain(req.Size), req.Speed, req.Ds,
 	)

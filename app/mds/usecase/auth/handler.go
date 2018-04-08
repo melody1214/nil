@@ -32,11 +32,11 @@ func (h *handlers) GetCredential(req *nilrpc.GetCredentialRequest, res *nilrpc.G
 	q := fmt.Sprintf(
 		`
 		SELECT
-			secret_key
+			user_secret_key
 		FROM
 			user
 		WHERE
-			access_key = '%s'
+			user_access_key = '%s'
 		`, req.AccessKey,
 	)
 

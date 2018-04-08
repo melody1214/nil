@@ -65,10 +65,10 @@ func (s *store) Execute(query string) (sql.Result, error) {
 func (s *store) addRegion(region, addr string) error {
 	q := fmt.Sprintf(
 		`
-		INSERT INTO region (region_name, end_point)
+		INSERT INTO region (rg_name, rg_end_point)
 		SELECT * FROM (SELECT '%s' AS rn, '%s' AS ep) AS tmp
 		WHERE NOT EXISTS (
-			SELECT region_name FROM region WHERE region_name = '%s'
+			SELECT rg_name FROM region WHERE rg_name = '%s'
 		) LIMIT 1;
 		`, region, addr, region,
 	)

@@ -31,10 +31,10 @@ func NewHandlers(s Repository) delivery.BucketHandlers {
 func (h *handlers) AddBucket(req *nilrpc.AddBucketRequest, res *nilrpc.AddBucketResponse) error {
 	q := fmt.Sprintf(
 		`
-		INSERT INTO bucket (bucket_name, user_id, region_id)
-		SELECT '%s', u.user_id, r.region_id
+		INSERT INTO bucket (bk_name, bk_user, bk_region)
+		SELECT '%s', u.user_id, r.rg_id
 		FROM user u, region r
-		WHERE u.access_key = '%s' and r.region_name = '%s';
+		WHERE u.user_access_key = '%s' and r.rg_name = '%s';
 		`, req.BucketName, req.AccessKey, req.Region,
 	)
 

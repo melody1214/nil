@@ -6,29 +6,29 @@ var generateSQLBase = []string{
 		CREATE TABLE IF NOT EXISTS user (
 			user_id bigint unsigned NOT NULL AUTO_INCREMENT,
 			user_name varchar(128) CHARACTER SET ascii NOT NULL,
-			access_key varchar(32) charset ascii NOT NULL,
-			secret_key varchar(32) charset ascii NOT NULL,
+			user_access_key varchar(32) charset ascii NOT NULL,
+			user_secret_key varchar(32) charset ascii NOT NULL,
 			PRIMARY KEY (user_id)
 		) ENGINE=InnoDB DEFAULT CHARSET=ascii
 	`,
 	`
 		CREATE TABLE IF NOT EXISTS region (
-			region_id int unsigned NOT NULL AUTO_INCREMENT,
-			region_name varchar(32) CHARACTER SET ascii NOT NULL,
-			end_point varchar(128) CHARACTER SET ascii NOT NULL,
-			PRIMARY KEY (region_id)
+			rg_id int unsigned NOT NULL AUTO_INCREMENT,
+			rg_name varchar(32) CHARACTER SET ascii NOT NULL,
+			rg_end_point varchar(128) CHARACTER SET ascii NOT NULL,
+			PRIMARY KEY (rg_id)
 		) ENGINE=InnoDB DEFAULT CHARSET=ascii
 	`,
 	`
 		CREATE TABLE IF NOT EXISTS bucket (
-			bucket_id bigint unsigned NOT NULL AUTO_INCREMENT,
-			bucket_name varchar(32) CHARACTER SET ascii NOT NULL,
-			user_id bigint unsigned NOT NULL,
-			region_id int unsigned NOT NULL,
-			PRIMARY KEY (bucket_id),
-			UNIQUE KEY (bucket_name, region_id),
-			FOREIGN KEY (user_id) REFERENCES user (user_id),
-			FOREIGN KEY (region_id) REFERENCES region (region_id)
+			bk_id bigint unsigned NOT NULL AUTO_INCREMENT,
+			bk_name varchar(32) CHARACTER SET ascii NOT NULL,
+			bk_user bigint unsigned NOT NULL,
+			bk_region int unsigned NOT NULL,
+			PRIMARY KEY (bk_id),
+			UNIQUE KEY (bk_name, bk_region),
+			FOREIGN KEY (bk_user) REFERENCES user (user_id),
+			FOREIGN KEY (bk_region) REFERENCES region (rg_id)
 		) ENGINE=InnoDB DEFAULT CHARSET=ascii
 	`,
 	`
@@ -44,32 +44,32 @@ var generateSQLBase = []string{
 	`,
 	`
 		CREATE TABLE IF NOT EXISTS volume (
-			volume_id bigint unsigned NOT NULL AUTO_INCREMENT,
-			volume_status varchar(32) CHARACTER SET ascii NOT NULL,
-			node_id bigint unsigned NOT NULL,
-			size int unsigned NOT NULL,
-			free int unsigned NOT NULL,
-			used int unsigned NOT NULL,
-			chain int unsigned NOT NULL,
-			max_chain int unsigned NOT NULL,
-			speed varchar(32) charset ascii NOT NULL,
-			PRIMARY KEY (volume_id),
-			FOREIGN KEY (node_id) REFERENCES node (node_id)
+			vl_id bigint unsigned NOT NULL AUTO_INCREMENT,
+			vl_status varchar(32) CHARACTER SET ascii NOT NULL,
+			vl_node bigint unsigned NOT NULL,
+			vl_size int unsigned NOT NULL,
+			vl_free int unsigned NOT NULL,
+			vl_used int unsigned NOT NULL,
+			vl_encoding_group int unsigned NOT NULL,
+			vl_max_encoding_group int unsigned NOT NULL,
+			vl_speed varchar(32) charset ascii NOT NULL,
+			PRIMARY KEY (vl_id),
+			FOREIGN KEY (vl_node) REFERENCES node (node_id)
 		) ENGINE=InnoDB DEFAULT CHARSET=ascii
 	`,
 	`
-		CREATE TABLE IF NOT EXISTS local_chain (
-			local_chain_id bigint unsigned NOT NULL AUTO_INCREMENT,
-			local_chain_status varchar(32) CHARACTER SET ascii NOT NULL,
-			first_volume_id bigint unsigned NOT NULL,
-			second_volume_id bigint unsigned NOT NULL,
-			third_volume_id bigint unsigned NOT NULL,
-			parity_volume_id bigint unsigned NOT NULL,
-			PRIMARY KEY (local_chain_id),
-			FOREIGN KEY (first_volume_id) REFERENCES volume (volume_id),
-			FOREIGN KEY (second_volume_id) REFERENCES volume (volume_id),
-			FOREIGN KEY (third_volume_id) REFERENCES volume (volume_id),
-			FOREIGN KEY (parity_volume_id) REFERENCES volume (volume_id)
+		CREATE TABLE IF NOT EXISTS encoding_group (
+			eg_id bigint unsigned NOT NULL AUTO_INCREMENT,
+			eg_status varchar(32) CHARACTER SET ascii NOT NULL,
+			eg_first_volume bigint unsigned NOT NULL,
+			eg_second_volume bigint unsigned NOT NULL,
+			eg_third_volume bigint unsigned NOT NULL,
+			eg_parity_volume bigint unsigned NOT NULL,
+			PRIMARY KEY (eg_id),
+			FOREIGN KEY (eg_first_volume) REFERENCES volume (vl_id),
+			FOREIGN KEY (eg_second_volume) REFERENCES volume (vl_id),
+			FOREIGN KEY (eg_third_volume) REFERENCES volume (vl_id),
+			FOREIGN KEY (eg_parity_volume) REFERENCES volume (vl_id)
 		) ENGINE=InnoDB DEFAULT CHARSET=ascii
 	`,
 	`
