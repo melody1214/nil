@@ -10,7 +10,6 @@ import (
 	"github.com/chanyoung/nil/app/mds/usecase/admin"
 	"github.com/chanyoung/nil/app/mds/usecase/auth"
 	"github.com/chanyoung/nil/app/mds/usecase/bucket"
-	"github.com/chanyoung/nil/app/mds/usecase/clustermap"
 	"github.com/chanyoung/nil/app/mds/usecase/consensus"
 	"github.com/chanyoung/nil/app/mds/usecase/membership"
 	"github.com/chanyoung/nil/app/mds/usecase/object"
@@ -184,11 +183,6 @@ func NewBucketRepository(s repository.Store) bucket.Repository {
 
 // NewConsensusRepository returns a new instance of a mysql cluster map repository.
 func NewConsensusRepository(s repository.Store) consensus.Repository {
-	return s
-}
-
-// NewClusterMapRepository returns a new instance of a mysql cluster map repository.
-func NewClusterMapRepository(s repository.Store) clustermap.Repository {
 	return s
 }
 

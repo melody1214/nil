@@ -1,9 +1,11 @@
 package clustermap
 
-import "database/sql"
+import (
+	"github.com/chanyoung/nil/pkg/cmap"
+)
 
 // Repository provides access to cluster map database.
 type Repository interface {
-	Execute(query string) (sql.Result, error)
-	Query(query string, args ...interface{}) (*sql.Rows, error)
+	GetClusterMapNodes() ([]cmap.Node, error)
+	GetNewClusterMapVer() (cmap.Version, error)
 }
