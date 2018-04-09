@@ -1,4 +1,4 @@
-package recovery
+package clustermap
 
 import (
 	"fmt"
@@ -6,6 +6,8 @@ import (
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 )
+
+// TODO: with transaction.
 
 func (h *handlers) updateClusterMap() error {
 	// Get new map version.

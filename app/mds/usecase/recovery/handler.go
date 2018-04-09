@@ -1,7 +1,10 @@
 package recovery
 
 import (
+	"log"
+	"net/rpc"
 	"sync"
+	"time"
 
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
@@ -86,4 +89,20 @@ func (h *handlers) Rebalance(req *nilrpc.RebalanceRequest, res *nilrpc.Rebalance
 type Handlers interface {
 	Recover(req *nilrpc.RecoverRequest, res *nilrpc.RecoverResponse) error
 	Rebalance(req *nilrpc.RebalanceRequest, res *nilrpc.RebalanceResponse) error
+}
+
+func (h *handlers) updateClusterMap() error {
+	conn, err := nilrpc.Dial(h.cfg.ServerAddr+":"+h.cfg.ServerPort, nilrpc.RPCNil, time.Duration(2*time.Second))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	req := &nilrpc.MCLUpdateClusterMapRequest{}
+	res := &nilrpc.MCLUpdateClusterMapResponse{}
+
+	cli := rpc.NewClient(conn)
+	defer cli.Close()
+
+	return cli.Call(nilrpc.MdsClustermapUpdateClusterMap.String(), req, res)
 }

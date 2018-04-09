@@ -48,6 +48,7 @@ func (h *handlers) GetClusterMap(req *nilrpc.MCLGetClusterMapRequest, res *nilrp
 	return nil
 }
 
+// GetUpdateNoti returns when the cluster map is updated or timeout.
 func (h *handlers) GetUpdateNoti(req *nilrpc.MCLGetUpdateNotiRequest, res *nilrpc.MCLGetUpdateNotiResponse) error {
 	notiC := h.cMap.GetUpdatedNoti(cmap.Version(req.Version))
 
@@ -62,8 +63,13 @@ func (h *handlers) GetUpdateNoti(req *nilrpc.MCLGetUpdateNotiRequest, res *nilrp
 	}
 }
 
+func (h *handlers) UpdateClusterMap(req *nilrpc.MCLUpdateClusterMapRequest, res *nilrpc.MCLUpdateClusterMapResponse) error {
+	return h.updateClusterMap()
+}
+
 // Handlers is the interface that provides clustermap domain's rpc handlers.
 type Handlers interface {
 	GetClusterMap(req *nilrpc.MCLGetClusterMapRequest, res *nilrpc.MCLGetClusterMapResponse) error
 	GetUpdateNoti(req *nilrpc.MCLGetUpdateNotiRequest, res *nilrpc.MCLGetUpdateNotiResponse) error
+	UpdateClusterMap(req *nilrpc.MCLUpdateClusterMapRequest, res *nilrpc.MCLUpdateClusterMapResponse) error
 }

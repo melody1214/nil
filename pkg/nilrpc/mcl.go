@@ -31,3 +31,9 @@ type MCLGetUpdateNotiRequest struct {
 
 // MCLGetUpdateNotiResponse will response the cluster map is updated.
 type MCLGetUpdateNotiResponse struct{}
+
+// MCLUpdateClusterMapRequest requests to update cluster map.
+type MCLUpdateClusterMapRequest struct{}
+
+// MCLUpdateClusterMapResponse includes the result of update cluster map.
+type MCLUpdateClusterMapResponse struct{}
