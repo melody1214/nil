@@ -20,7 +20,7 @@ type handlers struct {
 }
 
 // NewHandlers creates an admin handlers with necessary dependencies.
-func NewHandlers(cMap *cmap.Controller) AdminHandlers {
+func NewHandlers(cMap *cmap.Controller) Handlers {
 	logger = mlog.GetPackageLogger("app/gw/usecase/admin")
 
 	return &handlers{
@@ -55,7 +55,7 @@ func (h *handlers) Proxying(conn net.Conn) {
 	go io.Copy(remote, conn)
 }
 
-// AdminHandlers is the interface that provides admin rpc handlers.
-type AdminHandlers interface {
+// Handlers is the interface that provides admin rpc handlers.
+type Handlers interface {
 	Proxying(conn net.Conn)
 }

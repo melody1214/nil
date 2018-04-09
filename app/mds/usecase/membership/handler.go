@@ -23,7 +23,7 @@ type handlers struct {
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cfg *config.Mds, s Repository) MembershipHandlers {
+func NewHandlers(cfg *config.Mds, s Repository) Handlers {
 	logger = mlog.GetPackageLogger("app/mds/usecase/membership")
 
 	return &handlers{
@@ -111,8 +111,8 @@ func (h *handlers) rebalance() error {
 	return cli.Call(nilrpc.MdsRecoveryRebalance.String(), req, res)
 }
 
-// MembershipHandlers is the interface that provides membership domain's rpc handlers.
-type MembershipHandlers interface {
+// Handlers is the interface that provides membership domain's rpc handlers.
+type Handlers interface {
 	GetMembershipList(req *nilrpc.GetMembershipListRequest, res *nilrpc.GetMembershipListResponse) error
 	Create(swimL *nilmux.Layer) error
 	Run()

@@ -7,7 +7,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func makeHandler(oh object.ObjectHandlers) http.Handler {
+func makeHandler(oh object.Handlers) http.Handler {
 	r := mux.NewRouter()
 
 	// API routers.

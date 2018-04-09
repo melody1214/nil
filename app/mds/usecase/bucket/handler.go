@@ -17,7 +17,7 @@ type handlers struct {
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(s Repository) BucketHandlers {
+func NewHandlers(s Repository) Handlers {
 	logger = mlog.GetPackageLogger("app/mds/usecase/bucket")
 
 	return &handlers{
@@ -60,7 +60,7 @@ func (h *handlers) AddBucket(req *nilrpc.AddBucketRequest, res *nilrpc.AddBucket
 	return nil
 }
 
-// BucketHandlers is the interface that provides bucket domain's rpc handlers.
-type BucketHandlers interface {
+// Handlers is the interface that provides bucket domain's rpc handlers.
+type Handlers interface {
 	AddBucket(req *nilrpc.AddBucketRequest, res *nilrpc.AddBucketResponse) error
 }

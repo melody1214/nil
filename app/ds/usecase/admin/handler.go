@@ -22,7 +22,7 @@ type handlers struct {
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cfg *config.Ds, cMap *cmap.Controller, s Repository) AdminHandlers {
+func NewHandlers(cfg *config.Ds, cMap *cmap.Controller, s Repository) Handlers {
 	logger = mlog.GetPackageLogger("app/ds/usecase/admin")
 
 	return &handlers{
@@ -92,7 +92,7 @@ func (h *handlers) AddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVolume
 	return nil
 }
 
-// AdminHandlers is the interface that provides client http handlers.
-type AdminHandlers interface {
+// Handlers is the interface that provides client http handlers.
+type Handlers interface {
 	AddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVolumeResponse) error
 }

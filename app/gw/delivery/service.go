@@ -18,8 +18,8 @@ import (
 var logger *logrus.Entry
 
 type Service struct {
-	ah admin.AdminHandlers
-	ch client.ClientHandlers
+	ah admin.Handlers
+	ch client.Handlers
 
 	nilMux *nilmux.NilMux
 
@@ -31,7 +31,7 @@ type Service struct {
 }
 
 // NewDeliveryService creates a delivery service with necessary dependencies.
-func NewDeliveryService(cfg *config.Gw, ah admin.AdminHandlers, ch client.ClientHandlers) (*Service, error) {
+func NewDeliveryService(cfg *config.Gw, ah admin.Handlers, ch client.Handlers) (*Service, error) {
 	if cfg == nil || ah == nil || ch == nil {
 		return nil, errors.New("invalid nil arguments")
 	}

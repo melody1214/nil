@@ -19,7 +19,7 @@ type handlers struct {
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cMap *cmap.Controller, f *cr.RequestEventFactory, s Repository) ObjectHandlers {
+func NewHandlers(cMap *cmap.Controller, f *cr.RequestEventFactory, s Repository) Handlers {
 	logger = mlog.GetPackageLogger("app/ds/usecase/object")
 
 	enc := newEncoder(cMap, s)
@@ -33,8 +33,8 @@ func NewHandlers(cMap *cmap.Controller, f *cr.RequestEventFactory, s Repository)
 	}
 }
 
-// ObjectHandlers is the interface that provides client http handlers.
-type ObjectHandlers interface {
+// Handlers is the interface that provides client http handlers.
+type Handlers interface {
 	PutObjectHandler(w http.ResponseWriter, r *http.Request)
 	GetObjectHandler(w http.ResponseWriter, r *http.Request)
 	DeleteObjectHandler(w http.ResponseWriter, r *http.Request)

@@ -31,13 +31,13 @@ type Service struct {
 	httpSrv     *http.Server
 
 	adminSrv      *rpc.Server
-	adminHandlers admin.AdminHandlers
+	adminHandlers admin.Handlers
 
-	membershipHandler membership.MembershipHandlers
+	membershipHandler membership.Handlers
 }
 
 // NewDeliveryService creates a delivery service with necessary dependencies.
-func NewDeliveryService(cfg *config.Ds, ah admin.AdminHandlers, oh object.ObjectHandlers, mh membership.MembershipHandlers) (*Service, error) {
+func NewDeliveryService(cfg *config.Ds, ah admin.Handlers, oh object.Handlers, mh membership.Handlers) (*Service, error) {
 	if cfg == nil {
 		return nil, errors.New("invalid nil arguments")
 	}

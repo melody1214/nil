@@ -24,7 +24,7 @@ type handlers struct {
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cMap *cmap.Controller, f *request.RequestEventFactory, authHandlers auth.Handlers) ClientHandlers {
+func NewHandlers(cMap *cmap.Controller, f *request.RequestEventFactory, authHandlers auth.Handlers) Handlers {
 	logger = mlog.GetPackageLogger("app/gw/usecase/client")
 
 	return &handlers{
@@ -84,8 +84,8 @@ func (h *handlers) getObjectLocation(oid, bucket string) (*nilrpc.ObjectGetRespo
 	return res, nil
 }
 
-// ClientHandlers is the interface that provides client http handlers.
-type ClientHandlers interface {
+// Handlers is the interface that provides client http handlers.
+type Handlers interface {
 	MakeBucketHandler(w http.ResponseWriter, r *http.Request)
 	RemoveBucketHandler(w http.ResponseWriter, r *http.Request)
 

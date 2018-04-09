@@ -26,14 +26,14 @@ var logger *logrus.Entry
 type Service struct {
 	cfg *config.Mds
 
-	adh admin.AdminHandlers
-	auh auth.AuthHandlers
-	buh bucket.BucketHandlers
-	clh clustermap.ClustermapHandlers
-	coh consensus.ConsensusHandlers
-	meh membership.MembershipHandlers
-	obh object.ObjectHandlers
-	reh recovery.RecoveryHandlers
+	adh admin.Handlers
+	auh auth.Handlers
+	buh bucket.Handlers
+	clh clustermap.Handlers
+	coh consensus.Handlers
+	meh membership.Handlers
+	obh object.Handlers
+	reh recovery.Handlers
 
 	nilLayer        *nilmux.Layer
 	raftLayer       *nilmux.Layer
@@ -44,7 +44,7 @@ type Service struct {
 }
 
 // NewDeliveryService creates a delivery service with necessary dependencies.
-func NewDeliveryService(cfg *config.Mds, adh admin.AdminHandlers, auh auth.AuthHandlers, buh bucket.BucketHandlers, coh consensus.ConsensusHandlers, clh clustermap.ClustermapHandlers, meh membership.MembershipHandlers, obh object.ObjectHandlers, reh recovery.RecoveryHandlers) (*Service, error) {
+func NewDeliveryService(cfg *config.Mds, adh admin.Handlers, auh auth.Handlers, buh bucket.Handlers, coh consensus.Handlers, clh clustermap.Handlers, meh membership.Handlers, obh object.Handlers, reh recovery.Handlers) (*Service, error) {
 	if cfg == nil {
 		return nil, errors.New("invalid argument")
 	}

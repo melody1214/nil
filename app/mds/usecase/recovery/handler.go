@@ -22,7 +22,7 @@ type handlers struct {
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cfg *config.Mds, cMap *cmap.Controller, s Repository) RecoveryHandlers {
+func NewHandlers(cfg *config.Mds, cMap *cmap.Controller, s Repository) Handlers {
 	logger = mlog.GetPackageLogger("app/mds/usecase/recovery")
 
 	return &handlers{
@@ -82,8 +82,8 @@ func (h *handlers) Rebalance(req *nilrpc.RebalanceRequest, res *nilrpc.Rebalance
 	return nil
 }
 
-// RecoveryHandlers is the interface that provides recovery domain's rpc handlers.
-type RecoveryHandlers interface {
+// Handlers is the interface that provides recovery domain's rpc handlers.
+type Handlers interface {
 	Recover(req *nilrpc.RecoverRequest, res *nilrpc.RecoverResponse) error
 	Rebalance(req *nilrpc.RebalanceRequest, res *nilrpc.RebalanceResponse) error
 }

@@ -18,7 +18,7 @@ type handlers struct {
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cMap *cmap.Controller, s Repository) ClustermapHandlers {
+func NewHandlers(cMap *cmap.Controller, s Repository) Handlers {
 	logger = mlog.GetPackageLogger("app/mds/usecase/clustermap")
 
 	return &handlers{
@@ -62,8 +62,8 @@ func (h *handlers) IsUpdated(req *nilrpc.ClusterMapIsUpdatedRequest, res *nilrpc
 	}
 }
 
-// ClustermapHandlers is the interface that provides clustermap domain's rpc handlers.
-type ClustermapHandlers interface {
+// Handlers is the interface that provides clustermap domain's rpc handlers.
+type Handlers interface {
 	GetClusterMap(req *nilrpc.GetClusterMapRequest, res *nilrpc.GetClusterMapResponse) error
 	IsUpdated(req *nilrpc.ClusterMapIsUpdatedRequest, res *nilrpc.ClusterMapIsUpdatedResponse) error
 }

@@ -19,7 +19,7 @@ type handlers struct {
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cfg *config.Mds, s Repository) AdminHandlers {
+func NewHandlers(cfg *config.Mds, s Repository) Handlers {
 	logger = mlog.GetPackageLogger("app/mds/usecase/admin")
 
 	return &handlers{
@@ -224,8 +224,8 @@ func calcMaxChain(volumeSize uint64) int {
 	return int(volumeSize / 10)
 }
 
-// AdminHandlers is the interface that provides admin domain's rpc handlers.
-type AdminHandlers interface {
+// Handlers is the interface that provides admin domain's rpc handlers.
+type Handlers interface {
 	Join(req *nilrpc.JoinRequest, res *nilrpc.JoinResponse) error
 	AddUser(req *nilrpc.AddUserRequest, res *nilrpc.AddUserResponse) error
 	GetLocalChain(req *nilrpc.GetLocalChainRequest, res *nilrpc.GetLocalChainResponse) error

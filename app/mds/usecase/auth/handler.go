@@ -16,7 +16,7 @@ type handlers struct {
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(s Repository) AuthHandlers {
+func NewHandlers(s Repository) Handlers {
 	logger = mlog.GetPackageLogger("app/mds/usecase/auth")
 
 	return &handlers{
@@ -52,7 +52,7 @@ func (h *handlers) GetCredential(req *nilrpc.GetCredentialRequest, res *nilrpc.G
 	return nil
 }
 
-// AuthHandlers is the interface that provides auth domain's rpc handlers.
-type AuthHandlers interface {
+// Handlers is the interface that provides auth domain's rpc handlers.
+type Handlers interface {
 	GetCredential(req *nilrpc.GetCredentialRequest, res *nilrpc.GetCredentialResponse) error
 }

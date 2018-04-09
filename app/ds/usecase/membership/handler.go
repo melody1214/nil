@@ -20,7 +20,7 @@ type handlers struct {
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cfg *config.Ds) MembershipHandlers {
+func NewHandlers(cfg *config.Ds) Handlers {
 	logger = mlog.GetPackageLogger("app/ds/usecase/membership")
 
 	return &handlers{
@@ -79,8 +79,8 @@ func (h *handlers) Run() {
 	}
 }
 
-// MembershipHandlers is the interface that provides client http handlers.
-type MembershipHandlers interface {
+// Handlers is the interface that provides client http handlers.
+type Handlers interface {
 	Create(swimL *nilmux.Layer) error
 	Run()
 }

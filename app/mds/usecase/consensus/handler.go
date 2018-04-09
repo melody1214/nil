@@ -19,7 +19,7 @@ type handlers struct {
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cfg *config.Mds, s Repository) ConsensusHandlers {
+func NewHandlers(cfg *config.Mds, s Repository) Handlers {
 	logger = mlog.GetPackageLogger("app/mds/usecase/consensus")
 
 	return &handlers{
@@ -64,8 +64,8 @@ func join(joinAddr, raftAddr, nodeID string) error {
 	return cli.Call(nilrpc.MdsAdminJoin.String(), req, res)
 }
 
-// ConsensusHandlers is the interface that provides consensus domain's rpc handlers.
-type ConsensusHandlers interface {
+// Handlers is the interface that provides consensus domain's rpc handlers.
+type Handlers interface {
 	Open(raftL *nilmux.Layer) error
 	Stop() error
 	Join() error

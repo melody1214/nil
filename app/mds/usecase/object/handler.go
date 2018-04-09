@@ -15,7 +15,7 @@ type handlers struct {
 }
 
 // NewHandlers creates a object handlers with necessary dependencies.
-func NewHandlers(s Repository) ObjectHandlers {
+func NewHandlers(s Repository) Handlers {
 	logger = mlog.GetPackageLogger("app/mds/usecase/object")
 
 	return &handlers{
@@ -140,8 +140,8 @@ func (h *handlers) Get(req *nilrpc.ObjectGetRequest, res *nilrpc.ObjectGetRespon
 	return nil
 }
 
-// ObjectHandlers is the interface that provides object domain's rpc handlers.
-type ObjectHandlers interface {
+// Handlers is the interface that provides object domain's rpc handlers.
+type Handlers interface {
 	Put(req *nilrpc.ObjectPutRequest, res *nilrpc.ObjectPutResponse) error
 	Get(req *nilrpc.ObjectGetRequest, res *nilrpc.ObjectGetResponse) error
 }
