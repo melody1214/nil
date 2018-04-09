@@ -80,11 +80,11 @@ func isUpdated(mds string, ver cmap.Version) bool {
 	}
 	defer conn.Close()
 
-	req := &nilrpc.ClusterMapIsUpdatedRequest{Version: ver.Int64()}
-	res := &nilrpc.ClusterMapIsUpdatedResponse{}
+	req := &nilrpc.MCLGetUpdateNotiRequest{Version: ver.Int64()}
+	res := &nilrpc.MCLGetUpdateNotiResponse{}
 
 	cli := rpc.NewClient(conn)
-	if err := cli.Call(nilrpc.MdsClustermapIsUpdated.String(), req, res); err != nil {
+	if err := cli.Call(nilrpc.MdsClustermapGetUpdateNoti.String(), req, res); err != nil {
 		ctxLogger.Error(errors.Wrap(err, "failed to talk with mds"))
 		return false
 	}

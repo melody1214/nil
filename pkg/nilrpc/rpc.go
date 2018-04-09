@@ -10,7 +10,7 @@ import (
 	"github.com/chanyoung/nil/pkg/swim"
 )
 
-// MDSADMINPrefix is the prefix for calling mds rpc methods.
+// Prefixes for domains.
 const (
 	MdsAdminPrefix      = "MDS_ADMIN"
 	MdsAuthPrefix       = "MDS_AUTH"
@@ -22,8 +22,6 @@ const (
 
 	DSRPCPrefix = "DS"
 )
-
-// DSRPCPrefix is the prefix for calling ds rpc methods.
 
 // MethodName indicates what procedure will be called.
 type MethodName int
@@ -45,7 +43,7 @@ const (
 
 	// MDS clustermap domain methods.
 	MdsClustermapGetClusterMap
-	MdsClustermapIsUpdated
+	MdsClustermapGetUpdateNoti
 
 	// MDS membership domain methods.
 	MdsMembershipGetMembershipList
@@ -85,8 +83,8 @@ func (m MethodName) String() string {
 
 	case MdsClustermapGetClusterMap:
 		return MdsClustermapPrefix + "." + "GetClusterMap"
-	case MdsClustermapIsUpdated:
-		return MdsClustermapPrefix + "." + "IsUpdated"
+	case MdsClustermapGetUpdateNoti:
+		return MdsClustermapPrefix + "." + "GetUpdateNoti"
 
 	case MdsMembershipGetMembershipList:
 		return MdsMembershipPrefix + "." + "GetMembershipList"
@@ -164,38 +162,6 @@ type AddBucketRequest struct {
 // AddBucketResponse responses the result of addBucket.
 type AddBucketResponse struct {
 	S3ErrCode s3.ErrorCode
-}
-
-// GetClusterMapRequest requests to get local cluster map.
-// Version == 0; requests the latest version.
-// Version > 0; requests higher version than given version.
-type GetClusterMapRequest struct {
-	Version int64
-}
-
-// GetClusterMapResponse contains a current local cluster members.
-type GetClusterMapResponse struct {
-	Version int64
-	Nodes   []ClusterNode
-}
-
-// ClusterMapIsUpdatedRequest requests to receive notification
-// when the cluster map is updated. Gives some notification if
-// has higher than given version of cluster map.
-type ClusterMapIsUpdatedRequest struct {
-	Version int64
-}
-
-// ClusterMapIsUpdatedResponse will response the cluster map is updated.
-type ClusterMapIsUpdatedResponse struct{}
-
-// ClusterNode represents the nodes.
-type ClusterNode struct {
-	ID   int64
-	Name string
-	Addr string
-	Type string
-	Stat string
 }
 
 // RegisterVolumeRequest contains a new volume information.

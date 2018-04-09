@@ -221,8 +221,8 @@ func getLatestMapFromRemote(mdsAddr string) (*CMap, error) {
 	}
 	defer conn.Close()
 
-	req := &nilrpc.GetClusterMapRequest{}
-	res := &nilrpc.GetClusterMapResponse{}
+	req := &nilrpc.MCLGetClusterMapRequest{}
+	res := &nilrpc.MCLGetClusterMapResponse{}
 
 	cli := rpc.NewClient(conn)
 	if err := cli.Call(nilrpc.MdsClustermapGetClusterMap.String(), req, res); err != nil {
