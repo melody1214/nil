@@ -4,7 +4,6 @@ import (
 	"net/rpc"
 	"time"
 
-	"github.com/chanyoung/nil/app/mds/delivery"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/swim"
@@ -24,7 +23,7 @@ type handlers struct {
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cfg *config.Mds, s Repository) delivery.MembershipHandlers {
+func NewHandlers(cfg *config.Mds, s Repository) MembershipHandlers {
 	logger = mlog.GetPackageLogger("app/mds/usecase/membership")
 
 	return &handlers{
@@ -110,4 +109,11 @@ func (h *handlers) rebalance() error {
 
 	cli := rpc.NewClient(conn)
 	return cli.Call(nilrpc.MdsRecoveryRebalance.String(), req, res)
+}
+
+// MembershipHandlers is the interface that provides membership domain's rpc handlers.
+type MembershipHandlers interface {
+	GetMembershipList(req *nilrpc.GetMembershipListRequest, res *nilrpc.GetMembershipListResponse) error
+	Create(swimL *nilmux.Layer) error
+	Run()
 }

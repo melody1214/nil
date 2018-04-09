@@ -6,7 +6,6 @@ import (
 	"net"
 	"time"
 
-	"github.com/chanyoung/nil/app/gw/delivery"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/security"
 	"github.com/chanyoung/nil/pkg/util/mlog"
@@ -21,7 +20,7 @@ type handlers struct {
 }
 
 // NewHandlers creates an admin handlers with necessary dependencies.
-func NewHandlers(cMap *cmap.Controller) delivery.AdminHandlers {
+func NewHandlers(cMap *cmap.Controller) AdminHandlers {
 	logger = mlog.GetPackageLogger("app/gw/usecase/admin")
 
 	return &handlers{
@@ -54,4 +53,9 @@ func (h *handlers) Proxying(conn net.Conn) {
 	// 4. Forwarding.
 	go io.Copy(conn, remote)
 	go io.Copy(remote, conn)
+}
+
+// AdminHandlers is the interface that provides admin rpc handlers.
+type AdminHandlers interface {
+	Proxying(conn net.Conn)
 }

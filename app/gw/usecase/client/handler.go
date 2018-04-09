@@ -1,11 +1,11 @@
 package client
 
 import (
+	"net/http"
 	"net/rpc"
 	"strings"
 	"time"
 
-	"github.com/chanyoung/nil/app/gw/delivery"
 	"github.com/chanyoung/nil/app/gw/usecase/auth"
 	"github.com/chanyoung/nil/pkg/client/request"
 	"github.com/chanyoung/nil/pkg/cmap"
@@ -24,7 +24,7 @@ type handlers struct {
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cMap *cmap.Controller, f *request.RequestEventFactory, authHandlers auth.Handlers) delivery.ClientHandlers {
+func NewHandlers(cMap *cmap.Controller, f *request.RequestEventFactory, authHandlers auth.Handlers) ClientHandlers {
 	logger = mlog.GetPackageLogger("app/gw/usecase/client")
 
 	return &handlers{
@@ -82,4 +82,14 @@ func (h *handlers) getObjectLocation(oid, bucket string) (*nilrpc.ObjectGetRespo
 	}
 
 	return res, nil
+}
+
+// ClientHandlers is the interface that provides client http handlers.
+type ClientHandlers interface {
+	MakeBucketHandler(w http.ResponseWriter, r *http.Request)
+	RemoveBucketHandler(w http.ResponseWriter, r *http.Request)
+
+	PutObjectHandler(w http.ResponseWriter, r *http.Request)
+	GetObjectHandler(w http.ResponseWriter, r *http.Request)
+	DeleteObjectHandler(w http.ResponseWriter, r *http.Request)
 }

@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/chanyoung/nil/app/gw/usecase/admin"
+	"github.com/chanyoung/nil/app/gw/usecase/client"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
@@ -16,8 +18,8 @@ import (
 var logger *logrus.Entry
 
 type Service struct {
-	ah AdminHandlers
-	ch ClientHandlers
+	ah admin.AdminHandlers
+	ch client.ClientHandlers
 
 	nilMux *nilmux.NilMux
 
@@ -29,7 +31,7 @@ type Service struct {
 }
 
 // NewDeliveryService creates a delivery service with necessary dependencies.
-func NewDeliveryService(cfg *config.Gw, ah AdminHandlers, ch ClientHandlers) (*Service, error) {
+func NewDeliveryService(cfg *config.Gw, ah admin.AdminHandlers, ch client.ClientHandlers) (*Service, error) {
 	if cfg == nil || ah == nil || ch == nil {
 		return nil, errors.New("invalid nil arguments")
 	}
@@ -110,19 +112,4 @@ func (s *Service) handleAdmin() {
 
 		go s.ah.Proxying(conn)
 	}
-}
-
-// AdminHandlers is the interface that provides admin rpc handlers.
-type AdminHandlers interface {
-	Proxying(conn net.Conn)
-}
-
-// ClientHandlers is the interface that provides client http handlers.
-type ClientHandlers interface {
-	MakeBucketHandler(w http.ResponseWriter, r *http.Request)
-	RemoveBucketHandler(w http.ResponseWriter, r *http.Request)
-
-	PutObjectHandler(w http.ResponseWriter, r *http.Request)
-	GetObjectHandler(w http.ResponseWriter, r *http.Request)
-	DeleteObjectHandler(w http.ResponseWriter, r *http.Request)
 }

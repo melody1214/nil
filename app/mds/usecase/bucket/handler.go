@@ -3,7 +3,6 @@ package bucket
 import (
 	"fmt"
 
-	"github.com/chanyoung/nil/app/mds/delivery"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/s3"
 	"github.com/chanyoung/nil/pkg/util/mlog"
@@ -18,7 +17,7 @@ type handlers struct {
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(s Repository) delivery.BucketHandlers {
+func NewHandlers(s Repository) BucketHandlers {
 	logger = mlog.GetPackageLogger("app/mds/usecase/bucket")
 
 	return &handlers{
@@ -59,4 +58,9 @@ func (h *handlers) AddBucket(req *nilrpc.AddBucketRequest, res *nilrpc.AddBucket
 		res.S3ErrCode = s3.ErrInternalError
 	}
 	return nil
+}
+
+// BucketHandlers is the interface that provides bucket domain's rpc handlers.
+type BucketHandlers interface {
+	AddBucket(req *nilrpc.AddBucketRequest, res *nilrpc.AddBucketResponse) error
 }

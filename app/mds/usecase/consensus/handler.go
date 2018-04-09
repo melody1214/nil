@@ -4,7 +4,6 @@ import (
 	"net/rpc"
 	"time"
 
-	"github.com/chanyoung/nil/app/mds/delivery"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -20,7 +19,7 @@ type handlers struct {
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cfg *config.Mds, s Repository) delivery.ConsensusHandlers {
+func NewHandlers(cfg *config.Mds, s Repository) ConsensusHandlers {
 	logger = mlog.GetPackageLogger("app/mds/usecase/consensus")
 
 	return &handlers{
@@ -63,4 +62,11 @@ func join(joinAddr, raftAddr, nodeID string) error {
 
 	cli := rpc.NewClient(conn)
 	return cli.Call(nilrpc.MdsAdminJoin.String(), req, res)
+}
+
+// ConsensusHandlers is the interface that provides consensus domain's rpc handlers.
+type ConsensusHandlers interface {
+	Open(raftL *nilmux.Layer) error
+	Stop() error
+	Join() error
 }

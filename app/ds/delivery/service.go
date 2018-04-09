@@ -7,6 +7,9 @@ import (
 	"net/rpc"
 	"time"
 
+	"github.com/chanyoung/nil/app/ds/usecase/admin"
+	"github.com/chanyoung/nil/app/ds/usecase/membership"
+	"github.com/chanyoung/nil/app/ds/usecase/object"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -28,13 +31,13 @@ type Service struct {
 	httpSrv     *http.Server
 
 	adminSrv      *rpc.Server
-	adminHandlers AdminHandlers
+	adminHandlers admin.AdminHandlers
 
-	membershipHandler MembershipHandlers
+	membershipHandler membership.MembershipHandlers
 }
 
 // NewDeliveryService creates a delivery service with necessary dependencies.
-func NewDeliveryService(cfg *config.Ds, ah AdminHandlers, oh ObjectHandlers, mh MembershipHandlers) (*Service, error) {
+func NewDeliveryService(cfg *config.Ds, ah admin.AdminHandlers, oh object.ObjectHandlers, mh membership.MembershipHandlers) (*Service, error) {
 	if cfg == nil {
 		return nil, errors.New("invalid nil arguments")
 	}
@@ -133,22 +136,4 @@ func (s *Service) serveAdmin() {
 		}
 		go s.adminSrv.ServeConn(conn)
 	}
-}
-
-// AdminHandlers is the interface that provides client http handlers.
-type AdminHandlers interface {
-	AddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVolumeResponse) error
-}
-
-// ObjectHandlers is the interface that provides client http handlers.
-type ObjectHandlers interface {
-	PutObjectHandler(w http.ResponseWriter, r *http.Request)
-	GetObjectHandler(w http.ResponseWriter, r *http.Request)
-	DeleteObjectHandler(w http.ResponseWriter, r *http.Request)
-}
-
-// MembershipHandlers is the interface that provides client http handlers.
-type MembershipHandlers interface {
-	Create(swimL *nilmux.Layer) error
-	Run()
 }

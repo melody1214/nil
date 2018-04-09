@@ -4,7 +4,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/chanyoung/nil/app/mds/delivery"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/mlog"
@@ -19,7 +18,7 @@ type handlers struct {
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cMap *cmap.Controller, s Repository) delivery.ClustermapHandlers {
+func NewHandlers(cMap *cmap.Controller, s Repository) ClustermapHandlers {
 	logger = mlog.GetPackageLogger("app/mds/usecase/clustermap")
 
 	return &handlers{
@@ -61,4 +60,10 @@ func (h *handlers) IsUpdated(req *nilrpc.ClusterMapIsUpdatedRequest, res *nilrpc
 			return errors.New("timeout, try again")
 		}
 	}
+}
+
+// ClustermapHandlers is the interface that provides clustermap domain's rpc handlers.
+type ClustermapHandlers interface {
+	GetClusterMap(req *nilrpc.GetClusterMapRequest, res *nilrpc.GetClusterMapResponse) error
+	IsUpdated(req *nilrpc.ClusterMapIsUpdatedRequest, res *nilrpc.ClusterMapIsUpdatedResponse) error
 }

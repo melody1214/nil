@@ -3,10 +3,11 @@ package delivery
 import (
 	"net/http"
 
+	"github.com/chanyoung/nil/app/ds/usecase/object"
 	"github.com/gorilla/mux"
 )
 
-func makeHandler(oh ObjectHandlers) http.Handler {
+func makeHandler(oh object.ObjectHandlers) http.Handler {
 	r := mux.NewRouter()
 
 	// API routers.

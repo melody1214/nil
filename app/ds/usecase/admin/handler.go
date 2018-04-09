@@ -4,7 +4,6 @@ import (
 	"net/rpc"
 	"time"
 
-	"github.com/chanyoung/nil/app/ds/delivery"
 	"github.com/chanyoung/nil/app/ds/repository"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
@@ -23,7 +22,7 @@ type handlers struct {
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cfg *config.Ds, cMap *cmap.Controller, s Repository) delivery.AdminHandlers {
+func NewHandlers(cfg *config.Ds, cMap *cmap.Controller, s Repository) AdminHandlers {
 	logger = mlog.GetPackageLogger("app/ds/usecase/admin")
 
 	return &handlers{
@@ -91,4 +90,9 @@ func (h *handlers) AddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVolume
 
 	ctxLogger.Infof("add volume %s succeeded", lv.Name)
 	return nil
+}
+
+// AdminHandlers is the interface that provides client http handlers.
+type AdminHandlers interface {
+	AddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVolumeResponse) error
 }

@@ -3,7 +3,6 @@ package recovery
 import (
 	"sync"
 
-	"github.com/chanyoung/nil/app/mds/delivery"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/swim"
@@ -23,7 +22,7 @@ type handlers struct {
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cfg *config.Mds, cMap *cmap.Controller, s Repository) delivery.RecoveryHandlers {
+func NewHandlers(cfg *config.Mds, cMap *cmap.Controller, s Repository) RecoveryHandlers {
 	logger = mlog.GetPackageLogger("app/mds/usecase/recovery")
 
 	return &handlers{
@@ -81,4 +80,10 @@ func (h *handlers) Rebalance(req *nilrpc.RebalanceRequest, res *nilrpc.Rebalance
 	}
 
 	return nil
+}
+
+// RecoveryHandlers is the interface that provides recovery domain's rpc handlers.
+type RecoveryHandlers interface {
+	Recover(req *nilrpc.RecoverRequest, res *nilrpc.RecoverResponse) error
+	Rebalance(req *nilrpc.RebalanceRequest, res *nilrpc.RebalanceResponse) error
 }

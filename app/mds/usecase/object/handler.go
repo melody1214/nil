@@ -3,7 +3,6 @@ package object
 import (
 	"fmt"
 
-	"github.com/chanyoung/nil/app/mds/delivery"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/sirupsen/logrus"
@@ -16,7 +15,7 @@ type handlers struct {
 }
 
 // NewHandlers creates a object handlers with necessary dependencies.
-func NewHandlers(s Repository) delivery.ObjectHandlers {
+func NewHandlers(s Repository) ObjectHandlers {
 	logger = mlog.GetPackageLogger("app/mds/usecase/object")
 
 	return &handlers{
@@ -139,4 +138,10 @@ func (h *handlers) Get(req *nilrpc.ObjectGetRequest, res *nilrpc.ObjectGetRespon
 	}
 
 	return nil
+}
+
+// ObjectHandlers is the interface that provides object domain's rpc handlers.
+type ObjectHandlers interface {
+	Put(req *nilrpc.ObjectPutRequest, res *nilrpc.ObjectPutResponse) error
+	Get(req *nilrpc.ObjectGetRequest, res *nilrpc.ObjectGetResponse) error
 }

@@ -3,7 +3,6 @@ package membership
 import (
 	"time"
 
-	"github.com/chanyoung/nil/app/ds/delivery"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/swim"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -21,7 +20,7 @@ type handlers struct {
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cfg *config.Ds) delivery.MembershipHandlers {
+func NewHandlers(cfg *config.Ds) MembershipHandlers {
 	logger = mlog.GetPackageLogger("app/ds/usecase/membership")
 
 	return &handlers{
@@ -78,4 +77,10 @@ func (h *handlers) Run() {
 			}).Error(err.Err)
 		}
 	}
+}
+
+// MembershipHandlers is the interface that provides client http handlers.
+type MembershipHandlers interface {
+	Create(swimL *nilmux.Layer) error
+	Run()
 }

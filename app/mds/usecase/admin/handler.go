@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/chanyoung/nil/app/mds/delivery"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/security"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -20,7 +19,7 @@ type handlers struct {
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cfg *config.Mds, s Repository) delivery.AdminHandlers {
+func NewHandlers(cfg *config.Mds, s Repository) AdminHandlers {
 	logger = mlog.GetPackageLogger("app/mds/usecase/admin")
 
 	return &handlers{
@@ -223,4 +222,14 @@ func calcMaxChain(volumeSize uint64) int {
 
 	// Test, chain per 10MB,
 	return int(volumeSize / 10)
+}
+
+// AdminHandlers is the interface that provides admin domain's rpc handlers.
+type AdminHandlers interface {
+	Join(req *nilrpc.JoinRequest, res *nilrpc.JoinResponse) error
+	AddUser(req *nilrpc.AddUserRequest, res *nilrpc.AddUserResponse) error
+	GetLocalChain(req *nilrpc.GetLocalChainRequest, res *nilrpc.GetLocalChainResponse) error
+	GetAllChain(req *nilrpc.GetAllChainRequest, res *nilrpc.GetAllChainResponse) error
+	GetAllVolume(req *nilrpc.GetAllVolumeRequest, res *nilrpc.GetAllVolumeResponse) error
+	RegisterVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.RegisterVolumeResponse) error
 }

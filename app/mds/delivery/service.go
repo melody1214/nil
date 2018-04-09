@@ -5,6 +5,14 @@ import (
 	"net/rpc"
 	"time"
 
+	"github.com/chanyoung/nil/app/mds/usecase/admin"
+	"github.com/chanyoung/nil/app/mds/usecase/auth"
+	"github.com/chanyoung/nil/app/mds/usecase/bucket"
+	"github.com/chanyoung/nil/app/mds/usecase/clustermap"
+	"github.com/chanyoung/nil/app/mds/usecase/consensus"
+	"github.com/chanyoung/nil/app/mds/usecase/membership"
+	"github.com/chanyoung/nil/app/mds/usecase/object"
+	"github.com/chanyoung/nil/app/mds/usecase/recovery"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -18,14 +26,14 @@ var logger *logrus.Entry
 type Service struct {
 	cfg *config.Mds
 
-	adh AdminHandlers
-	auh AuthHandlers
-	buh BucketHandlers
-	clh ClustermapHandlers
-	coh ConsensusHandlers
-	meh MembershipHandlers
-	obh ObjectHandlers
-	reh RecoveryHandlers
+	adh admin.AdminHandlers
+	auh auth.AuthHandlers
+	buh bucket.BucketHandlers
+	clh clustermap.ClustermapHandlers
+	coh consensus.ConsensusHandlers
+	meh membership.MembershipHandlers
+	obh object.ObjectHandlers
+	reh recovery.RecoveryHandlers
 
 	nilLayer        *nilmux.Layer
 	raftLayer       *nilmux.Layer
@@ -36,7 +44,7 @@ type Service struct {
 }
 
 // NewDeliveryService creates a delivery service with necessary dependencies.
-func NewDeliveryService(cfg *config.Mds, adh AdminHandlers, auh AuthHandlers, buh BucketHandlers, coh ConsensusHandlers, clh ClustermapHandlers, meh MembershipHandlers, obh ObjectHandlers, reh RecoveryHandlers) (*Service, error) {
+func NewDeliveryService(cfg *config.Mds, adh admin.AdminHandlers, auh auth.AuthHandlers, buh bucket.BucketHandlers, coh consensus.ConsensusHandlers, clh clustermap.ClustermapHandlers, meh membership.MembershipHandlers, obh object.ObjectHandlers, reh recovery.RecoveryHandlers) (*Service, error) {
 	if cfg == nil {
 		return nil, errors.New("invalid argument")
 	}
@@ -161,56 +169,4 @@ func (s *Service) serveNilRPC() {
 		}
 		go s.nilRPCSrv.ServeConn(conn)
 	}
-}
-
-// AdminHandlers is the interface that provides admin domain's rpc handlers.
-type AdminHandlers interface {
-	Join(req *nilrpc.JoinRequest, res *nilrpc.JoinResponse) error
-	AddUser(req *nilrpc.AddUserRequest, res *nilrpc.AddUserResponse) error
-	GetLocalChain(req *nilrpc.GetLocalChainRequest, res *nilrpc.GetLocalChainResponse) error
-	GetAllChain(req *nilrpc.GetAllChainRequest, res *nilrpc.GetAllChainResponse) error
-	GetAllVolume(req *nilrpc.GetAllVolumeRequest, res *nilrpc.GetAllVolumeResponse) error
-	RegisterVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.RegisterVolumeResponse) error
-}
-
-// AuthHandlers is the interface that provides auth domain's rpc handlers.
-type AuthHandlers interface {
-	GetCredential(req *nilrpc.GetCredentialRequest, res *nilrpc.GetCredentialResponse) error
-}
-
-// BucketHandlers is the interface that provides bucket domain's rpc handlers.
-type BucketHandlers interface {
-	AddBucket(req *nilrpc.AddBucketRequest, res *nilrpc.AddBucketResponse) error
-}
-
-// ClustermapHandlers is the interface that provides clustermap domain's rpc handlers.
-type ClustermapHandlers interface {
-	GetClusterMap(req *nilrpc.GetClusterMapRequest, res *nilrpc.GetClusterMapResponse) error
-	IsUpdated(req *nilrpc.ClusterMapIsUpdatedRequest, res *nilrpc.ClusterMapIsUpdatedResponse) error
-}
-
-// ConsensusHandlers is the interface that provides consensus domain's rpc handlers.
-type ConsensusHandlers interface {
-	Open(raftL *nilmux.Layer) error
-	Stop() error
-	Join() error
-}
-
-// MembershipHandlers is the interface that provides membership domain's rpc handlers.
-type MembershipHandlers interface {
-	GetMembershipList(req *nilrpc.GetMembershipListRequest, res *nilrpc.GetMembershipListResponse) error
-	Create(swimL *nilmux.Layer) error
-	Run()
-}
-
-// ObjectHandlers is the interface that provides object domain's rpc handlers.
-type ObjectHandlers interface {
-	Put(req *nilrpc.ObjectPutRequest, res *nilrpc.ObjectPutResponse) error
-	Get(req *nilrpc.ObjectGetRequest, res *nilrpc.ObjectGetResponse) error
-}
-
-// RecoveryHandlers is the interface that provides recovery domain's rpc handlers.
-type RecoveryHandlers interface {
-	Recover(req *nilrpc.RecoverRequest, res *nilrpc.RecoverResponse) error
-	Rebalance(req *nilrpc.RebalanceRequest, res *nilrpc.RebalanceResponse) error
 }

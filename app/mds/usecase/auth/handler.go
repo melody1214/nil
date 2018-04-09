@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/chanyoung/nil/app/mds/delivery"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/sirupsen/logrus"
@@ -17,7 +16,7 @@ type handlers struct {
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(s Repository) delivery.AuthHandlers {
+func NewHandlers(s Repository) AuthHandlers {
 	logger = mlog.GetPackageLogger("app/mds/usecase/auth")
 
 	return &handlers{
@@ -51,4 +50,9 @@ func (h *handlers) GetCredential(req *nilrpc.GetCredentialRequest, res *nilrpc.G
 	}
 
 	return nil
+}
+
+// AuthHandlers is the interface that provides auth domain's rpc handlers.
+type AuthHandlers interface {
+	GetCredential(req *nilrpc.GetCredentialRequest, res *nilrpc.GetCredentialResponse) error
 }
