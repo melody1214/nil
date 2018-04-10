@@ -8,7 +8,6 @@ import (
 
 	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/app/mds/usecase/admin"
-	"github.com/chanyoung/nil/app/mds/usecase/auth"
 	"github.com/chanyoung/nil/app/mds/usecase/bucket"
 	"github.com/chanyoung/nil/app/mds/usecase/consensus"
 	"github.com/chanyoung/nil/app/mds/usecase/membership"
@@ -184,11 +183,6 @@ func (s *Store) Commit(txid repository.TxID) error {
 
 // NewAdminRepository returns a new instance of a mysql admin repository.
 func NewAdminRepository(s *Store) admin.Repository {
-	return s
-}
-
-// NewAuthRepository returns a new instance of a mysql auth repository.
-func NewAuthRepository(s *Store) auth.Repository {
 	return s
 }
 

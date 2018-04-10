@@ -1,9 +1,6 @@
 package auth
 
 import (
-	"database/sql"
-	"fmt"
-
 	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/mlog"
@@ -25,26 +22,15 @@ func NewHandlers(s Repository) Handlers {
 	}
 }
 
-// TODO: CQRS
-
 // GetCredential returns matching secret key with the given access key.
 func (h *handlers) GetCredential(req *nilrpc.GetCredentialRequest, res *nilrpc.GetCredentialResponse) error {
-	q := fmt.Sprintf(
-		`
-		SELECT
-			user_secret_key
-		FROM
-			user
-		WHERE
-			user_access_key = '%s'
-		`, req.AccessKey,
-	)
-
 	res.AccessKey = req.AccessKey
-	err := h.store.QueryRow(repository.NotTx, q).Scan(&res.SecretKey)
+
+	sk, err := h.store.FindSecretKey(req.AccessKey)
 	if err == nil {
 		res.Exist = true
-	} else if err == sql.ErrNoRows {
+		res.SecretKey = sk
+	} else if err == repository.ErrNotExist {
 		res.Exist = false
 	} else {
 		return err
