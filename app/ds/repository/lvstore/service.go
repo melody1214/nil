@@ -104,7 +104,6 @@ func (s *service) AddVolume(v *repository.Vol) error {
 		Vol: v,
 	}
 
-	v.ChunkSize = 20000
 	// Set volume has running state.
 	v.Status = repository.Active
 
@@ -153,57 +152,53 @@ func (s *service) handleCall(r *repository.Request) {
 }
 
 func (s *service) read(r *repository.Request) {
+	// Q: 이 부분 의미 질문
 	if r.Oid == "" {
 		s.readAll(r)
 		return
 	}
 
+	// Find and get the requested logical volume.
 	lv, ok := s.lvs[r.Vol]
 	if !ok {
 		r.Err = fmt.Errorf("no such lv: %s", r.Vol)
 		return
 	}
 
-	// fmt.Println("---In read---")
-	// for key, value := range lv.Objs {
-	// fmt.Println(key, value)
-	// }
-
+	// Find and get the requested object.
 	obj, ok := lv.Objs[r.Oid]
 	if !ok {
 		r.Err = fmt.Errorf("no such object: %s", r.Oid)
 		return
 	}
 
-	if r.Osize == 0 {
-		r.Osize = obj.Size
+  if r.Osize == 0 {
+    r.Osize = obj.Size
+  }
+  
+  // Create a directory for a local group if not exist.
+	lgDir := lv.MntPoint + "/" + r.LocGid
+	_, err := os.Stat(lgDir)
+	if os.IsNotExist(err) {
+    os.MkdirAll(lgDir, 0775)
 	}
 
-	LocGrpDir := lv.MntPoint + "/" + r.LocGid
-
-	if _, err := os.Stat(LocGrpDir); os.IsNotExist(err) {
-		os.MkdirAll(LocGrpDir, 0775)
-	}
-
-	// fmt.Println("---In read---")
-	// fmt.Println("obj.Cid : ", obj.Cid, " obj.Offset : ", obj.Offset)
-
-	fChunk, err := os.Open(LocGrpDir + "/" + obj.Cid)
+	// Open a chunk requested by a client.
+	fChunk, err := os.Open(lgDir + "/" + obj.Cid)
 	if err != nil {
 		r.Err = err
 		return
 	}
-
-	// fmt.Println("File open completed")
-
 	defer fChunk.Close()
 
+	// Seek offset beginning of the requested object in the chunk.
 	_, err = fChunk.Seek(obj.Offset, os.SEEK_SET)
 	if err != nil {
 		r.Err = err
 		return
 	}
 
+	// Read contents of the requested object from the chunk.
 	if _, err = io.CopyN(r.Out, fChunk, r.Osize); err != nil {
 		r.Err = err
 		return
@@ -211,92 +206,98 @@ func (s *service) read(r *repository.Request) {
 }
 
 func (s *service) readAll(r *repository.Request) {
+	// Find and get a logical volume.
 	lv, ok := s.lvs[r.Vol]
 	if !ok {
 		r.Err = fmt.Errorf("no such lv: %s", r.Vol)
 		return
 	}
 
-	LocGrpDir := lv.MntPoint + "/" + r.LocGid
-
-	if _, err := os.Stat(LocGrpDir); os.IsNotExist(err) {
-		os.MkdirAll(LocGrpDir, 0775)
+	// Create a directory for a local group if not exist.
+	lgDir := lv.MntPoint + "/" + r.LocGid
+	_, err := os.Stat(lgDir)
+	if os.IsNotExist(err) {
+		os.MkdirAll(lgDir, 0775)
 	}
 
-	fChunk, err := os.Open(LocGrpDir + "/" + r.Cid)
+	// Open a chunk requested by a client.
+	fChunk, err := os.Open(lgDir + "/" + r.Cid)
 	if err != nil {
 		r.Err = err
 		return
 	}
 	defer fChunk.Close()
 
-	if _, err = io.Copy(r.Out, fChunk); err != nil {
+	// Read all contents from the chunk to a writer stream.
+	_, err = io.Copy(r.Out, fChunk)
+	if err != nil {
 		r.Err = err
 		return
 	}
 }
 
 func (s *service) write(r *repository.Request) error {
+	// Find and get a logical volume.
 	lv, ok := s.lvs[r.Vol]
 	if !ok {
 		r.Err = fmt.Errorf("no such lv: %s", r.Vol)
 		return nil
 	}
 
-	LocGrpDir := lv.MntPoint + "/" + r.LocGid
-
-	if _, err := os.Stat(LocGrpDir); os.IsNotExist(err) {
-		os.MkdirAll(LocGrpDir, 0775)
+	// Create a directory for a local group if not exist.
+	lgDir := lv.MntPoint + "/" + r.LocGid
+	_, err := os.Stat(lgDir)
+	if os.IsNotExist(err) {
+		os.MkdirAll(lgDir, 0775)
 	}
 
-	// Chunk file open
-	fChunk, err := os.OpenFile(LocGrpDir+"/"+r.Cid, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0775)
+	// Open a chunk that objects will be written to.
+	fChunk, err := os.OpenFile(lgDir+"/"+r.Cid, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0775)
 	if err != nil {
 		r.Err = err
 		return nil
 	}
 	defer fChunk.Close()
 
-	// Check chunk file info
+	// Obtain a path of the chunk.
 	fChunkName := fChunk.Name()
 
+	// Get an information of the chunk.
 	fChunkInfo, err := os.Lstat(fChunkName)
 	if err != nil {
 		r.Err = err
 		return nil
 	}
 
+	// Get current length of the chunk.
 	fChunkLen := fChunkInfo.Size()
 
-	// fmt.Println("request : ", r.Op, r.Vol, r.Oid, r.Cid, r.Osize)
-	// fmt.Println("fChunkLen : ", fChunkLen, ", lv.ChunkSize : ", lv.ChunkSize)
-
-	if fChunkLen < lv.ChunkSize {
-		if lv.ChunkSize-fChunkLen >= r.Osize {
-			if _, err = io.CopyN(fChunk, r.In, r.Osize); err != nil {
-				return nil
-			}
-
-			if lv.ChunkSize-fChunkLen == r.Osize {
-				r.Err = fmt.Errorf("chunk full")
-			}
-			lv.Objs[r.Oid] = repository.ObjMap{
-				Cid:    r.Cid,
-				Offset: fChunkLen,
-				Size:   r.Osize,
-				MD5:    r.Md5,
-			}
-		} else {
-			if err := fChunk.Truncate(lv.ChunkSize); err != nil {
-				r.Err = err
-				return err
-			}
-
-			// fmt.Println("Truncated")
-			r.Err = fmt.Errorf("truncated")
-		}
+	// Write the object into the chunk if it will not be full.
+	if fChunkLen >= lv.ChunkSize {
+		r.Err = fmt.Errorf("chunk full")
+		return nil
 	}
 
+	if fChunkLen+r.Osize > lv.ChunkSize {
+		err = fChunk.Truncate(lv.ChunkSize)
+		r.Err = fmt.Errorf("truncated")
+		return nil
+	}
+
+	_, err = io.CopyN(fChunk, r.In, r.Osize)
+	if err != nil {
+		r.Err = err
+		return nil
+	}
+
+	// Store mapping information between the object and the chunk.
+  lv.Objs[r.Oid] = repository.ObjMap{
+			Cid:    r.Cid,
+			Offset: fChunkLen,
+			Size:   r.Osize,
+			MD5:    r.Md5,
+	}
+  
 	return nil
 }
 
