@@ -32,6 +32,8 @@
 
         "store": "lv",
 
+        "chunk_size": "10000000",
+
         "log_location": "stderr"
     },
     "swim": {

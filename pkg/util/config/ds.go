@@ -15,6 +15,8 @@ type Ds struct {
 
 	// Store is the type of backend store.
 	Store string
+	// ChunkSize is the size of backend store chunk.
+	ChunkSize string
 
 	// Swim config.
 	Swim Swim

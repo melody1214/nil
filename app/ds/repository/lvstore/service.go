@@ -99,8 +99,6 @@ func (s *service) AddVolume(v *repository.Vol) error {
 
 	// TODO: Set the disk speed.
 	v.SetSpeed()
-	// TODO: Receive chunksize from the config.
-	v.ChunkSize = 1000000
 
 	s.lvs[v.Name] = &lv{
 		Vol: v,

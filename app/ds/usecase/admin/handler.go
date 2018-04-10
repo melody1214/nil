@@ -2,6 +2,7 @@ package admin
 
 import (
 	"net/rpc"
+	"strconv"
 	"time"
 
 	"github.com/chanyoung/nil/app/ds/repository"
@@ -70,6 +71,13 @@ func (h *handlers) AddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVolume
 
 	lv.Name = registerRes.ID
 	lv.MntPoint = "vol-" + lv.Name
+	if chunkSize, err := strconv.ParseInt(h.cfg.ChunkSize, 10, 64); err != nil {
+		// Default 10MB.
+		// TODO: make default config of volume.
+		lv.ChunkSize = 10000000
+	} else {
+		lv.ChunkSize = chunkSize
+	}
 
 	// 2) Add lv to the store service.
 	if err := h.store.AddVolume(lv); err != nil {
