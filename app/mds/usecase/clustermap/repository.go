@@ -6,6 +6,6 @@ import (
 
 // Repository provides access to cluster map database.
 type Repository interface {
-	GetClusterMapNodes() ([]cmap.Node, error)
+	FindAllNodes() ([]cmap.Node, error)
 	GetNewClusterMapVer() (cmap.Version, error)
 }

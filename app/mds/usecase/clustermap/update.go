@@ -24,7 +24,7 @@ func (h *handlers) updateClusterMap() error {
 }
 
 func (h *handlers) createClusterMap(ver cmap.Version) (*cmap.CMap, error) {
-	nodes, err := h.store.GetClusterMapNodes()
+	nodes, err := h.store.FindAllNodes()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get cluster map nodes")
 	}

@@ -19,28 +19,7 @@ func NewClusterMapRepository(s repository.Store) clustermap.Repository {
 	}
 }
 
-func (s *clustermapStore) GetNewClusterMapVer() (cmap.Version, error) {
-	q := fmt.Sprintf(
-		`
-		INSERT INTO cmap (cmap_id)
-		VALUES (NULL)
-		`,
-	)
-
-	res, err := s.store.Execute(q)
-	if err != nil {
-		return -1, err
-	}
-
-	ver, err := res.LastInsertId()
-	if err != nil {
-		return -1, err
-	}
-
-	return cmap.Version(ver), nil
-}
-
-func (s *clustermapStore) GetClusterMapNodes() (nodes []cmap.Node, err error) {
+func (s *clustermapStore) FindAllNodes() (nodes []cmap.Node, err error) {
 	q := fmt.Sprintf(
 		`
 		SELECT
@@ -72,4 +51,25 @@ func (s *clustermapStore) GetClusterMapNodes() (nodes []cmap.Node, err error) {
 	}
 
 	return
+}
+
+func (s *clustermapStore) GetNewClusterMapVer() (cmap.Version, error) {
+	q := fmt.Sprintf(
+		`
+		INSERT INTO cmap (cmap_id)
+		VALUES (NULL)
+		`,
+	)
+
+	res, err := s.store.Execute(q)
+	if err != nil {
+		return -1, err
+	}
+
+	ver, err := res.LastInsertId()
+	if err != nil {
+		return -1, err
+	}
+
+	return cmap.Version(ver), nil
 }
