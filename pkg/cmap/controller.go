@@ -20,7 +20,7 @@ func NewController(coordinator string) (*Controller, error) {
 	// Create an empty map.
 	cm := &CMap{
 		Version: Version(0),
-		Time:    time.Now().String(),
+		Time:    time.Now().UTC().String(),
 		Nodes:   make([]Node, 1),
 		Vols:    make([]Volume, 0),
 		EncGrps: make([]EncodingGroup, 0),

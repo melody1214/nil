@@ -36,14 +36,14 @@ func (m *CMap) HumanReadable() string {
 	}
 
 	// Write cmap header.
-	out := "+--------------------------------------------------+\n"
+	out := "+-------------------------+-----------------------------------------------------+\n"
 	header := fmt.Sprintf(
-		"| Cluster map version %3d, created at %s |\n",
+		"| Cluster map version %3d | created at %-40s |\n",
 		m.Version.Int64(),
 		m.Time,
 	)
 	out += header
-	out += "+--------------------------------------------------+\n"
+	out += "+-------------------------+-----------------------------------------------------+\n"
 
 	// Make human readable sentences for each nodes.
 	out += "\n"
