@@ -6,6 +6,7 @@ import (
 	"net/rpc"
 	"time"
 
+	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/swim"
 	"github.com/chanyoung/nil/pkg/util/mlog"
@@ -54,7 +55,7 @@ func (h *handlers) doUpdateMembership(sm swim.Member) {
 	)
 
 	var oldStat, oldAddr string
-	row := h.store.QueryRow(q)
+	row := h.store.QueryRow(repository.NotTx, q)
 	if row == nil {
 		ctxLogger.Error("mysql is not connected yet")
 		return
@@ -86,7 +87,7 @@ func (h *handlers) insertNewMember(sm swim.Member) {
 		`, string(sm.ID), sm.Type.String(), sm.Status.String(), string(sm.Address),
 	)
 
-	_, err := h.store.Execute(q)
+	_, err := h.store.Execute(repository.NotTx, q)
 	if err != nil {
 		ctxLogger.Error(err)
 	}
@@ -104,7 +105,7 @@ func (h *handlers) updateMember(sm swim.Member) {
 		`, sm.Status.String(), string(sm.Address), string(sm.ID),
 	)
 
-	_, err := h.store.Execute(q)
+	_, err := h.store.Execute(repository.NotTx, q)
 	if err != nil {
 		ctxLogger.Error(err)
 	}

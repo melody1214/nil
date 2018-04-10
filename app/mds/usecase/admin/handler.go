@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/security"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -50,7 +51,7 @@ func (h *handlers) GetLocalChain(req *nilrpc.GetLocalChainRequest, res *nilrpc.G
 		`,
 	)
 
-	row := h.store.QueryRow(q)
+	row := h.store.QueryRow(repository.NotTx, q)
 	if row == nil {
 		return fmt.Errorf("mysql not connected yet")
 	}
@@ -71,7 +72,7 @@ func (h *handlers) GetLocalChain(req *nilrpc.GetLocalChainRequest, res *nilrpc.G
 		`, res.ParityVolumeID,
 	)
 
-	row = h.store.QueryRow(q)
+	row = h.store.QueryRow(repository.NotTx, q)
 	if row == nil {
 		return fmt.Errorf("mysql not connected yet")
 	}
@@ -89,7 +90,7 @@ func (h *handlers) GetAllChain(req *nilrpc.GetAllChainRequest, res *nilrpc.GetAl
 		`,
 	)
 
-	rows, err := h.store.Query(q)
+	rows, err := h.store.Query(repository.NotTx, q)
 	if err != nil {
 		return err
 	}
@@ -118,7 +119,7 @@ func (h *handlers) GetAllVolume(req *nilrpc.GetAllVolumeRequest, res *nilrpc.Get
 		`,
 	)
 
-	rows, err := h.store.Query(q)
+	rows, err := h.store.Query(repository.NotTx, q)
 	if err != nil {
 		return err
 	}
@@ -182,7 +183,7 @@ func (h *handlers) updateVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.R
 		`, req.Status, req.Size, req.Free, req.Used, calcMaxChain(req.Size), req.Speed, req.ID,
 	)
 
-	_, err := h.store.Execute(q)
+	_, err := h.store.Execute(repository.NotTx, q)
 	if err != nil {
 		ctxLogger.Error(err)
 	}
@@ -199,7 +200,7 @@ func (h *handlers) insertNewVolume(req *nilrpc.RegisterVolumeRequest, res *nilrp
 		`, req.Status, req.Size, req.Free, req.Used, 0, calcMaxChain(req.Size), req.Speed, req.Ds,
 	)
 
-	r, err := h.store.Execute(q)
+	r, err := h.store.Execute(repository.NotTx, q)
 	if err != nil {
 		ctxLogger.Error(err)
 		return err

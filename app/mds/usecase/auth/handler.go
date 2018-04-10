@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/sirupsen/logrus"
@@ -40,7 +41,7 @@ func (h *handlers) GetCredential(req *nilrpc.GetCredentialRequest, res *nilrpc.G
 	)
 
 	res.AccessKey = req.AccessKey
-	err := h.store.QueryRow(q).Scan(&res.SecretKey)
+	err := h.store.QueryRow(repository.NotTx, q).Scan(&res.SecretKey)
 	if err == nil {
 		res.Exist = true
 	} else if err == sql.ErrNoRows {

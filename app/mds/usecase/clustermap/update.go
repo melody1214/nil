@@ -1,15 +1,14 @@
 package clustermap
 
 import (
+	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/pkg/errors"
 )
 
-// TODO: with transaction.
-
-func (h *handlers) updateClusterMap() error {
+func (h *handlers) updateClusterMap(txid repository.TxID) error {
 	// Set new map version.
-	ver, err := h.store.GetNewClusterMapVer()
+	ver, err := h.store.GetNewClusterMapVer(txid)
 	if err != nil {
 		return errors.Wrap(err, "failed to set new cluster map version")
 	}
@@ -24,7 +23,7 @@ func (h *handlers) updateClusterMap() error {
 }
 
 func (h *handlers) createClusterMap(ver cmap.Version) (*cmap.CMap, error) {
-	nodes, err := h.store.FindAllNodes()
+	nodes, err := h.store.FindAllNodes(repository.NotTx)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get cluster map nodes")
 	}

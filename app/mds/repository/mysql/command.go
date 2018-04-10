@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/hashicorp/raft"
 	"github.com/pkg/errors"
 )
@@ -39,27 +40,27 @@ func (s *Store) PublishCommand(op, query string) (result sql.Result, err error) 
 }
 
 // QueryRow executes a query that is expected to return at most one row.
-func (s *Store) QueryRow(query string, args ...interface{}) *sql.Row {
+func (s *Store) QueryRow(txid repository.TxID, query string, args ...interface{}) *sql.Row {
 	if s.db == nil {
 		return nil
 	}
-	return s.db.queryRow(query, args...)
+	return s.db.queryRow(txid, query, args...)
 }
 
 // Query executes a query that returns rows.
-func (s *Store) Query(query string, args ...interface{}) (*sql.Rows, error) {
+func (s *Store) Query(txid repository.TxID, query string, args ...interface{}) (*sql.Rows, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("mysql is not connected yet")
 	}
-	return s.db.query(query, args...)
+	return s.db.query(txid, query, args...)
 }
 
 // Execute executes a query in the local cluster.
-func (s *Store) Execute(query string) (sql.Result, error) {
+func (s *Store) Execute(txid repository.TxID, query string) (sql.Result, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("mysql is not connected yet")
 	}
-	return s.db.execute(query)
+	return s.db.execute(txid, query)
 }
 
 func (s *Store) addRegion(region, addr string) error {

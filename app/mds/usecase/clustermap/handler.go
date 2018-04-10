@@ -1,12 +1,12 @@
 package clustermap
 
 import (
-	"errors"
 	"time"
 
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/mlog"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -64,7 +64,20 @@ func (h *handlers) GetUpdateNoti(req *nilrpc.MCLGetUpdateNotiRequest, res *nilrp
 }
 
 func (h *handlers) UpdateClusterMap(req *nilrpc.MCLUpdateClusterMapRequest, res *nilrpc.MCLUpdateClusterMapResponse) error {
-	return h.updateClusterMap()
+	txid, err := h.store.Begin()
+	if err != nil {
+		return errors.Wrap(err, "failed to start transaction")
+	}
+
+	if err = h.updateClusterMap(txid); err != nil {
+		h.store.Rollback(txid)
+		return err
+	}
+	if err = h.store.Commit(txid); err != nil {
+		h.store.Rollback(txid)
+		return err
+	}
+	return nil
 }
 
 // Handlers is the interface that provides clustermap domain's rpc handlers.

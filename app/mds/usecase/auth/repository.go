@@ -1,8 +1,12 @@
 package auth
 
-import "database/sql"
+import (
+	"database/sql"
+
+	"github.com/chanyoung/nil/app/mds/repository"
+)
 
 // Repository provides access to auth database.
 type Repository interface {
-	QueryRow(query string, args ...interface{}) *sql.Row
+	QueryRow(txid repository.TxID, query string, args ...interface{}) *sql.Row
 }

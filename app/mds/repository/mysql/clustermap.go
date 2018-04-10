@@ -4,22 +4,23 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/app/mds/usecase/clustermap"
 	"github.com/chanyoung/nil/pkg/cmap"
 )
 
 type clustermapStore struct {
-	store *Store
+	*Store
 }
 
 // NewClusterMapRepository returns a new instance of a mysql cluster map repository.
 func NewClusterMapRepository(s *Store) clustermap.Repository {
 	return &clustermapStore{
-		store: s,
+		Store: s,
 	}
 }
 
-func (s *clustermapStore) FindAllNodes() (nodes []cmap.Node, err error) {
+func (s *clustermapStore) FindAllNodes(txid repository.TxID) (nodes []cmap.Node, err error) {
 	q := fmt.Sprintf(
 		`
 		SELECT
@@ -33,7 +34,8 @@ func (s *clustermapStore) FindAllNodes() (nodes []cmap.Node, err error) {
 		`,
 	)
 
-	rows, err := s.store.Query(q)
+	var rows *sql.Rows
+	rows, err = s.Query(txid, q)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +55,7 @@ func (s *clustermapStore) FindAllNodes() (nodes []cmap.Node, err error) {
 	return
 }
 
-func (s *clustermapStore) GetNewClusterMapVer() (cmap.Version, error) {
+func (s *clustermapStore) GetNewClusterMapVer(txid repository.TxID) (cmap.Version, error) {
 	q := fmt.Sprintf(
 		`
 		INSERT INTO cmap (cmap_id)
@@ -61,7 +63,7 @@ func (s *clustermapStore) GetNewClusterMapVer() (cmap.Version, error) {
 		`,
 	)
 
-	res, err := s.store.Execute(q)
+	res, err := s.Execute(txid, q)
 	if err != nil {
 		return -1, err
 	}
@@ -72,8 +74,4 @@ func (s *clustermapStore) GetNewClusterMapVer() (cmap.Version, error) {
 	}
 
 	return cmap.Version(ver), nil
-}
-
-func (s *clustermapStore) Begin() (*sql.Tx, error) {
-	return s.store.db.db.Begin()
 }

@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/pkg/util/config"
+	"github.com/chanyoung/nil/pkg/util/uuid"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -12,6 +14,7 @@ import (
 type mySQL struct {
 	cfg *config.Mds
 	db  *sql.DB
+	txs map[repository.TxID]*sql.Tx
 }
 
 // newMySQL returns MySQL handle with the opened db.
@@ -33,6 +36,7 @@ func newMySQL(cfg *config.Mds) (*mySQL, error) {
 	m := &mySQL{
 		cfg: cfg,
 		db:  db,
+		txs: make(map[repository.TxID]*sql.Tx),
 	}
 	if err = m.init(); err != nil {
 		m.db.Close()
@@ -59,16 +63,91 @@ func (m *mySQL) init() error {
 }
 
 // Execute executes query.
-func (m *mySQL) execute(query string) (sql.Result, error) {
-	return m.db.Exec(query)
+func (m *mySQL) execute(txid repository.TxID, query string) (sql.Result, error) {
+	if txid != "" {
+		return m.db.Exec(query)
+	}
+
+	tx, err := m.getTx(txid)
+	if err != nil {
+		return nil, err
+	}
+	return tx.Exec(query)
 }
 
 // QueryRow executes a query that is expected to return at most one row.
-func (m *mySQL) queryRow(query string, args ...interface{}) *sql.Row {
-	return m.db.QueryRow(query, args...)
+func (m *mySQL) queryRow(txid repository.TxID, query string, args ...interface{}) *sql.Row {
+	if txid != "" {
+		return m.db.QueryRow(query, args...)
+	}
+
+	tx, err := m.getTx(txid)
+	if err != nil {
+		return nil
+	}
+	return tx.QueryRow(query, args...)
 }
 
 // Query executes a query that returns rows.
-func (m *mySQL) query(query string, args ...interface{}) (*sql.Rows, error) {
-	return m.db.Query(query, args...)
+func (m *mySQL) query(txid repository.TxID, query string, args ...interface{}) (*sql.Rows, error) {
+	if txid != "" {
+		return m.db.Query(query, args...)
+	}
+
+	tx, err := m.getTx(txid)
+	if err != nil {
+		return nil, err
+	}
+	return tx.Query(query, args...)
+}
+
+func (m *mySQL) begin() (txid repository.TxID, err error) {
+	tx, err := m.db.Begin()
+	if err != nil {
+		return "", err
+	}
+
+	for {
+		txid = repository.TxID(uuid.Gen())
+		if _, ok := m.txs[txid]; ok {
+			continue
+		}
+		break
+	}
+
+	m.txs[txid] = tx
+	return
+}
+
+func (m *mySQL) getTx(txid repository.TxID) (*sql.Tx, error) {
+	tx, ok := m.txs[txid]
+	if ok == false {
+		return nil, fmt.Errorf("no such tx with matching txid: %s", txid)
+	}
+	return tx, nil
+}
+
+func (m *mySQL) rollback(txid repository.TxID) error {
+	defer delete(m.txs, txid)
+
+	tx, err := m.getTx(txid)
+	if err != nil {
+		return err
+	}
+
+	return tx.Rollback()
+}
+
+func (m *mySQL) commit(txid repository.TxID) error {
+	tx, err := m.getTx(txid)
+	if err != nil {
+		return err
+	}
+
+	// Delete Tx from the map only when succeess the transaction.
+	err = tx.Commit()
+	if err == nil {
+		defer delete(m.txs, txid)
+	}
+	return err
 }

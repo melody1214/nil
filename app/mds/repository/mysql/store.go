@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/app/mds/usecase/admin"
 	"github.com/chanyoung/nil/app/mds/usecase/auth"
 	"github.com/chanyoung/nil/app/mds/usecase/bucket"
@@ -163,6 +164,22 @@ func (s *Store) Join(nodeID, addr string) error {
 
 	ctxLogger.Infof("node %s at %s joined successfully", nodeID, addr)
 	return nil
+}
+
+// Begin returns a transaction ID.
+func (s *Store) Begin() (txid repository.TxID, err error) {
+	return s.db.begin()
+}
+
+// Rollback rollbacks the transaction with the given ID.
+func (s *Store) Rollback(txid repository.TxID) error {
+	return s.db.rollback(txid)
+}
+
+// Commit commits the transaction with the given ID.
+// Auto remove the transaction only when the transaction has been succeeded.
+func (s *Store) Commit(txid repository.TxID) error {
+	return s.db.commit(txid)
 }
 
 // NewAdminRepository returns a new instance of a mysql admin repository.

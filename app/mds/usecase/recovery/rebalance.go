@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"sort"
 
+	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 )
 
@@ -22,7 +23,7 @@ func (h *handlers) needRebalance() bool {
 		`,
 	)
 
-	rows, err := h.store.Query(q)
+	rows, err := h.store.Query(repository.NotTx, q)
 	if err != nil {
 		ctxLogger.Error(err)
 		return false
@@ -90,7 +91,7 @@ func (h *handlers) rebalanceSpeedGroup(speed string) error {
 		`, speed,
 	)
 
-	rows, err := h.store.Query(q)
+	rows, err := h.store.Query(repository.NotTx, q)
 	if err != nil {
 		return err
 	}
@@ -245,7 +246,7 @@ func (h *handlers) newLocalChain(primary *Volume, vols []*Volume) error {
 	)
 
 	var exist int
-	err := h.store.QueryRow(q).Scan(&exist)
+	err := h.store.QueryRow(repository.NotTx, q).Scan(&exist)
 	if err == nil {
 		return fmt.Errorf("already have same local chain: %+v", c)
 	} else if err == sql.ErrNoRows {
@@ -260,7 +261,7 @@ func (h *handlers) newLocalChain(primary *Volume, vols []*Volume) error {
 		VALUES ('%s', '%d', '%d', '%d', '%d')
 		`, c.status, c.firstVol, c.secondVol, c.thirdVol, c.parityVol,
 	)
-	_, err = h.store.Execute(q)
+	_, err = h.store.Execute(repository.NotTx, q)
 	if err != nil {
 		return err
 	}
@@ -275,7 +276,7 @@ func (h *handlers) newLocalChain(primary *Volume, vols []*Volume) error {
 		`, v.ID,
 		)
 
-		_, err := h.store.Execute(q)
+		_, err := h.store.Execute(repository.NotTx, q)
 		if err != nil {
 			ctxLogger.Error(err)
 		}

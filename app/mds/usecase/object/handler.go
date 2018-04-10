@@ -3,6 +3,7 @@ package object
 import (
 	"fmt"
 
+	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/sirupsen/logrus"
@@ -35,7 +36,7 @@ func (h *handlers) Put(req *nilrpc.ObjectPutRequest, res *nilrpc.ObjectPutRespon
 		`, req.Name, req.EncodingGroup, req.EncodingGroupVolume, req.Bucket,
 	)
 
-	r, err := h.store.Execute(q)
+	r, err := h.store.Execute(repository.NotTx, q)
 	if err != nil {
 		ctxLogger.Error(err)
 		return err
@@ -70,7 +71,7 @@ func (h *handlers) Get(req *nilrpc.ObjectGetRequest, res *nilrpc.ObjectGetRespon
 		`, req.Name,
 	)
 
-	row := h.store.QueryRow(q)
+	row := h.store.QueryRow(repository.NotTx, q)
 	if row == nil {
 		return fmt.Errorf("mysql not connected yet")
 	}
@@ -106,7 +107,7 @@ func (h *handlers) Get(req *nilrpc.ObjectGetRequest, res *nilrpc.ObjectGetRespon
 		`, col, res.EncodingGroup,
 	)
 
-	row = h.store.QueryRow(q)
+	row = h.store.QueryRow(repository.NotTx, q)
 	if row == nil {
 		return fmt.Errorf("mysql not connected yet")
 	}
@@ -127,7 +128,7 @@ func (h *handlers) Get(req *nilrpc.ObjectGetRequest, res *nilrpc.ObjectGetRespon
 		`, res.EncodingGroupVolumeID,
 	)
 
-	row = h.store.QueryRow(q)
+	row = h.store.QueryRow(repository.NotTx, q)
 	if row == nil {
 		return fmt.Errorf("mysql not connected yet")
 	}
