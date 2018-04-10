@@ -16,7 +16,7 @@ type command struct {
 }
 
 // PublishCommand publish a command across the cluster.
-func (s *store) PublishCommand(op, query string) (result sql.Result, err error) {
+func (s *Store) PublishCommand(op, query string) (result sql.Result, err error) {
 	if s.raft.State() != raft.Leader {
 		return nil, errors.New("not leader")
 	}
@@ -39,7 +39,7 @@ func (s *store) PublishCommand(op, query string) (result sql.Result, err error) 
 }
 
 // QueryRow executes a query that is expected to return at most one row.
-func (s *store) QueryRow(query string, args ...interface{}) *sql.Row {
+func (s *Store) QueryRow(query string, args ...interface{}) *sql.Row {
 	if s.db == nil {
 		return nil
 	}
@@ -47,7 +47,7 @@ func (s *store) QueryRow(query string, args ...interface{}) *sql.Row {
 }
 
 // Query executes a query that returns rows.
-func (s *store) Query(query string, args ...interface{}) (*sql.Rows, error) {
+func (s *Store) Query(query string, args ...interface{}) (*sql.Rows, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("mysql is not connected yet")
 	}
@@ -55,14 +55,14 @@ func (s *store) Query(query string, args ...interface{}) (*sql.Rows, error) {
 }
 
 // Execute executes a query in the local cluster.
-func (s *store) Execute(query string) (sql.Result, error) {
+func (s *Store) Execute(query string) (sql.Result, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("mysql is not connected yet")
 	}
 	return s.db.execute(query)
 }
 
-func (s *store) addRegion(region, addr string) error {
+func (s *Store) addRegion(region, addr string) error {
 	q := fmt.Sprintf(
 		`
 		INSERT INTO region (rg_name, rg_end_point)

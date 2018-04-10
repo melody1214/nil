@@ -1,6 +1,8 @@
 package clustermap
 
 import (
+	"database/sql"
+
 	"github.com/chanyoung/nil/pkg/cmap"
 )
 
@@ -8,4 +10,5 @@ import (
 type Repository interface {
 	FindAllNodes() ([]cmap.Node, error)
 	GetNewClusterMapVer() (cmap.Version, error)
+	Begin() (*sql.Tx, error)
 }

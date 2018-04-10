@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/app/mds/usecase/admin"
 	"github.com/chanyoung/nil/app/mds/usecase/auth"
 	"github.com/chanyoung/nil/app/mds/usecase/bucket"
@@ -31,13 +30,13 @@ const (
 	timeout             = 10 * time.Second
 )
 
-// store is a mysql store, which stores nil meta data.
+// Store is a mysql store, which stores nil meta data.
 // Meta data separates two types:
 // 1. Global meta data is the cluster information and all changes are
 // made via Raft consensus,
 // 2. Local meta data is the location information of each objects and
 // managed only in local cluster by mysql replication.
-type store struct {
+type Store struct {
 	// Configuration.
 	cfg *config.Mds
 
@@ -55,16 +54,16 @@ type store struct {
 }
 
 // New creates a Store object.
-func New(cfg *config.Mds) repository.Store {
+func New(cfg *config.Mds) *Store {
 	logger = mlog.GetPackageLogger("app/mds/repository/mysql")
 
-	return &store{
+	return &Store{
 		cfg: cfg,
 	}
 }
 
 // Open opens the store.
-func (s *store) Open(raftL *nilmux.Layer) error {
+func (s *Store) Open(raftL *nilmux.Layer) error {
 	s.transport = nilmux.NewRaftTransportLayer(raftL)
 
 	// Connect and initiate to mysql server.
@@ -135,7 +134,7 @@ func (s *store) Open(raftL *nilmux.Layer) error {
 }
 
 // Close cleans up the store.
-func (s *store) Close() error {
+func (s *Store) Close() error {
 	// Close mysql connection.
 	s.db.close()
 	s.raft.Shutdown()
@@ -145,7 +144,7 @@ func (s *store) Close() error {
 
 // Join joins a node, identified by nodeID and located at addr, to this store.
 // The node must be ready to respond to Raft communications at that address.
-func (s *store) Join(nodeID, addr string) error {
+func (s *Store) Join(nodeID, addr string) error {
 	ctxLogger := mlog.GetMethodLogger(logger, "store.Join")
 	ctxLogger.Infof("received join request for remote node %s at %s", nodeID, addr)
 
@@ -167,36 +166,36 @@ func (s *store) Join(nodeID, addr string) error {
 }
 
 // NewAdminRepository returns a new instance of a mysql admin repository.
-func NewAdminRepository(s repository.Store) admin.Repository {
+func NewAdminRepository(s *Store) admin.Repository {
 	return s
 }
 
 // NewAuthRepository returns a new instance of a mysql auth repository.
-func NewAuthRepository(s repository.Store) auth.Repository {
+func NewAuthRepository(s *Store) auth.Repository {
 	return s
 }
 
 // NewBucketRepository returns a new instance of a mysql bucket repository.
-func NewBucketRepository(s repository.Store) bucket.Repository {
+func NewBucketRepository(s *Store) bucket.Repository {
 	return s
 }
 
 // NewConsensusRepository returns a new instance of a mysql cluster map repository.
-func NewConsensusRepository(s repository.Store) consensus.Repository {
+func NewConsensusRepository(s *Store) consensus.Repository {
 	return s
 }
 
 // NewMembershipRepository returns a new instance of a mysql membership repository.
-func NewMembershipRepository(s repository.Store) membership.Repository {
+func NewMembershipRepository(s *Store) membership.Repository {
 	return s
 }
 
 // NewObjectRepository returns a new instance of a mysql object repository.
-func NewObjectRepository(s repository.Store) object.Repository {
+func NewObjectRepository(s *Store) object.Repository {
 	return s
 }
 
 // NewRecoveryRepository returns a new instance of a mysql recovery repository.
-func NewRecoveryRepository(s repository.Store) recovery.Repository {
+func NewRecoveryRepository(s *Store) recovery.Repository {
 	return s
 }

@@ -7,7 +7,6 @@ import (
 	"syscall"
 
 	"github.com/chanyoung/nil/app/mds/delivery"
-	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/app/mds/repository/mysql"
 	"github.com/chanyoung/nil/app/mds/usecase/admin"
 	"github.com/chanyoung/nil/app/mds/usecase/auth"
@@ -43,7 +42,6 @@ func Bootstrap(cfg config.Mds) error {
 
 	// Setup repositories.
 	var (
-		store           repository.Store
 		adminStore      admin.Repository
 		authStore       auth.Repository
 		bucketStore     bucket.Repository
@@ -54,7 +52,7 @@ func Bootstrap(cfg config.Mds) error {
 		recoveryStore   recovery.Repository
 	)
 	if useMySQL := true; useMySQL {
-		store = mysql.New(&cfg)
+		store := mysql.New(&cfg)
 		adminStore = mysql.NewAdminRepository(store)
 		authStore = mysql.NewAuthRepository(store)
 		bucketStore = mysql.NewBucketRepository(store)

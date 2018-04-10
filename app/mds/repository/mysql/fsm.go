@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/raft"
 )
 
-type fsm store
+type fsm Store
 
 type fsmExecuteResponse struct {
 	result sql.Result

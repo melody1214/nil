@@ -1,19 +1,19 @@
 package mysql
 
 import (
+	"database/sql"
 	"fmt"
 
-	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/app/mds/usecase/clustermap"
 	"github.com/chanyoung/nil/pkg/cmap"
 )
 
 type clustermapStore struct {
-	store repository.Store
+	store *Store
 }
 
 // NewClusterMapRepository returns a new instance of a mysql cluster map repository.
-func NewClusterMapRepository(s repository.Store) clustermap.Repository {
+func NewClusterMapRepository(s *Store) clustermap.Repository {
 	return &clustermapStore{
 		store: s,
 	}
@@ -72,4 +72,8 @@ func (s *clustermapStore) GetNewClusterMapVer() (cmap.Version, error) {
 	}
 
 	return cmap.Version(ver), nil
+}
+
+func (s *clustermapStore) Begin() (*sql.Tx, error) {
+	return s.store.db.db.Begin()
 }
