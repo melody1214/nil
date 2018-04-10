@@ -12,7 +12,7 @@ type authStore struct {
 	*Store
 }
 
-// NewAuthRepository returns a new instance of a mysql cluster map repository.
+// NewAuthRepository returns a new instance of a mysql auth repository.
 func NewAuthRepository(s *Store) auth.Repository {
 	return &authStore{
 		Store: s,

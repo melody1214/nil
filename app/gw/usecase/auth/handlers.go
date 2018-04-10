@@ -70,8 +70,8 @@ func (h *handlers) getSecretKeyFromRemote(accessKey string) (secretKey string, e
 	}
 	defer conn.Close()
 
-	req := &nilrpc.GetCredentialRequest{AccessKey: accessKey}
-	res := &nilrpc.GetCredentialResponse{}
+	req := &nilrpc.MAUGetCredentialRequest{AccessKey: accessKey}
+	res := &nilrpc.MAUGetCredentialResponse{}
 
 	// 3. Request the secret key.
 	cli := rpc.NewClient(conn)

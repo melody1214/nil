@@ -62,16 +62,16 @@ func (h *handlers) makeBucket(accessKey, region, bucket string) error {
 	defer conn.Close()
 
 	// Fill the request and prepare response object.
-	req := &nilrpc.AddBucketRequest{
+	req := &nilrpc.MBUMakeBucketRequest{
 		AccessKey:  accessKey,
 		Region:     region,
 		BucketName: bucket,
 	}
-	res := &nilrpc.AddBucketResponse{}
+	res := &nilrpc.MBUMakeBucketResponse{}
 
 	// Call 'AddBucket' procedure and handling errors.
 	cli := rpc.NewClient(conn)
-	if err := cli.Call(nilrpc.MdsBucketAddBucket.String(), req, res); err != nil {
+	if err := cli.Call(nilrpc.MdsBucketMakeBucket.String(), req, res); err != nil {
 		// Not mysql error, unknown error.
 		ctxLogger.Error(err)
 		return errInternal

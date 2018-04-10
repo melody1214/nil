@@ -23,7 +23,7 @@ func NewHandlers(s Repository) Handlers {
 }
 
 // GetCredential returns matching secret key with the given access key.
-func (h *handlers) GetCredential(req *nilrpc.GetCredentialRequest, res *nilrpc.GetCredentialResponse) error {
+func (h *handlers) GetCredential(req *nilrpc.MAUGetCredentialRequest, res *nilrpc.MAUGetCredentialResponse) error {
 	res.AccessKey = req.AccessKey
 
 	sk, err := h.store.FindSecretKey(req.AccessKey)
@@ -41,5 +41,5 @@ func (h *handlers) GetCredential(req *nilrpc.GetCredentialRequest, res *nilrpc.G
 
 // Handlers is the interface that provides auth domain's rpc handlers.
 type Handlers interface {
-	GetCredential(req *nilrpc.GetCredentialRequest, res *nilrpc.GetCredentialResponse) error
+	GetCredential(req *nilrpc.MAUGetCredentialRequest, res *nilrpc.MAUGetCredentialResponse) error
 }

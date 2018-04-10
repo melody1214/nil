@@ -99,6 +99,8 @@ func (s *service) AddVolume(v *repository.Vol) error {
 
 	// TODO: Set the disk speed.
 	v.SetSpeed()
+	// TODO: Receive chunksize from the config.
+	v.ChunkSize = 1000000
 
 	s.lvs[v.Name] = &lv{
 		Vol: v,
@@ -172,15 +174,15 @@ func (s *service) read(r *repository.Request) {
 		return
 	}
 
-  if r.Osize == 0 {
-    r.Osize = obj.Size
-  }
-  
-  // Create a directory for a local group if not exist.
+	if r.Osize == 0 {
+		r.Osize = obj.Size
+	}
+
+	// Create a directory for a local group if not exist.
 	lgDir := lv.MntPoint + "/" + r.LocGid
 	_, err := os.Stat(lgDir)
 	if os.IsNotExist(err) {
-    os.MkdirAll(lgDir, 0775)
+		os.MkdirAll(lgDir, 0775)
 	}
 
 	// Open a chunk requested by a client.
@@ -291,13 +293,13 @@ func (s *service) write(r *repository.Request) error {
 	}
 
 	// Store mapping information between the object and the chunk.
-  lv.Objs[r.Oid] = repository.ObjMap{
-			Cid:    r.Cid,
-			Offset: fChunkLen,
-			Size:   r.Osize,
-			MD5:    r.Md5,
+	lv.Objs[r.Oid] = repository.ObjMap{
+		Cid:    r.Cid,
+		Offset: fChunkLen,
+		Size:   r.Osize,
+		MD5:    r.Md5,
 	}
-  
+
 	return nil
 }
 

@@ -5,7 +5,6 @@ import (
 	"net"
 	"time"
 
-	"github.com/chanyoung/nil/pkg/s3"
 	"github.com/chanyoung/nil/pkg/security"
 	"github.com/chanyoung/nil/pkg/swim"
 )
@@ -39,7 +38,7 @@ const (
 	MdsAuthGetCredential
 
 	// MDS bucket domain methods.
-	MdsBucketAddBucket
+	MdsBucketMakeBucket
 
 	// MDS clustermap domain methods.
 	MdsClustermapGetClusterMap
@@ -79,8 +78,8 @@ func (m MethodName) String() string {
 	case MdsAuthGetCredential:
 		return MdsAuthPrefix + "." + "GetCredential"
 
-	case MdsBucketAddBucket:
-		return MdsBucketPrefix + "." + "AddBucket"
+	case MdsBucketMakeBucket:
+		return MdsBucketPrefix + "." + "MakeBucket"
 
 	case MdsClustermapGetClusterMap:
 		return MdsClustermapPrefix + "." + "GetClusterMap"
@@ -141,30 +140,6 @@ type AddUserRequest struct {
 type AddUserResponse struct {
 	AccessKey string
 	SecretKey string
-}
-
-// GetCredentialRequest requests a credential for the given access key.
-type GetCredentialRequest struct {
-	AccessKey string
-}
-
-// GetCredentialResponse response the credential.
-type GetCredentialResponse struct {
-	Exist     bool
-	AccessKey string
-	SecretKey string
-}
-
-// AddBucketRequest requests to create bucket for given name and user.
-type AddBucketRequest struct {
-	BucketName string
-	AccessKey  string
-	Region     string
-}
-
-// AddBucketResponse responses the result of addBucket.
-type AddBucketResponse struct {
-	S3ErrCode s3.ErrorCode
 }
 
 // RegisterVolumeRequest contains a new volume information.
