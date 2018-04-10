@@ -46,7 +46,7 @@ func TestSearchCall(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ct.Update(WithFile(&testMap))
+	ct.Update(&testMap)
 
 	for _, n := range testMap.Nodes {
 		// 1. Search with the all conditions are matched.
