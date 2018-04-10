@@ -58,6 +58,6 @@ type Volume struct {
 	Used    uint64
 	Speed   VolumeSpeed
 	Status  VolumeStatus
-	Nodes   []ID
+	Node    ID
 	EncGrps []ID
 }

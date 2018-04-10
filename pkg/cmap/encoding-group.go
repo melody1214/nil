@@ -6,5 +6,5 @@ type EncodingGroup struct {
 	Size int64 `xml:"size"`
 	Used int64 `xml:"used"`
 	Free int64 `xml:"free"`
-	Vols []ID  `xml:"volumes"`
+	Vols []ID  `xml:"volume"`
 }

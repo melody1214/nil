@@ -71,5 +71,5 @@ type Node struct {
 	Addr string `xml:"address"`
 	Type Type   `xml:"type"`
 	Stat Status `xml:"status"`
-	Vols []ID   `xml:"volumes"`
+	Vols []ID   `xml:"volume"`
 }

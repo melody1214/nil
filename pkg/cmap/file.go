@@ -103,7 +103,9 @@ func decode(path string) (CMap, error) {
 	data, err := ioutil.ReadAll(f)
 
 	m := CMap{
-		Nodes: make([]Node, 0),
+		Nodes:   make([]Node, 0),
+		Vols:    make([]Volume, 0),
+		EncGrps: make([]EncodingGroup, 0),
 	}
 	if err := xml.Unmarshal(data, &m); err != nil {
 		return CMap{}, err
