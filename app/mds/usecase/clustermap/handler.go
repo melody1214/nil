@@ -29,22 +29,7 @@ func NewHandlers(cMap *cmap.Controller, s Repository) Handlers {
 
 // GetClusterMap returns a current local cluster map.
 func (h *handlers) GetClusterMap(req *nilrpc.MCLGetClusterMapRequest, res *nilrpc.MCLGetClusterMapResponse) error {
-	cm := h.cMap.LatestCMap()
-
-	res.Version = cm.Version.Int64()
-	for _, n := range cm.Nodes {
-		res.Nodes = append(
-			res.Nodes,
-			nilrpc.ClusterNode{
-				ID:   n.ID.Int64(),
-				Name: n.Name,
-				Addr: n.Addr,
-				Type: n.Type.String(),
-				Stat: n.Stat.String(),
-			},
-		)
-	}
-
+	res.ClusterMap = h.cMap.LatestCMap()
 	return nil
 }
 

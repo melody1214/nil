@@ -42,7 +42,7 @@ func periodicUpdater(c *cmap.Controller) {
 	for {
 		select {
 		case <-updateNoti.C:
-			if err := c.Update(); err != nil {
+			if err := updateClusterMap(c); err != nil {
 				ctxLogger.Error(err)
 			}
 		}
@@ -61,7 +61,7 @@ func realtimeUpdater(c *cmap.Controller) {
 		}
 
 		if isUpdated(mds.Addr, c.LatestVersion()) {
-			err = c.Update()
+			err := updateClusterMap(c)
 			if err != nil {
 				ctxLogger.Error(errors.Wrap(err, "failed to update cluster map"))
 				time.Sleep(10 * time.Second)
@@ -91,4 +91,36 @@ func isUpdated(mds string, ver cmap.Version) bool {
 	defer cli.Close()
 
 	return true
+}
+
+func updateClusterMap(c *cmap.Controller) error {
+	mds, err := c.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
+	if err != nil {
+		return err
+	}
+
+	cm, err := getLatestMapFromMDS(mds.Addr)
+	if err != nil {
+		return err
+	}
+
+	return c.Update(cm)
+}
+
+func getLatestMapFromMDS(mdsAddr string) (*cmap.CMap, error) {
+	conn, err := nilrpc.Dial(mdsAddr, nilrpc.RPCNil, time.Duration(2*time.Second))
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	req := &nilrpc.MCLGetClusterMapRequest{}
+	res := &nilrpc.MCLGetClusterMapResponse{}
+
+	cli := rpc.NewClient(conn)
+	if err := cli.Call(nilrpc.MdsClustermapGetClusterMap.String(), req, res); err != nil {
+		return nil, err
+	}
+
+	return &res.ClusterMap, nil
 }

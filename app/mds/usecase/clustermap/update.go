@@ -19,7 +19,7 @@ func (h *handlers) updateClusterMap(txid repository.TxID) error {
 		return errors.Wrap(err, "failed to create cluster map")
 	}
 
-	return h.cMap.Update(cmap.WithFile(cm))
+	return h.cMap.Update(cm)
 }
 
 func (h *handlers) createClusterMap(ver cmap.Version) (*cmap.CMap, error) {
