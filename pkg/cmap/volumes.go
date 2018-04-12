@@ -1,52 +1,44 @@
 package cmap
 
 // VolumeSpeed represents a disk speed level.
-type VolumeSpeed int
+type VolumeSpeed string
 
 const (
 	// Low : 60 Mb/s < speed < 80 Mb/s
-	Low VolumeSpeed = iota
+	Low VolumeSpeed = "Low"
 	// Mid : 80 Mb/s < speed < 100 Mb/s
-	Mid
+	Mid = "Mid"
 	// High : 100 Mb/s < speed
-	High
+	High = "High"
 )
 
 func (s VolumeSpeed) String() string {
 	switch s {
-	case Low:
-		return "low"
-	case Mid:
-		return "mid"
-	case High:
-		return "high"
+	case Low, Mid, High:
+		return string(s)
 	default:
-		return "unknown"
+		return unknown
 	}
 }
 
 // VolumeStatus represents a disk status.
-type VolumeStatus int
+type VolumeStatus string
 
 const (
 	// Prepared represents the volume is ready to run.
-	Prepared VolumeStatus = iota
+	Prepared VolumeStatus = "Prepared"
 	// Active represents the volume is now running.
-	Active
+	Active = "Active"
 	// Failed represents the volume has some problems and stopped now.
-	Failed
+	Failed = "Failed"
 )
 
 func (s VolumeStatus) String() string {
 	switch s {
-	case Prepared:
-		return "prepared"
-	case Active:
-		return "active"
-	case Failed:
-		return "failed"
+	case Prepared, Active, Failed:
+		return string(s)
 	default:
-		return "unknown"
+		return unknown
 	}
 }
 

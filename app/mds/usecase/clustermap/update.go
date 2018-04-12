@@ -30,9 +30,15 @@ func (h *handlers) createClusterMap(ver cmap.Version, txid repository.TxID) (*cm
 		return nil, errors.Wrap(err, "failed to get cluster map nodes")
 	}
 
+	vols, err := h.store.FindAllVolumes(txid)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get cluster map volumes")
+	}
+
 	return &cmap.CMap{
 		Version: ver,
 		Time:    time.Now().UTC().String(),
 		Nodes:   nodes,
+		Vols:    vols,
 	}, nil
 }

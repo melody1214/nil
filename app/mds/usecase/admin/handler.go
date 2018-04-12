@@ -2,7 +2,10 @@ package admin
 
 import (
 	"fmt"
+	"log"
+	"net/rpc"
 	"strconv"
+	"time"
 
 	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/pkg/nilrpc"
@@ -186,8 +189,10 @@ func (h *handlers) updateVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.R
 	_, err := h.store.Execute(repository.NotTx, q)
 	if err != nil {
 		ctxLogger.Error(err)
+		return err
 	}
-	return err
+
+	return h.updateClusterMap()
 }
 
 func (h *handlers) insertNewVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.RegisterVolumeResponse) error {
@@ -213,7 +218,23 @@ func (h *handlers) insertNewVolume(req *nilrpc.RegisterVolumeRequest, res *nilrp
 	}
 	res.ID = strconv.FormatInt(id, 10)
 
-	return nil
+	return h.updateClusterMap()
+}
+
+func (h *handlers) updateClusterMap() error {
+	conn, err := nilrpc.Dial(h.cfg.ServerAddr+":"+h.cfg.ServerPort, nilrpc.RPCNil, time.Duration(2*time.Second))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	req := &nilrpc.MCLUpdateClusterMapRequest{}
+	res := &nilrpc.MCLUpdateClusterMapResponse{}
+
+	cli := rpc.NewClient(conn)
+	defer cli.Close()
+
+	return cli.Call(nilrpc.MdsClustermapUpdateClusterMap.String(), req, res)
 }
 
 func calcMaxChain(volumeSize uint64) int {

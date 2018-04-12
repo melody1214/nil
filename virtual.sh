@@ -316,17 +316,17 @@ function main() {
         done < $PENDINGCMD
     fi
 
-    # # Create users.
-    # sleep 3
-    # createusers
+    # Create users.
+    sleep 3
+    createusers
 
-    # # Create buckets.
-    # sleep 3
-    # createbuckets
+    # Create buckets.
+    sleep 3
+    createbuckets
 
-    # # Put objects.
-    # sleep 3
-    # putobjects
+    # Put objects.
+    sleep 3
+    putobjects
 }
 
 # Run as root.

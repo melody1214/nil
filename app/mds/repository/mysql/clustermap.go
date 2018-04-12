@@ -55,6 +55,43 @@ func (s *clustermapStore) FindAllNodes(txid repository.TxID) (nodes []cmap.Node,
 	return
 }
 
+func (s *clustermapStore) FindAllVolumes(txid repository.TxID) (vols []cmap.Volume, err error) {
+	q := fmt.Sprintf(
+		`
+		SELECT
+			vl_id,
+			vl_status,
+			vl_node,
+			vl_size,
+			vl_free,
+			vl_used,
+			vl_speed
+		FROM
+			volume
+		`,
+	)
+
+	var rows *sql.Rows
+	rows, err = s.Query(txid, q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	vols = make([]cmap.Volume, 0)
+	for rows.Next() {
+		v := cmap.Volume{}
+
+		if err = rows.Scan(&v.ID, &v.Status, &v.Node, &v.Size, &v.Free, &v.Used, &v.Speed); err != nil {
+			return nil, err
+		}
+
+		vols = append(vols, v)
+	}
+
+	return
+}
+
 func (s *clustermapStore) GetNewClusterMapVer(txid repository.TxID) (cmap.Version, error) {
 	q := fmt.Sprintf(
 		`
