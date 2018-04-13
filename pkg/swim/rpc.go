@@ -36,6 +36,7 @@ func (m MethodName) String() string {
 
 // Message is the basic message of the swim node.
 type Message struct {
+	Header  Header
 	Members []Member
 }
 

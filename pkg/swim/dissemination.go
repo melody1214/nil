@@ -6,7 +6,7 @@ import (
 
 // Join tries to join the membership.
 func (s *Server) join() error {
-	_, err := s.send(Join, s.conf.Coordinator, &Message{s.meml.fetch(0)})
+	_, err := s.send(Join, s.conf.Coordinator, &Message{Members: s.meml.fetch(0)})
 	return err
 }
 
