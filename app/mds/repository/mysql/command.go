@@ -77,3 +77,15 @@ func (s *Store) addRegion(region, addr string) error {
 
 	return err
 }
+
+func (s *Store) setGlobalClusterConf() error {
+	q := fmt.Sprintf(
+		`
+		INSERT INTO cluster (cl_local_parity_shards)
+		VALUES ('%s')
+		`, s.cfg.LocalParityShards,
+	)
+	_, err := s.PublishCommand("execute", q)
+
+	return err
+}

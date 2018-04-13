@@ -34,6 +34,10 @@ type Mds struct {
 	// Security config.
 	Security Security
 
+	// Encoding
+	// LocalParityShards is the number of shards that used to generate local parity.
+	LocalParityShards string
+
 	// LogLocation is the file path of mds logging.
 	// Default output path is stderr.
 	LogLocation string

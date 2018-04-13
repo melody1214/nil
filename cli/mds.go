@@ -63,5 +63,7 @@ func init() {
 	mdsCmd.Flags().StringVarP(&mdscfg.Security.ServerKey, "secure-server-key", "", config.Get("security.server_key"), "file name of server key")
 	mdsCmd.Flags().StringVarP(&mdscfg.Security.ServerCrt, "secure-server-crt", "", config.Get("security.server_crt"), "file name of server crt")
 
+	mdsCmd.Flags().StringVarP(&mdscfg.LocalParityShards, "local-parity-shards", "", config.Get("mds.local_parity_shards"), "number of shards for generating local parity")
+
 	mdsCmd.Flags().StringVarP(&mdscfg.LogLocation, "log", "l", config.Get("mds.log_location"), "log location of the mds will print out")
 }

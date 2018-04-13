@@ -123,10 +123,14 @@ func (s *Store) Open(raftL *nilmux.Layer) error {
 			time.Sleep(10 * time.Millisecond)
 		}
 		// Add my region.
-		return s.addRegion(
+		if err := s.addRegion(
 			s.cfg.Raft.LocalClusterRegion,
 			s.cfg.Raft.LocalClusterAddr,
-		)
+		); err != nil {
+			return err
+		}
+
+		return s.setGlobalClusterConf()
 	}
 
 	return nil

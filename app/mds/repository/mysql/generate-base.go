@@ -3,6 +3,13 @@ package mysql
 // generateSQLBase is the query list of SQL statements required to build the nil backend.
 var generateSQLBase = []string{
 	`
+		CREATE TABLE IF NOT EXISTS cluster (
+			cl_id int unsigned NOT NULL AUTO_INCREMENT,
+			cl_local_parity_shards int unsigned NOT NULL,
+			PRIMARY KEY (cl_id)
+		) ENGINE=InnoDB DEFAULT CHARSET=ascii
+	`,
+	`
 		CREATE TABLE IF NOT EXISTS user (
 			user_id int unsigned NOT NULL AUTO_INCREMENT,
 			user_name varchar(128) CHARACTER SET ascii NOT NULL,

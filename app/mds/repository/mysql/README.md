@@ -5,6 +5,7 @@ This is a list of database tables and field prefixes.
 | Table                 | Field prefix | Description                                                                                                   |
 | --------------------- | ------------ | ------------------------------------------------------------------------------------------------------------- |
 | bucket                | bk_          | The bucket table is where nil stores information about buckets.                                               |
+| cluster               | cl_          | The cluster table is where nil stores information about global configurations.                                |
 | cmap                  | cmap_        | The cmap table is where nil stores the version information about cmaps.                                       |
 | encoding_group        | eg_          | The encoding_group table is used to store local encoding group information.                                   |
 | encoding_group_volume | egv_         | The encoding_group_volume table is where nil stores information about participated volumes in encoding group. |

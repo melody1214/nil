@@ -127,6 +127,7 @@ function purge() {
 	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS volume;"
 	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS node;"
 	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS cmap;"
+	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS cluster;"
     done
 }
 
