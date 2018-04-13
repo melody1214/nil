@@ -4,7 +4,7 @@ package mysql
 var generateSQLBase = []string{
 	`
 		CREATE TABLE IF NOT EXISTS user (
-			user_id bigint unsigned NOT NULL AUTO_INCREMENT,
+			user_id int unsigned NOT NULL AUTO_INCREMENT,
 			user_name varchar(128) CHARACTER SET ascii NOT NULL,
 			user_access_key varchar(32) charset ascii NOT NULL,
 			user_secret_key varchar(32) charset ascii NOT NULL,
@@ -21,9 +21,9 @@ var generateSQLBase = []string{
 	`,
 	`
 		CREATE TABLE IF NOT EXISTS bucket (
-			bk_id bigint unsigned NOT NULL AUTO_INCREMENT,
+			bk_id int unsigned NOT NULL AUTO_INCREMENT,
 			bk_name varchar(32) CHARACTER SET ascii NOT NULL,
-			bk_user bigint unsigned NOT NULL,
+			bk_user int unsigned NOT NULL,
 			bk_region int unsigned NOT NULL,
 			PRIMARY KEY (bk_id),
 			UNIQUE KEY (bk_name, bk_region),
@@ -33,7 +33,7 @@ var generateSQLBase = []string{
 	`,
 	`
 		CREATE TABLE IF NOT EXISTS node (
-			node_id bigint unsigned NOT NULL AUTO_INCREMENT,
+			node_id int unsigned NOT NULL AUTO_INCREMENT,
 			node_name varchar(32) CHARACTER SET ascii NOT NULL,
 			node_type varchar(32) CHARACTER SET ascii NOT NULL,
 			node_status varchar(32) CHARACTER SET ascii NOT NULL,
@@ -44,9 +44,9 @@ var generateSQLBase = []string{
 	`,
 	`
 		CREATE TABLE IF NOT EXISTS volume (
-			vl_id bigint unsigned NOT NULL AUTO_INCREMENT,
+			vl_id int unsigned NOT NULL AUTO_INCREMENT,
 			vl_status varchar(32) CHARACTER SET ascii NOT NULL,
-			vl_node bigint unsigned NOT NULL,
+			vl_node int unsigned NOT NULL,
 			vl_size int unsigned NOT NULL,
 			vl_free int unsigned NOT NULL,
 			vl_used int unsigned NOT NULL,
@@ -59,12 +59,12 @@ var generateSQLBase = []string{
 	`,
 	`
 		CREATE TABLE IF NOT EXISTS encoding_group (
-			eg_id bigint unsigned NOT NULL AUTO_INCREMENT,
+			eg_id int unsigned NOT NULL AUTO_INCREMENT,
 			eg_status varchar(32) CHARACTER SET ascii NOT NULL,
-			eg_first_volume bigint unsigned NOT NULL,
-			eg_second_volume bigint unsigned NOT NULL,
-			eg_third_volume bigint unsigned NOT NULL,
-			eg_parity_volume bigint unsigned NOT NULL,
+			eg_first_volume int unsigned NOT NULL,
+			eg_second_volume int unsigned NOT NULL,
+			eg_third_volume int unsigned NOT NULL,
+			eg_parity_volume int unsigned NOT NULL,
 			PRIMARY KEY (eg_id),
 			FOREIGN KEY (eg_first_volume) REFERENCES volume (vl_id),
 			FOREIGN KEY (eg_second_volume) REFERENCES volume (vl_id),
@@ -73,17 +73,28 @@ var generateSQLBase = []string{
 		) ENGINE=InnoDB DEFAULT CHARSET=ascii
 	`,
 	`
+		CREATE TABLE IF NOT EXISTS encoding_group_volume (
+			egv_id int unsigned NOT NULL AUTO_INCREMENT,
+			egv_encoding_group int unsigned NOT NULL,
+			egv_volume int unsigned NOT NULL,
+			egv_role int unsigned NOT NULL,
+			PRIMARY KEY (egv_id),
+			FOREIGN KEY (egv_encoding_group) REFERENCES encoding_group (eg_id),
+			FOREIGN KEY (egv_volume) REFERENCES volume (vl_id)
+		) ENGINE=InnoDB DEFAULT CHARSET=ascii
+	`,
+	`
 		CREATE TABLE IF NOT EXISTS cmap (
-			cmap_id bigint unsigned NOT NULL AUTO_INCREMENT,
+			cmap_id int unsigned NOT NULL AUTO_INCREMENT,
 			PRIMARY KEY (cmap_id)
 		) ENGINE=InnoDB DEFAULT CHARSET=ascii
 	`,
 	`
 		CREATE TABLE IF NOT EXISTS object (
-			obj_id bigint unsigned NOT NULL AUTO_INCREMENT,
+			obj_id int unsigned NOT NULL AUTO_INCREMENT,
 			obj_name varchar(255) NOT NULL,
-			obj_bucket bigint unsigned NOT NULL,
-			obj_encoding_group bigint unsigned NOT NULL,
+			obj_bucket int unsigned NOT NULL,
+			obj_encoding_group int unsigned NOT NULL,
 			obj_encoding_group_volume varchar(32) CHARACTER SET ascii NOT NULL,
 			PRIMARY KEY (obj_id),
 			FOREIGN KEY (obj_bucket) REFERENCES bucket (bk_id),
