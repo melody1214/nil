@@ -93,16 +93,17 @@ func (m *CMap) HumanReadable() string {
 	out += "\n"
 	out += "+-----------------------------+\n"
 	out += "| Encoding groups information |\n"
-	out += "+------+---------+---------+--+------+-----------------+\n"
-	out += "| ID   | Size    | Free    | Used    | Volumes         |\n"
-	out += "+------+---------+---------+---------+-----------------+\n"
+	out += "+------+---------+---------+--+------+---------+-----------------+\n"
+	out += "| ID   | Size    | Free    | Used    | Status  | Volumes         |\n"
+	out += "+------+---------+---------+---------+---------+-----------------+\n"
 	for _, eg := range m.EncGrps {
 		row := fmt.Sprintf(
-			"| %-4s | %-7d | %-7d | %-7d | %-15s |\n",
+			"| %-4s | %-7d | %-7d | %-7d | %-4s | %-15s |\n",
 			eg.ID.String(),
 			eg.Size,
 			eg.Free,
 			eg.Used,
+			eg.Status.String(),
 			ids2str(eg.Vols),
 		)
 		out += row

@@ -80,6 +80,12 @@ func (h *handlers) Rebalance(req *nilrpc.RebalanceRequest, res *nilrpc.Rebalance
 	ctxLogger.Info("do rebalance")
 	if err := h.rebalance(); err != nil {
 		ctxLogger.Error(err)
+		return err
+	}
+
+	if err := h.updateClusterMap(); err != nil {
+		ctxLogger.Error(err)
+		return err
 	}
 
 	return nil

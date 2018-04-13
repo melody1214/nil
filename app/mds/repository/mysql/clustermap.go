@@ -92,6 +92,77 @@ func (s *clustermapStore) FindAllVolumes(txid repository.TxID) (vols []cmap.Volu
 	return
 }
 
+func (s *clustermapStore) FindAllEncGrps(txid repository.TxID) (egs []cmap.EncodingGroup, err error) {
+	q := fmt.Sprintf(
+		`
+		SELECT
+			eg_id,
+			eg_status
+		FROM
+			encoding_group
+		`,
+	)
+
+	var rows *sql.Rows
+	rows, err = s.Query(txid, q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	egs = make([]cmap.EncodingGroup, 0)
+	for rows.Next() {
+		eg := cmap.EncodingGroup{}
+
+		if err = rows.Scan(&eg.ID, &eg.Status); err != nil {
+			return nil, err
+		}
+
+		if eg.Vols, err = s.FindAllEncGrpVols(txid, eg.ID); err != nil {
+			return nil, err
+		}
+
+		egs = append(egs, eg)
+	}
+
+	return
+}
+
+func (s *clustermapStore) FindAllEncGrpVols(txid repository.TxID, id cmap.ID) (vols []cmap.ID, err error) {
+	q := fmt.Sprintf(
+		`
+		SELECT
+			egv_volume
+		FROM
+			encoding_group_volume
+		WHERE
+			egv_encoding_group = '%s'
+		ORDER BY 
+			egv_role DESC
+		`, id.String(),
+	)
+
+	var rows *sql.Rows
+	rows, err = s.Query(txid, q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	vols = make([]cmap.ID, 0)
+	for rows.Next() {
+		var volID cmap.ID
+
+		if err = rows.Scan(&volID); err != nil {
+			return nil, err
+		}
+
+		vols = append(vols, volID)
+	}
+
+	return
+}
+
 func (s *clustermapStore) GetNewClusterMapVer(txid repository.TxID) (cmap.Version, error) {
 	q := fmt.Sprintf(
 		`

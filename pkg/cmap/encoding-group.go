@@ -1,10 +1,33 @@
 package cmap
 
+// EncodingGroupStatus is the status of the node.
+type EncodingGroupStatus string
+
+const (
+	// EGAlive : healthy node
+	EGAlive EncodingGroupStatus = "alive"
+	// EGSuspect : maybe faulty
+	EGSuspect = "suspect"
+	// EGFaulty : faulty
+	EGFaulty = "faulty"
+)
+
+// String returns a string of the node status.
+func (s EncodingGroupStatus) String() string {
+	switch s {
+	case EGAlive, EGSuspect, EGFaulty:
+		return string(s)
+	default:
+		return unknown
+	}
+}
+
 // EncodingGroup is the logical group for making local parity.
 type EncodingGroup struct {
-	ID   ID    `xml:"id"`
-	Size int64 `xml:"size"`
-	Used int64 `xml:"used"`
-	Free int64 `xml:"free"`
-	Vols []ID  `xml:"volume"`
+	ID     ID                  `xml:"id"`
+	Status EncodingGroupStatus `xml:"status"`
+	Size   int64               `xml:"size"`
+	Used   int64               `xml:"used"`
+	Free   int64               `xml:"free"`
+	Vols   []ID                `xml:"volume"`
 }

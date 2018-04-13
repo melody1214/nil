@@ -9,6 +9,7 @@ import (
 type Repository interface {
 	FindAllNodes(txid repository.TxID) ([]cmap.Node, error)
 	FindAllVolumes(txid repository.TxID) (vols []cmap.Volume, err error)
+	FindAllEncGrps(txid repository.TxID) (EngGrps []cmap.EncodingGroup, err error)
 	GetNewClusterMapVer(txid repository.TxID) (cmap.Version, error)
 	Begin() (repository.TxID, error)
 	Rollback(repository.TxID) error
