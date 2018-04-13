@@ -153,6 +153,8 @@ function runregion() {
         MDSBASEPORT=$((MDSBASEPORT + 1))
     done
 
+    sleep 3
+
     # Create ds.
     for i in $(eval echo "{1..$numds}"); do
         local port=$DSBASEPORT

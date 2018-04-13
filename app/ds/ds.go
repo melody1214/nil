@@ -68,7 +68,10 @@ func Bootstrap(cfg config.Ds) error {
 
 	// Setup each usecase handlers.
 	adminHandlers := admin.NewHandlers(&cfg, clusterMap, adminStore)
-	objectHandlers := object.NewHandlers(clusterMap, requestEventFactory, objectStore)
+	objectHandlers, err := object.NewHandlers(clusterMap, requestEventFactory, objectStore)
+	if err != nil {
+		return errors.Wrap(err, "failed to setup object handler")
+	}
 	membershipHandlers := membership.NewHandlers(&cfg)
 	clustermapService := clustermap.NewService(clusterMap)
 

@@ -33,6 +33,7 @@ const (
 	MdsAdminGetAllVolume
 	MdsAdminAddUser
 	MdsAdminRegisterVolume
+	MdsAdminGetClusterConfig
 
 	// MDS auth domain methods.
 	MdsAuthGetCredential
@@ -74,6 +75,8 @@ func (m MethodName) String() string {
 		return MdsAdminPrefix + "." + "AddUser"
 	case MdsAdminRegisterVolume:
 		return MdsAdminPrefix + "." + "RegisterVolume"
+	case MdsAdminGetClusterConfig:
+		return MdsAdminPrefix + "." + "GetClusterConfig"
 
 	case MdsAuthGetCredential:
 		return MdsAuthPrefix + "." + "GetCredential"
@@ -223,6 +226,11 @@ type ObjectGetResponse struct {
 	EncodingGroup         int64
 	EncodingGroupVolumeID int64
 	DsID                  int64
+}
+
+type GetClusterConfigRequest struct{}
+type GetClusterConfigResponse struct {
+	LocalParityShards int
 }
 
 // Dial dials with the given rpc type connection to the address.

@@ -6,24 +6,30 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/rpc"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/chanyoung/nil/app/ds/repository"
 	"github.com/chanyoung/nil/pkg/cmap"
+	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/security"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/chanyoung/nil/pkg/util/uuid"
+	"github.com/pkg/errors"
 )
 
-type encoder struct {
+type endec struct {
 	chunkMap map[string]*chunkMap
 	emap     map[string]encodeGroup
 	cMap     *cmap.Controller
 	s        Repository
 	q        *queue
 	pushCh   chan interface{}
+
+	// Configurations.
+	localParityShards int
 }
 
 type chunkMap struct {
@@ -31,8 +37,8 @@ type chunkMap struct {
 	seq     int
 }
 
-func newEncoder(cMap *cmap.Controller, s Repository) *encoder {
-	return &encoder{
+func newEncoder(cMap *cmap.Controller, s Repository) (*endec, error) {
+	ed := &endec{
 		chunkMap: make(map[string]*chunkMap),
 		emap:     make(map[string]encodeGroup),
 		cMap:     cMap,
@@ -40,9 +46,14 @@ func newEncoder(cMap *cmap.Controller, s Repository) *encoder {
 		q:        newRequestsQueue(),
 		pushCh:   make(chan interface{}, 1),
 	}
+
+	if err := ed.getConfigs(); err != nil {
+		return nil, err
+	}
+	return ed, nil
 }
 
-func (e *encoder) Run() {
+func (e *endec) Run() {
 	updateMapNoti := time.NewTicker(5 * time.Second)
 
 	for {
@@ -55,13 +66,13 @@ func (e *encoder) Run() {
 	}
 }
 
-func (e *encoder) Push(r *request) {
+func (e *endec) Push(r *request) {
 	e.q.push(r)
 	r.wg.Add(1)
 	e.pushCh <- nil
 }
 
-func (e *encoder) doAll() {
+func (e *endec) doAll() {
 	for {
 		if r := e.q.pop(); r != nil {
 			e.do(r)
@@ -72,10 +83,10 @@ func (e *encoder) doAll() {
 	}
 }
 
-func (e *encoder) do(r *request) {
+func (e *endec) do(r *request) {
 	defer r.wg.Done()
 
-	ctxLogger := mlog.GetMethodLogger(logger, "encoder.do")
+	ctxLogger := mlog.GetMethodLogger(logger, "endec.do")
 
 	lcid := r.r.Header.Get("Local-Chain-Id")
 	lc, ok := e.emap[lcid]
@@ -229,7 +240,7 @@ func (e *encoder) do(r *request) {
 	ctxLogger.Infof("%+v", string(b))
 }
 
-func (e *encoder) encode(chunkmap *chunkMap, volID, lgid string) {
+func (e *endec) encode(chunkmap *chunkMap, volID, lgid string) {
 	ctxLogger := mlog.GetMethodLogger(logger, "encode.encode")
 	ctxLogger.Info("start encoding")
 
@@ -350,4 +361,28 @@ func (e *encoder) encode(chunkmap *chunkMap, volID, lgid string) {
 	e.s.Push(req3)
 
 	ctxLogger.Info("finish encoding")
+}
+
+func (e *endec) getConfigs() error {
+	mds, err := e.cMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
+	if err != nil {
+		return errors.Wrap(err, "failed to search alive mds")
+	}
+
+	conn, err := nilrpc.Dial(mds.Addr, nilrpc.RPCNil, time.Duration(2*time.Second))
+	if err != nil {
+		return errors.Wrap(err, "failed to dial to mds")
+	}
+	defer conn.Close()
+
+	req := &nilrpc.GetClusterConfigRequest{}
+	res := &nilrpc.GetClusterConfigResponse{}
+
+	cli := rpc.NewClient(conn)
+	if err := cli.Call(nilrpc.MdsAdminGetClusterConfig.String(), req, res); err != nil {
+		return errors.Wrap(err, "failed to rpc call to mds")
+	}
+
+	e.localParityShards = res.LocalParityShards
+	return nil
 }

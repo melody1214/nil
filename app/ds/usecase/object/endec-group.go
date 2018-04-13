@@ -26,8 +26,8 @@ type encodeGroup struct {
 	parityVolNodeAddr string
 }
 
-func (e *encoder) updateGroup() {
-	ctxLogger := mlog.GetMethodLogger(logger, "encoder.updateGroup")
+func (e *endec) updateGroup() {
+	ctxLogger := mlog.GetMethodLogger(logger, "endec.updateGroup")
 
 	mds, err := e.cMap.SearchCall().Type(cmap.MDS).Do()
 	if err != nil {

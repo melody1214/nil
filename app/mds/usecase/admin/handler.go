@@ -141,6 +141,30 @@ func (h *handlers) GetAllVolume(req *nilrpc.GetAllVolumeRequest, res *nilrpc.Get
 	return nil
 }
 
+func (h *handlers) GetClusterConfig(req *nilrpc.GetClusterConfigRequest, res *nilrpc.GetClusterConfigResponse) error {
+	q := fmt.Sprintf(
+		`
+		SELECT
+			cl_local_parity_shards
+		FROM
+			cluster
+		ORDER BY cl_id DESC
+		`,
+	)
+
+	row := h.store.QueryRow(repository.NotTx, q)
+	if row == nil {
+		return fmt.Errorf("mysql not connected yet")
+	}
+
+	err := row.Scan(&res.LocalParityShards)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // AddUser adds a new user with the given name.
 func (h *handlers) AddUser(req *nilrpc.AddUserRequest, res *nilrpc.AddUserResponse) error {
 	ak := security.NewAPIKey()
@@ -253,5 +277,6 @@ type Handlers interface {
 	GetLocalChain(req *nilrpc.GetLocalChainRequest, res *nilrpc.GetLocalChainResponse) error
 	GetAllChain(req *nilrpc.GetAllChainRequest, res *nilrpc.GetAllChainResponse) error
 	GetAllVolume(req *nilrpc.GetAllVolumeRequest, res *nilrpc.GetAllVolumeResponse) error
+	GetClusterConfig(req *nilrpc.GetClusterConfigRequest, res *nilrpc.GetClusterConfigResponse) error
 	RegisterVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.RegisterVolumeResponse) error
 }
