@@ -10,34 +10,9 @@ import (
 	"github.com/chanyoung/nil/pkg/util/mlog"
 )
 
-func (h *handlers) needRebalance() bool {
-	ctxLogger := mlog.GetMethodLogger(logger, "handlers.needRebalance")
-
-	q := fmt.Sprintf(
-		`
-		SELECT
-			vl_encoding_group,
-			vl_max_encoding_group
-		FROM
-			volume
-		`,
-	)
-
-	rows, err := h.store.Query(repository.NotTx, q)
-	if err != nil {
-		ctxLogger.Error(err)
-		return false
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var chain, maxChain int
-		if err = rows.Scan(&chain, &maxChain); err != nil {
-			ctxLogger.Error(err)
-			return false
-		}
-
-		if isVolumeUnbalanced(chain, maxChain) {
+func (h *handlers) needRebalance(vols []*Volume) bool {
+	for _, v := range vols {
+		if v.isUnbalanced() {
 			return true
 		}
 	}
@@ -57,71 +32,26 @@ func isVolumeUnbalanced(chain, maxChain int) bool {
 	return (chain*100)/maxChain < 70
 }
 
-func (h *handlers) rebalance() error {
+func (h *handlers) rebalance(vols []*Volume) error {
 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.rebalance")
 
-	speedLv := []string{"low", "mid", "high"}
-
+	speedLv := []string{"Low", "Mid", "High"}
 	for _, speed := range speedLv {
-		if err := h.rebalanceSpeedGroup(speed); err != nil {
-			ctxLogger.Error(err)
-		}
-	}
+		sVols := make([]*Volume, 0)
+		for _, v := range vols {
+			if v.Speed != speed {
+				continue
+			}
 
-	return nil
-}
-
-func (h *handlers) rebalanceSpeedGroup(speed string) error {
-	ctxLogger := mlog.GetMethodLogger(logger, "handlers.rebalanceSpeedGroup")
-
-	q := fmt.Sprintf(
-		`
-		SELECT
-			vl_id,
-			vl_status,
-			vl_node,
-			vl_used,
-			vl_encoding_group,
-			vl_max_encoding_group
-		FROM
-			volume
-		WHERE
-			vl_speed = '%s'
-		ORDER BY rand();
-		`, speed,
-	)
-
-	rows, err := h.store.Query(repository.NotTx, q)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-
-	vols := make([]*Volume, 0)
-	for rows.Next() {
-		vol := &Volume{
-			Unbalanced: false,
-		}
-		if err = rows.Scan(
-			&vol.ID,
-			&vol.Status,
-			&vol.NodeID,
-			&vol.Used,
-			&vol.Chain,
-			&vol.MaxChain,
-		); err != nil {
-			return err
+			sVols = append(sVols, v)
 		}
 
-		if isVolumeUnbalanced(vol.Chain, vol.MaxChain) {
-			vol.Unbalanced = true
-		}
-		vols = append(vols, vol)
-	}
+		for _, v := range sVols {
+			if v.isUnbalanced() == false {
+				continue
+			}
 
-	for _, vol := range vols {
-		if vol.Unbalanced {
-			if err := h.doRebalance(vol, vols); err != nil {
+			if err := h.doRebalance(v, sVols); err != nil {
 				ctxLogger.Error(err)
 			}
 		}

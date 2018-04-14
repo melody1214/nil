@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/swim"
@@ -72,13 +73,18 @@ func (h *handlers) Rebalance(req *nilrpc.RebalanceRequest, res *nilrpc.Rebalance
 
 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.Rebalance")
 
-	if !h.needRebalance() {
+	vols, err := h.store.FindAllVolumes(repository.NotTx)
+	if err != nil {
+		return err
+	}
+
+	if h.needRebalance(vols) == false {
 		ctxLogger.Info("no need rebalance")
 		return nil
 	}
 
 	ctxLogger.Info("do rebalance")
-	if err := h.rebalance(); err != nil {
+	if err := h.rebalance(vols); err != nil {
 		ctxLogger.Error(err)
 		return err
 	}

@@ -11,7 +11,6 @@ import (
 	"github.com/chanyoung/nil/app/mds/usecase/consensus"
 	"github.com/chanyoung/nil/app/mds/usecase/membership"
 	"github.com/chanyoung/nil/app/mds/usecase/object"
-	"github.com/chanyoung/nil/app/mds/usecase/recovery"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
@@ -201,10 +200,5 @@ func NewMembershipRepository(s *Store) membership.Repository {
 
 // NewObjectRepository returns a new instance of a mysql object repository.
 func NewObjectRepository(s *Store) object.Repository {
-	return s
-}
-
-// NewRecoveryRepository returns a new instance of a mysql recovery repository.
-func NewRecoveryRepository(s *Store) recovery.Repository {
 	return s
 }
