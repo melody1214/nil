@@ -5,6 +5,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/security"
 	"github.com/chanyoung/nil/pkg/swim"
 )
@@ -176,16 +177,9 @@ type GetLocalChainResponse struct {
 	ParityNodeID   int64
 }
 
-type Chain struct {
-	ID             int64
-	FirstVolumeID  int64
-	SecondVolumeID int64
-	ThirdVolumeID  int64
-	ParityVolumeID int64
-}
 type GetAllChainRequest struct{}
 type GetAllChainResponse struct {
-	Chains []Chain
+	EncGrps []cmap.EncodingGroup
 }
 
 type Volume struct {

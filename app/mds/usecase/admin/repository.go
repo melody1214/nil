@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	"github.com/chanyoung/nil/app/mds/repository"
+	"github.com/chanyoung/nil/pkg/cmap"
 )
 
 // Repository provides access to admin database.
@@ -13,4 +14,8 @@ type Repository interface {
 	Query(txid repository.TxID, query string, args ...interface{}) (*sql.Rows, error)
 	QueryRow(txid repository.TxID, query string, args ...interface{}) *sql.Row
 	Execute(txid repository.TxID, query string) (sql.Result, error)
+	GetAllEncodingGroups(txid repository.TxID) ([]cmap.EncodingGroup, error)
+	Begin() (repository.TxID, error)
+	Rollback(repository.TxID) error
+	Commit(repository.TxID) error
 }

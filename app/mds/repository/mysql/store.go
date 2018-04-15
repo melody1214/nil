@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/chanyoung/nil/app/mds/repository"
-	"github.com/chanyoung/nil/app/mds/usecase/admin"
 	"github.com/chanyoung/nil/app/mds/usecase/consensus"
 	"github.com/chanyoung/nil/app/mds/usecase/membership"
 	"github.com/chanyoung/nil/app/mds/usecase/object"
@@ -181,11 +180,6 @@ func (s *Store) Rollback(txid repository.TxID) error {
 // Auto remove the transaction only when the transaction has been succeeded.
 func (s *Store) Commit(txid repository.TxID) error {
 	return s.db.commit(txid)
-}
-
-// NewAdminRepository returns a new instance of a mysql admin repository.
-func NewAdminRepository(s *Store) admin.Repository {
-	return s
 }
 
 // NewConsensusRepository returns a new instance of a mysql cluster map repository.

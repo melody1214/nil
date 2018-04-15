@@ -2,7 +2,6 @@ package object
 
 import (
 	"net/rpc"
-	"strconv"
 	"time"
 
 	"github.com/chanyoung/nil/pkg/cmap"
@@ -11,19 +10,9 @@ import (
 )
 
 type encodeGroup struct {
-	id                int64
-	firstVolID        int64
-	firstVolNodeID    int64
-	firstVolNodeAddr  string
-	secondVolID       int64
-	secondVolNodeID   int64
-	secondVolNodeAddr string
-	thirdVolID        int64
-	thirdVolNodeID    int64
-	thirdVolNodeAddr  string
-	parityVolID       int64
-	parityVolNodeID   int64
-	parityVolNodeAddr string
+	cmap.EncodingGroup
+	nodeIDs   []int64
+	nodeAddrs []string
 }
 
 func (e *endec) updateGroup() {
@@ -64,67 +53,28 @@ func (e *endec) updateGroup() {
 		return
 	}
 
-	for _, c := range cres.Chains {
-		g := encodeGroup{
-			id:          c.ID,
-			firstVolID:  c.FirstVolumeID,
-			secondVolID: c.SecondVolumeID,
-			thirdVolID:  c.ThirdVolumeID,
-			parityVolID: c.ParityVolumeID,
+	for _, eg := range cres.EncGrps {
+		newEg := encodeGroup{
+			EncodingGroup: eg,
+			nodeIDs:       make([]int64, len(eg.Vols)),
+			nodeAddrs:     make([]string, len(eg.Vols)),
 		}
 
-		id, ok := volumeMap[c.FirstVolumeID]
-		if !ok {
-			ctxLogger.Error("no such first volume")
-			continue
+		for i, v := range eg.Vols {
+			id, ok := volumeMap[v.Int64()]
+			if ok == false {
+				ctxLogger.Errorf("no such volume %d", v.Int64())
+				continue
+			}
+			n, err := e.cMap.SearchCall().ID(cmap.ID(id)).Do()
+			if err != nil {
+				ctxLogger.Error(err)
+				continue
+			}
+			newEg.nodeIDs[i] = id
+			newEg.nodeAddrs[i] = n.Addr
 		}
-		n, err := e.cMap.SearchCall().ID(cmap.ID(id)).Do()
-		if err != nil {
-			ctxLogger.Error(err)
-			continue
-		}
-		g.firstVolNodeID = id
-		g.firstVolNodeAddr = n.Addr
 
-		id, ok = volumeMap[c.SecondVolumeID]
-		if !ok {
-			ctxLogger.Error("no such second volume")
-			continue
-		}
-		n, err = e.cMap.SearchCall().ID(cmap.ID(id)).Do()
-		if err != nil {
-			ctxLogger.Error(err)
-			continue
-		}
-		g.secondVolNodeID = id
-		g.secondVolNodeAddr = n.Addr
-
-		id, ok = volumeMap[c.ThirdVolumeID]
-		if !ok {
-			ctxLogger.Error("no such third volume")
-			continue
-		}
-		n, err = e.cMap.SearchCall().ID(cmap.ID(id)).Do()
-		if err != nil {
-			ctxLogger.Error(err)
-			continue
-		}
-		g.thirdVolNodeID = id
-		g.thirdVolNodeAddr = n.Addr
-
-		id, ok = volumeMap[c.ParityVolumeID]
-		if !ok {
-			ctxLogger.Error("no such volume")
-			continue
-		}
-		n, err = e.cMap.SearchCall().ID(cmap.ID(id)).Do()
-		if err != nil {
-			ctxLogger.Error(err)
-			continue
-		}
-		g.parityVolNodeID = id
-		g.parityVolNodeAddr = n.Addr
-
-		e.emap[strconv.FormatInt(g.id, 10)] = g
+		e.emap[newEg.ID.String()] = newEg
 	}
 }

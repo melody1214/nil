@@ -58,8 +58,6 @@ func (h *handlers) Put(req *nilrpc.ObjectPutRequest, res *nilrpc.ObjectPutRespon
 }
 
 func (h *handlers) Get(req *nilrpc.ObjectGetRequest, res *nilrpc.ObjectGetResponse) error {
-	ctxLogger := mlog.GetMethodLogger(logger, "handlers.Get")
-
 	q := fmt.Sprintf(
 		`
 		SELECT
@@ -76,35 +74,21 @@ func (h *handlers) Get(req *nilrpc.ObjectGetRequest, res *nilrpc.ObjectGetRespon
 		return fmt.Errorf("mysql not connected yet")
 	}
 
-	var v string
-	err := row.Scan(&res.EncodingGroup, &v)
+	var role string
+	err := row.Scan(&res.EncodingGroup, &role)
 	if err != nil {
-		return err
-	}
-
-	var col string
-	switch v {
-	case "first":
-		col = "eg_first_volume"
-	case "second":
-		col = "eg_second_volume"
-	case "third":
-		col = "eg_third_volume"
-	default:
-		err = fmt.Errorf("object is existed but failed to retrieve proper volume from encoding group")
-		ctxLogger.Error(err)
 		return err
 	}
 
 	q = fmt.Sprintf(
 		`
 		SELECT
-			%s
+			egv_volume
 		FROM
-			encoding_group
+			encoding_group_volume
 		WHERE
-			eg_id = '%d'
-		`, col, res.EncodingGroup,
+			egv_encoding_group = '%d' and egv_role = '%s'
+		`, res.EncodingGroup, role,
 	)
 
 	row = h.store.QueryRow(repository.NotTx, q)

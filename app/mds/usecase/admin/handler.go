@@ -12,6 +12,7 @@ import (
 	"github.com/chanyoung/nil/pkg/security"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -47,9 +48,11 @@ func (h *handlers) GetLocalChain(req *nilrpc.GetLocalChainRequest, res *nilrpc.G
 	q := fmt.Sprintf(
 		`
 		SELECT
-	        eg_id, eg_parity_volume
+	        egv_encoding_group, egv_volume
 		FROM
-	        encoding_group
+	        encoding_group_volume
+		WHERE
+			egv_role = '0'
 	    ORDER BY rand() limit 1;
 		`,
 	)
@@ -68,7 +71,7 @@ func (h *handlers) GetLocalChain(req *nilrpc.GetLocalChainRequest, res *nilrpc.G
 		`
 		SELECT
 			vl_node
-			FROM
+		FROM
 			volume
  		WHERE
 			vl_id = '%d'
@@ -84,29 +87,14 @@ func (h *handlers) GetLocalChain(req *nilrpc.GetLocalChainRequest, res *nilrpc.G
 }
 
 func (h *handlers) GetAllChain(req *nilrpc.GetAllChainRequest, res *nilrpc.GetAllChainResponse) error {
-	q := fmt.Sprintf(
-		`
-		SELECT
-			eg_id, eg_first_volume, eg_second_volume, eg_third_volume, eg_parity_volume
-		FROM
-			encoding_group
-		`,
-	)
-
-	rows, err := h.store.Query(repository.NotTx, q)
+	txid, err := h.store.Begin()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to start transaction")
 	}
-	defer rows.Close()
 
-	for rows.Next() {
-		c := nilrpc.Chain{}
-
-		if err := rows.Scan(&c.ID, &c.FirstVolumeID, &c.SecondVolumeID, &c.ThirdVolumeID, &c.ParityVolumeID); err != nil {
-			return err
-		}
-
-		res.Chains = append(res.Chains, c)
+	res.EncGrps, err = h.store.GetAllEncodingGroups(txid)
+	if err != nil {
+		return errors.Wrap(err, "failed to get all encoding groups")
 	}
 
 	return nil

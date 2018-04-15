@@ -68,15 +68,7 @@ var generateSQLBase = []string{
 		CREATE TABLE IF NOT EXISTS encoding_group (
 			eg_id int unsigned NOT NULL AUTO_INCREMENT,
 			eg_status varchar(32) CHARACTER SET ascii NOT NULL,
-			eg_first_volume int unsigned,
-			eg_second_volume int unsigned,
-			eg_third_volume int unsigned,
-			eg_parity_volume int unsigned,
-			PRIMARY KEY (eg_id),
-			FOREIGN KEY (eg_first_volume) REFERENCES volume (vl_id),
-			FOREIGN KEY (eg_second_volume) REFERENCES volume (vl_id),
-			FOREIGN KEY (eg_third_volume) REFERENCES volume (vl_id),
-			FOREIGN KEY (eg_parity_volume) REFERENCES volume (vl_id)
+			PRIMARY KEY (eg_id)
 		) ENGINE=InnoDB DEFAULT CHARSET=ascii
 	`,
 	`

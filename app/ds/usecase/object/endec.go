@@ -150,18 +150,19 @@ func (e *endec) do(r *request) {
 	}
 
 	addr := "https://"
-	switch e.chunkMap[lcid].seq {
-	case 0:
-		addr = addr + lc.firstVolNodeAddr
-	case 1:
-		addr = addr + lc.secondVolNodeAddr
-	case 2:
-		addr = addr + lc.thirdVolNodeAddr
-	default:
+	chunk, ok := e.chunkMap[lcid]
+	if ok == false {
+		ctxLogger.Error("no such chunk seq")
+		r.err = fmt.Errorf("chunk seq error")
+		return
+	}
+	if len(lc.nodeAddrs) < chunk.seq+1 {
 		ctxLogger.Error("no such volume seq")
 		r.err = fmt.Errorf("vol seq error")
 		return
 	}
+	addr = addr + lc.nodeAddrs[chunk.seq]
+
 	addr = addr + r.r.RequestURI
 
 	pipeReader, pipeWriter := io.Pipe()
@@ -171,22 +172,14 @@ func (e *endec) do(r *request) {
 		return
 	}
 
-	var volID string
-	switch e.chunkMap[lcid].seq {
-	case 0:
-		volID = strconv.FormatInt(lc.firstVolID, 10)
-		copyReq.Header.Add("Encoding-Group-Volume", "first")
-	case 1:
-		volID = strconv.FormatInt(lc.secondVolID, 10)
-		copyReq.Header.Add("Encoding-Group-Volume", "second")
-	case 2:
-		volID = strconv.FormatInt(lc.thirdVolID, 10)
-		copyReq.Header.Add("Encoding-Group-Volume", "third")
-	default:
+	if len(lc.nodeIDs) < chunk.seq+1 {
 		ctxLogger.Error("no such volume seq")
 		r.err = fmt.Errorf("vol seq error")
 		return
 	}
+	volID := strconv.FormatInt(lc.nodeIDs[chunk.seq], 10)
+	copyReq.Header.Add("Encoding-Group-Volume", volID)
+
 	copyReq.Header.Add("Local-Chain-Id", lcid)
 	copyReq.Header.Add("Volume-Id", volID)
 	copyReq.Header.Add("Chunk-Id", e.chunkMap[lcid].chunkID)
