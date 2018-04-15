@@ -84,7 +84,7 @@ func (h *handlers) Rebalance(req *nilrpc.RebalanceRequest, res *nilrpc.Rebalance
 	}
 
 	ctxLogger.Info("do rebalance")
-	if err := h.rebalance(vols); err != nil {
+	if err := h.rebalanceWithinSameVolumeSpeedGroup(vols); err != nil {
 		ctxLogger.Error(err)
 		return err
 	}

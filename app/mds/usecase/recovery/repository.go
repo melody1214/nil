@@ -13,4 +13,8 @@ type Repository interface {
 	QueryRow(txid repository.TxID, query string, args ...interface{}) *sql.Row
 	Execute(txid repository.TxID, query string) (sql.Result, error)
 	FindAllVolumes(txid repository.TxID) ([]*Volume, error)
+	MakeNewEncodingGroup(txid repository.TxID, encGrp *EncodingGroup) error
+	Begin() (repository.TxID, error)
+	Rollback(repository.TxID) error
+	Commit(repository.TxID) error
 }

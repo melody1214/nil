@@ -2,7 +2,7 @@ package recovery
 
 import "github.com/chanyoung/nil/pkg/cmap"
 
-type localChain struct {
+type EncodingGroup struct {
 	cmap.EncodingGroup
 	firstVol  cmap.ID
 	secondVol cmap.ID

@@ -1,14 +1,14 @@
 package recovery
 
 import (
-	"database/sql"
 	"fmt"
 	"math/rand"
 	"sort"
+	"strconv"
 
-	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/util/mlog"
+	"github.com/pkg/errors"
 )
 
 func (h *handlers) needRebalance(vols []*Volume) bool {
@@ -33,7 +33,7 @@ func isVolumeUnbalanced(chain, maxChain int) bool {
 	return (chain*100)/maxChain < 70
 }
 
-func (h *handlers) rebalance(vols []*Volume) error {
+func (h *handlers) rebalanceWithinSameVolumeSpeedGroup(vols []*Volume) error {
 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.rebalance")
 
 	speedLv := []cmap.VolumeSpeed{cmap.Low, cmap.Mid, cmap.High}
@@ -47,14 +47,22 @@ func (h *handlers) rebalance(vols []*Volume) error {
 			sVols = append(sVols, v)
 		}
 
-		for _, v := range sVols {
-			if v.isUnbalanced() == false {
-				continue
-			}
+		if err := h.rebalanceVolumeGroup(sVols); err != nil {
+			ctxLogger.Error(err)
+		}
+	}
 
-			if err := h.doRebalance(v, sVols); err != nil {
-				ctxLogger.Error(err)
-			}
+	return nil
+}
+
+func (h *handlers) rebalanceVolumeGroup(vols []*Volume) error {
+	for _, v := range vols {
+		if v.isUnbalanced() == false {
+			continue
+		}
+
+		if err := h.doRebalance(v, vols); err != nil {
+			return err
 		}
 	}
 
@@ -62,163 +70,106 @@ func (h *handlers) rebalance(vols []*Volume) error {
 }
 
 func (h *handlers) doRebalance(target *Volume, group []*Volume) error {
-	const localChainNum = 4
-
 	perm := rand.Perm(len(group))
 	shuffledGroup := make([]*Volume, len(group))
 	for i, v := range perm {
 		shuffledGroup[v] = group[i]
 	}
 
-	if len(shuffledGroup) < localChainNum {
+	shards, err := strconv.Atoi(h.cfg.LocalParityShards)
+	if err != nil {
+		return errors.Wrap(err, "failed to parse local parity shards number")
+	}
+
+	// N shards + 1 xoring result.
+	if len(shuffledGroup) < shards+1 {
 		return fmt.Errorf("lack of volumes for rebalancing: %+v", group)
 	}
 	sort.Sort(ByFreeChain(shuffledGroup))
 
-	return h.newLocalChain(target, shuffledGroup)
+	return h.newEncodingGroup(target, shuffledGroup, shards)
 }
 
-func (h *handlers) newLocalChain(primary *Volume, vols []*Volume) error {
+func (h *handlers) pickOneNewEncodingGroupVolume(picked []*Volume, candidates []*Volume) (*Volume, error) {
+	if cap(picked) == len(picked) {
+		return nil, fmt.Errorf("selected encoding group is full")
+	}
+
+	for _, c := range candidates {
+		if isPicked(c, picked) {
+			continue
+		}
+
+		if c.Chain > c.MaxChain {
+			continue
+		}
+
+		return c, nil
+	}
+
+	return nil, fmt.Errorf("no available volume in the candidates")
+}
+
+func isPicked(target *Volume, picked []*Volume) bool {
+	for _, v := range picked {
+		if v == nil {
+			return false
+		}
+
+		if v.ID == target.ID {
+			return true
+		}
+	}
+	return false
+}
+
+func (h *handlers) newEncodingGroup(primary *Volume, vols []*Volume, shards int) error {
 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.newLocalChain")
 
-	const localChainNum = 4
-	if len(vols) < localChainNum {
-		return fmt.Errorf("lack of volumes for make local chain: %+v", vols)
+	// Pick volumes from candidates.
+	picked := make([]*Volume, 0, shards+1)
+	picked = append(picked, primary)
+	for i := 0; i < shards; i++ {
+		p, err := h.pickOneNewEncodingGroupVolume(picked, vols)
+		if err != nil {
+			return errors.Wrap(err, "failed to pick new volume")
+		}
+
+		picked = append(picked, p)
 	}
 
-	selected := make([]*Volume, 0)
-	selected = append(selected, primary)
-	c := localChain{
+	// Make encoding group.
+	eg := EncodingGroup{
 		EncodingGroup: cmap.EncodingGroup{
 			Status: cmap.EGAlive,
+			Vols:   make([]cmap.ID, shards+1),
 		},
-		parityVol: primary.ID,
-		firstVol:  -1,
-		secondVol: -1,
-		thirdVol:  -1,
+		parityVol: picked[0].ID,
+		firstVol:  picked[1].ID,
+		secondVol: picked[2].ID,
+		thirdVol:  picked[3].ID,
 	}
-	for _, v := range vols {
-		if v.ID == primary.ID {
-			continue
-		}
-
-		if v.Chain >= v.MaxChain {
-			continue
-		}
-
-		if c.firstVol < 0 {
-			sameNode := false
-			for _, s := range selected {
-				if v.NodeID == s.NodeID {
-					sameNode = true
-					break
-				}
-			}
-			if sameNode {
-				continue
-			}
-
-			selected = append(selected, v)
-			c.firstVol = v.ID
-			continue
-		}
-
-		if c.secondVol < 0 {
-			sameNode := false
-			for _, s := range selected {
-				if v.NodeID == s.NodeID {
-					sameNode = true
-					break
-				}
-			}
-			if sameNode {
-				continue
-			}
-
-			selected = append(selected, v)
-			c.secondVol = v.ID
-			continue
-		}
-
-		if c.thirdVol < 0 {
-			sameNode := false
-			for _, s := range selected {
-				if v.NodeID == s.NodeID {
-					sameNode = true
-					break
-				}
-			}
-			if sameNode {
-				continue
-			}
-
-			selected = append(selected, v)
-			c.thirdVol = v.ID
-			continue
-		}
-
-		break
+	for i, p := range picked {
+		eg.Vols[i] = p.ID
 	}
 
-	if c.parityVol < 0 || c.firstVol < 0 || c.secondVol < 0 || c.thirdVol < 0 {
-		return fmt.Errorf("not enough free volumes to make local chain")
-	}
+	// TODO: prevent duplicated encoding group.
 
-	q := fmt.Sprintf(
-		`
-		SELECT
-			eg_id
-		FROM
-			encoding_group
-		WHERE
-			eg_first_volume = '%d' and
-			eg_second_volume = '%d' and
-			eg_third_volume = '%d' and
-			eg_parity_volume = '%d'
-		`, c.firstVol, c.secondVol, c.thirdVol, c.parityVol,
-	)
-
-	var exist int
-	err := h.store.QueryRow(repository.NotTx, q).Scan(&exist)
-	if err == nil {
-		return fmt.Errorf("already have same local chain: %+v", c)
-	} else if err == sql.ErrNoRows {
-		// There is no duplicate local chain.
-	} else {
-		return err
-	}
-
-	q = fmt.Sprintf(
-		`
-		INSERT INTO encoding_group (eg_status, eg_first_volume, eg_second_volume, eg_third_volume, eg_parity_volume)
-		VALUES ('%s', '%d', '%d', '%d', '%d')
-		`, c.Status.String(), c.firstVol, c.secondVol, c.thirdVol, c.parityVol,
-	)
-	_, err = h.store.Execute(repository.NotTx, q)
+	// Update repository.
+	txid, err := h.store.Begin()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to start transaction")
+	}
+	err = h.store.MakeNewEncodingGroup(txid, &eg)
+	if err != nil {
+		h.store.Rollback(txid)
+		return errors.Wrap(err, "failed to make new encoding group")
+	}
+	if err := h.store.Commit(txid); err != nil {
+		h.store.Rollback(txid)
+		return errors.Wrap(err, "failed to commit transaction")
 	}
 
-	ctxLogger.Errorf("%+v", selected)
-	for _, v := range selected {
-		q := fmt.Sprintf(
-			`
-		UPDATE volume
-		SET vl_encoding_group=vl_encoding_group+1
-		WHERE vl_id in ('%d')
-		`, v.ID,
-		)
-
-		_, err := h.store.Execute(repository.NotTx, q)
-		if err != nil {
-			ctxLogger.Error(err)
-		}
-
-		// v.Chain++
-		v.Chain = v.Chain + 1
-	}
-
-	ctxLogger.Infof("create local chain %+v", c)
-
+	ctxLogger.Infof("create encoding group %+v", eg)
 	return nil
 }
