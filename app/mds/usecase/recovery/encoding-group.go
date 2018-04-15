@@ -1,10 +1,11 @@
 package recovery
 
+import "github.com/chanyoung/nil/pkg/cmap"
+
 type localChain struct {
-	id        int
-	status    string
-	firstVol  int
-	secondVol int
-	thirdVol  int
-	parityVol int
+	cmap.EncodingGroup
+	firstVol  cmap.ID
+	secondVol cmap.ID
+	thirdVol  cmap.ID
+	parityVol cmap.ID
 }

@@ -1,15 +1,14 @@
 package recovery
 
+import "github.com/chanyoung/nil/pkg/cmap"
+
 // Volume is an entity that represents a specific volume attached to ds.
 // It has some attributes for rebalancing.
 type Volume struct {
-	ID       int
-	Status   string
+	cmap.Volume
 	NodeID   int
-	Used     int
 	Chain    int
 	MaxChain int
-	Speed    string
 }
 
 // isUnbalanced checks if the volume has unbalanced encoding group ratio.

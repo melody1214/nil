@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	"github.com/chanyoung/nil/app/mds/repository"
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 )
 
@@ -35,7 +36,7 @@ func isVolumeUnbalanced(chain, maxChain int) bool {
 func (h *handlers) rebalance(vols []*Volume) error {
 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.rebalance")
 
-	speedLv := []string{"Low", "Mid", "High"}
+	speedLv := []cmap.VolumeSpeed{cmap.Low, cmap.Mid, cmap.High}
 	for _, speed := range speedLv {
 		sVols := make([]*Volume, 0)
 		for _, v := range vols {
@@ -88,7 +89,9 @@ func (h *handlers) newLocalChain(primary *Volume, vols []*Volume) error {
 	selected := make([]*Volume, 0)
 	selected = append(selected, primary)
 	c := localChain{
-		status:    "alive",
+		EncodingGroup: cmap.EncodingGroup{
+			Status: cmap.EGAlive,
+		},
 		parityVol: primary.ID,
 		firstVol:  -1,
 		secondVol: -1,
@@ -189,7 +192,7 @@ func (h *handlers) newLocalChain(primary *Volume, vols []*Volume) error {
 		`
 		INSERT INTO encoding_group (eg_status, eg_first_volume, eg_second_volume, eg_third_volume, eg_parity_volume)
 		VALUES ('%s', '%d', '%d', '%d', '%d')
-		`, c.status, c.firstVol, c.secondVol, c.thirdVol, c.parityVol,
+		`, c.Status.String(), c.firstVol, c.secondVol, c.thirdVol, c.parityVol,
 	)
 	_, err = h.store.Execute(repository.NotTx, q)
 	if err != nil {
