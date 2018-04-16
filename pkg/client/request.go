@@ -2,22 +2,7 @@ package client
 
 import "net/http"
 
-type RequestEvent interface {
-	// Getter
-	Protocol() Protocol
-	ResponseWriter() http.ResponseWriter
-	Request() *http.Request
-	AccessKey() string
-	Region() string
-	Bucket() string
-
-	// Method includes business logic.
-	Auth(secretKey string) bool
-
-	// Methods for handling errors.
-	SendSuccess()
-	SendInternalError()
-	SendIncorrectKey()
-	SendNoSuchKey()
-	SendInvalidURI()
+// Request is the client request for rest API calling.
+type Request interface {
+	Send() (*http.Response, error)
 }
