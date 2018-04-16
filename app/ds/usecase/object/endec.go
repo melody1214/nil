@@ -4,17 +4,16 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net"
-	"net/http"
 	"net/rpc"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/chanyoung/nil/app/ds/repository"
+	"github.com/chanyoung/nil/pkg/client"
+	cli "github.com/chanyoung/nil/pkg/client/request"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
-	"github.com/chanyoung/nil/pkg/security"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/chanyoung/nil/pkg/util/uuid"
 	"github.com/pkg/errors"
@@ -166,11 +165,11 @@ func (e *endec) do(r *request) {
 	addr = addr + r.r.RequestURI
 
 	pipeReader, pipeWriter := io.Pipe()
-	copyReq, err := http.NewRequest(r.r.Method, addr, pipeReader)
-	if err != nil {
-		r.err = err
-		return
-	}
+	// copyReq, err := http.NewRequest(r.r.Method, addr, pipeReader)
+	// if err != nil {
+	// 	r.err = err
+	// 	return
+	// }
 
 	if len(lc.nodeIDs) < chunk.seq+1 {
 		ctxLogger.Error("no such volume seq")
@@ -178,13 +177,13 @@ func (e *endec) do(r *request) {
 		return
 	}
 	volID := strconv.FormatInt(lc.nodeIDs[chunk.seq], 10)
-	copyReq.Header.Add("Encoding-Group-Volume", volID)
+	// copyReq.Header.Add("Encoding-Group-Volume", volID)
 
-	copyReq.Header.Add("Local-Chain-Id", lcid)
-	copyReq.Header.Add("Volume-Id", volID)
-	copyReq.Header.Add("Chunk-Id", e.chunkMap[lcid].chunkID)
-	copyReq.Header.Add("Md5", r.md5)
-	copyReq.ContentLength = osize
+	// copyReq.Header.Add("Local-Chain-Id", lcid)
+	// copyReq.Header.Add("Volume-Id", volID)
+	// copyReq.Header.Add("Chunk-Id", e.chunkMap[lcid].chunkID)
+	// copyReq.Header.Add("Md5", r.md5)
+	// copyReq.ContentLength = osize
 
 	req = &repository.Request{
 		Op:     repository.Read,
@@ -211,18 +210,30 @@ func (e *endec) do(r *request) {
 		}
 	}(req)
 
-	var netTransport = &http.Transport{
-		Dial:                (&net.Dialer{Timeout: 5 * time.Second}).Dial,
-		TLSClientConfig:     security.DefaultTLSConfig(),
-		TLSHandshakeTimeout: 5 * time.Second,
-	}
+	// var netTransport = &http.Transport{
+	// 	Dial:                (&net.Dialer{Timeout: 5 * time.Second}).Dial,
+	// 	TLSClientConfig:     security.DefaultTLSConfig(),
+	// 	TLSHandshakeTimeout: 5 * time.Second,
+	// }
 
-	var netClient = &http.Client{
-		Timeout:   10 * time.Second,
-		Transport: netTransport,
-	}
+	// var netClient = &http.Client{
+	// 	Timeout:   10 * time.Second,
+	// 	Transport: netTransport,
+	// }
 
-	resp, err := netClient.Do(copyReq)
+	headers := client.NewHeaders()
+	headers.SetEncodingGroupVolume(volID)
+	headers.SetLocalChainID(lcid)
+	headers.SetVolumeID(volID)
+	headers.SetChunkID(e.chunkMap[lcid].chunkID)
+	headers.SetMD5(r.md5)
+	copyReq, err := cli.NewRequest(client.WriteToFollower, r.r.Method, addr, pipeReader, headers, osize, cli.WithS3(true))
+	if err != nil {
+		r.err = err
+		return
+	}
+	// resp, err := netClient.Do(copyReq)
+	resp, err := copyReq.Send()
 	if err != nil {
 		r.err = err
 		ctxLogger.Errorf("%+v", r.err)
