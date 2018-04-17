@@ -2,8 +2,10 @@ package membership
 
 import (
 	"net/rpc"
+	"strconv"
 	"time"
 
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/swim"
@@ -16,6 +18,7 @@ var logger *logrus.Entry
 
 type handlers struct {
 	cfg   *config.Mds
+	cMap  *cmap.Controller
 	store Repository
 
 	swimSrv    *swim.Server
@@ -23,11 +26,12 @@ type handlers struct {
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cfg *config.Mds, s Repository) Handlers {
+func NewHandlers(cfg *config.Mds, cMap *cmap.Controller, s Repository) Handlers {
 	logger = mlog.GetPackageLogger("app/mds/usecase/membership")
 
 	return &handlers{
 		cfg:   cfg,
+		cMap:  cMap,
 		store: s,
 	}
 }
@@ -74,11 +78,16 @@ func (h *handlers) Run() {
 	sc := make(chan swim.PingError, 1)
 	go h.swimSrv.Serve(sc)
 
+	cmapUpdatedNotiC := h.cMap.GetUpdatedNoti(cmap.Version(0))
 	for {
 		select {
 		case err := <-sc:
 			h.recover(err)
 			h.rebalance()
+		case <-cmapUpdatedNotiC:
+			latest := h.cMap.LatestVersion()
+			h.swimSrv.SetCustomHeader("cmap_ver", strconv.FormatInt(latest.Int64(), 10))
+			cmapUpdatedNotiC = h.cMap.GetUpdatedNoti(latest)
 		}
 	}
 }

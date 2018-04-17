@@ -39,6 +39,29 @@ func (h *Handler) Join(req *Message, res *Ack) (err error) {
 func (s *Server) handlePing(req *Message, res *Ack) (err error) {
 	s.updateMemberList(req.Members)
 
+	for key, value := range s.header {
+		f, ok := s.headerFunc[key]
+		if ok == false {
+			continue
+		}
+
+		rcv, ok := req.Header[key]
+		if ok == false {
+			continue
+		}
+
+		if f.compare(value, rcv) == false {
+			continue
+		}
+
+		// TODO: how if the notiC blocked?
+		go func(notiC chan interface{}) {
+			notiC <- nil
+		}(f.notiC)
+	}
+
+	res.Header = s.header
+
 	return nil
 }
 

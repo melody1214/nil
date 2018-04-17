@@ -41,4 +41,6 @@ type Message struct {
 }
 
 // Ack is the reply message to the SwimMessage.
-type Ack struct{}
+type Ack struct {
+	Header Header
+}

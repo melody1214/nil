@@ -77,7 +77,7 @@ func Bootstrap(cfg config.Mds) error {
 	bucketHandlers := bucket.NewHandlers(bucketStore)
 	consensusHandlers := consensus.NewHandlers(&cfg, consensusStore)
 	clustermapHandlers := clustermap.NewHandlers(clusterMap, clustermapStore)
-	membershipHandlers := membership.NewHandlers(&cfg, membershipStore)
+	membershipHandlers := membership.NewHandlers(&cfg, clusterMap, membershipStore)
 	objectHandlers := object.NewHandlers(objectStore)
 	recoveryHandlers := recovery.NewHandlers(&cfg, clusterMap, recoveryStore)
 

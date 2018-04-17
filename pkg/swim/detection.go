@@ -14,10 +14,13 @@ func (s *Server) ping(pec chan PingError) {
 	}
 
 	// Make ping message.
-	p := &Message{Members: s.meml.fetch(0)}
+	p := &Message{
+		Header:  s.header,
+		Members: s.meml.fetch(0),
+	}
 
 	// Sends ping message to the target.
-	_, err := s.send(Ping, fetched[0].Address, p)
+	res, err := s.send(Ping, fetched[0].Address, p)
 	if err != nil {
 		pec <- PingError{
 			Type:   Ping,
@@ -25,6 +28,27 @@ func (s *Server) ping(pec chan PingError) {
 			Err:    err.Error(),
 		}
 		return
+	}
+
+	for key, value := range s.header {
+		f, ok := s.headerFunc[key]
+		if ok == false {
+			continue
+		}
+
+		rcv, ok := res.Header[key]
+		if ok == false {
+			continue
+		}
+
+		if f.compare(value, rcv) == false {
+			continue
+		}
+
+		// TODO: how if the notiC blocked?
+		go func(notiC chan interface{}) {
+			notiC <- nil
+		}(f.notiC)
 	}
 }
 
@@ -52,9 +76,7 @@ func (s *Server) pingRequest(dstID ServerID, pec chan PingError) {
 			break
 		}
 
-		p := &Message{
-			Members: content,
-		}
+		p := &Message{Members: content}
 
 		wg.Add(1)
 		go func(addr ServerAddress, ping *Message) {

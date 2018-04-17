@@ -13,9 +13,10 @@ import (
 // and send gossip message periodically and disseminates the
 // status of the member if the status is changed.
 type Server struct {
-	conf    Config
-	meml    *memList
-	headers map[string]customHeader
+	conf       Config
+	meml       *memList
+	headerFunc map[string]*customHeader
+	header     Header
 
 	trans      Transport
 	rpcSrv     *rpc.Server
@@ -45,13 +46,14 @@ func NewServer(conf *Config, trans Transport) (*Server, error) {
 	memList.set(me)
 
 	s := &Server{
-		conf:    *conf,
-		meml:    memList,
-		headers: make(map[string]customHeader),
-		trans:   trans,
-		rpcSrv:  rpc.NewServer(),
-		stop:    make(chan chan error, 1),
-		stopped: uint32(1),
+		conf:       *conf,
+		meml:       memList,
+		headerFunc: make(map[string]*customHeader),
+		header:     make(Header),
+		trans:      trans,
+		rpcSrv:     rpc.NewServer(),
+		stop:       make(chan chan error, 1),
+		stopped:    uint32(1),
 	}
 	if err := s.registerRPCHandler(); err != nil {
 		return nil, err

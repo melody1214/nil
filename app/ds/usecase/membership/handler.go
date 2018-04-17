@@ -1,8 +1,10 @@
 package membership
 
 import (
+	"strconv"
 	"time"
 
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/swim"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -17,14 +19,19 @@ type handlers struct {
 
 	swimSrv    *swim.Server
 	swimTransL *nilmux.SwimTransportLayer
+
+	needCMapUpdate chan interface{}
+	cMap           *cmap.Controller
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cfg *config.Ds) Handlers {
+func NewHandlers(cfg *config.Ds, cMap *cmap.Controller) Handlers {
 	logger = mlog.GetPackageLogger("app/ds/usecase/membership")
 
 	return &handlers{
-		cfg: cfg,
+		cfg:            cfg,
+		needCMapUpdate: make(chan interface{}, 1),
+		cMap:           cMap,
 	}
 }
 
@@ -57,6 +64,21 @@ func (h *handlers) Create(swimL *nilmux.Layer) (err error) {
 		return
 	}
 
+	h.swimSrv.RegisterCustomHeader("cmap_ver", "0",
+		func(have, rcv string) bool {
+			intHave, err := strconv.Atoi(have)
+			if err != nil {
+				return false
+			}
+
+			intRcv, err := strconv.Atoi(rcv)
+			if err != nil {
+				return false
+			}
+
+			return intHave < intRcv
+		}, h.needCMapUpdate)
+
 	return nil
 }
 
@@ -67,6 +89,7 @@ func (h *handlers) Run() {
 	sc := make(chan swim.PingError, 1)
 	go h.swimSrv.Serve(sc)
 
+	cmapUpdatedNotiC := h.cMap.GetUpdatedNoti(cmap.Version(0))
 	for {
 		select {
 		case err := <-sc:
@@ -75,6 +98,12 @@ func (h *handlers) Run() {
 				"message type": err.Type,
 				"destID":       err.DestID,
 			}).Error(err.Err)
+		case <-h.needCMapUpdate:
+			h.cMap.Outdated()
+		case <-cmapUpdatedNotiC:
+			latest := h.cMap.LatestVersion()
+			h.swimSrv.SetCustomHeader("cmap_ver", strconv.FormatInt(latest.Int64(), 10))
+			cmapUpdatedNotiC = h.cMap.GetUpdatedNoti(latest)
 		}
 	}
 }

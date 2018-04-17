@@ -35,11 +35,17 @@ func updater(c *cmap.Controller) {
 	ctxLogger := mlog.GetFunctionLogger(logger, "Service.updater")
 
 	// Make ticker for routinely rebalancing.
-	updateNoti := time.NewTicker(10 * time.Second)
+	updateNoti := time.NewTicker(30 * time.Second)
 
+	outdatedC := c.GetOutdatedNoti()
 	for {
 		select {
 		case <-updateNoti.C:
+			if err := updateClusterMap(c); err != nil {
+				ctxLogger.Error(err)
+			}
+		case <-outdatedC:
+			outdatedC = c.GetOutdatedNoti()
 			if err := updateClusterMap(c); err != nil {
 				ctxLogger.Error(err)
 			}

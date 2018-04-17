@@ -7,9 +7,10 @@ import (
 
 // Controller is the object for access multiple versions of cluster maps.
 type Controller struct {
-	latest       Version
-	cMaps        map[Version]*CMap
-	notiChannels map[time.Time](chan interface{})
+	latest               Version
+	cMaps                map[Version]*CMap
+	notiChannels         map[time.Time](chan interface{})
+	outdatedNotiChannels map[time.Time](chan interface{})
 
 	mu sync.RWMutex
 }
@@ -40,8 +41,9 @@ func NewController(coordinator string) (*Controller, error) {
 	}
 
 	c := &Controller{
-		cMaps:        make(map[Version]*CMap),
-		notiChannels: make(map[time.Time](chan interface{})),
+		cMaps:                make(map[Version]*CMap),
+		notiChannels:         make(map[time.Time](chan interface{})),
+		outdatedNotiChannels: make(map[time.Time](chan interface{})),
 	}
 	c.cMaps[cm.Version] = cm
 	c.latest = cm.Version
@@ -115,6 +117,32 @@ func (c *Controller) GetUpdatedNoti(ver Version) <-chan interface{} {
 	}()
 
 	return notiC
+}
+
+// GetOutdatedNoti returns a channel which will send notification when
+// the cluster map is outdated.
+func (c *Controller) GetOutdatedNoti() <-chan interface{} {
+	// Make buffered channel is important because not to be blocked
+	// while in the send noti progress if the receiver had been timeout.
+	notiC := make(chan interface{}, 2)
+
+	go func() {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+
+		c.outdatedNotiChannels[time.Now()] = notiC
+	}()
+
+	return notiC
+}
+
+// Outdated marks the cluster map is outdated and send notifications to all observers.
+func (c *Controller) Outdated() {
+	for i, ch := range c.outdatedNotiChannels {
+		ch <- nil
+		close(ch)
+		delete(c.outdatedNotiChannels, i)
+	}
 }
 
 func (c *Controller) sendUpdateNotiToAll() {
