@@ -1,22 +1,22 @@
 package s3
 
 import (
-	"io"
+	"crypto/sha256"
+	"encoding/hex"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/chanyoung/nil/pkg/client"
+	s3lib "github.com/chanyoung/nil/pkg/s3"
 	"github.com/chanyoung/nil/pkg/security"
-	"github.com/pkg/errors"
 )
 
 type s3request struct {
-	headers     client.Headers
-	request     *http.Request
-	requestType client.RequestType
-	transport   *http.Transport
-	client      *http.Client
+	request   *http.Request
+	transport *http.Transport
+	client    *http.Client
 }
 
 func (r *s3request) Send() (*http.Response, error) {
@@ -24,23 +24,54 @@ func (r *s3request) Send() (*http.Response, error) {
 }
 
 // NewS3Request creates a new s3 request.
-func NewS3Request(reqType client.RequestType, method, url string, body io.Reader, contentLength int64, headers client.Headers) (client.Request, error) {
-	// Create a http request.
-	request, err := http.NewRequest(method, url, body)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create http request with the given arguments")
-	}
-	if contentLength != 0 {
-		request.ContentLength = contentLength
-	}
+func NewS3Request(request *http.Request, genSign bool, cred map[string]string) (client.Request, error) {
+	if genSign {
+		request.Header.Set("X-Amz-Date", time.Now().UTC().Format(time.RFC3339))
+		request.Header.Set("X-Amz-Content-Sha256", cred["content-hash"])
+		signedHeaders := []string{"host", "X-Amz-Content-Sha256"}
 
-	// Set headers.
-	for key, value := range headers {
-		request.Header.Set(key, value)
-	}
+		// Gen canonical request and set to request header.
+		canonicalRequest := s3lib.GenCanonicalRequest(
+			request.Method,
+			request.RequestURI,
+			request.URL.Query().Encode(),
+			s3lib.GenCanonicalHeaders(request, signedHeaders),
+			s3lib.GenSignedHeadersString(signedHeaders),
+			cred["content-hash"],
+		)
 
-	// Set request type into the headers.
-	request.Header.Set("Request-Type", reqType.String())
+		// Gen string to sign.
+		sha256CanonicalRequest := sha256.Sum256([]byte(canonicalRequest))
+		credV4 := s3lib.CredV4{
+			AccessKey:   cred["access-key"],
+			Date:        time.Now().UTC().Format("20060102"),
+			Region:      cred["region"],
+			Service:     "s3",
+			Termination: "aws4_request",
+		}
+		stringToSign := s3lib.GenStringToSign(
+			"AWS4-HMAC-SHA256",
+			request.Header.Get("X-Amz-Date"),
+			credV4.Scope(),
+			hex.EncodeToString(sha256CanonicalRequest[:]),
+		)
+
+		// Derive signature.
+		signatureKey := s3lib.GenSignatureKey(
+			cred["secret-key"],
+			credV4.Date,
+			credV4.Region,
+			credV4.Service,
+		)
+		signature := s3lib.GenSignature(signatureKey, stringToSign)
+		authString := "AWS4-HMAC-SHA256 " +
+			"Credential=" + credV4.AccessKey + "/" + credV4.Scope() + "," +
+			"SignedHeaders=" + strings.Join(signedHeaders, ";") + "," +
+			"Signature=" + signature
+		request.Header.Set("Authorization", authString)
+	} else {
+
+	}
 
 	// Create http transport.
 	transport := &http.Transport{
@@ -50,10 +81,8 @@ func NewS3Request(reqType client.RequestType, method, url string, body io.Reader
 	}
 
 	return &s3request{
-		headers:     headers,
-		request:     request,
-		requestType: reqType,
-		transport:   transport,
+		request:   request,
+		transport: transport,
 		client: &http.Client{
 			Timeout:   10 * time.Second,
 			Transport: transport,

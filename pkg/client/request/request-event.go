@@ -5,9 +5,9 @@ import "github.com/chanyoung/nil/pkg/client"
 import "github.com/chanyoung/nil/pkg/client/s3"
 
 // NewRequestEventFactory returns a new request event factory.
-func NewRequestEventFactory(opts ...Option) *RequestEventFactory {
+func NewRequestEventFactory(opts ...EventFactoryOption) *RequestEventFactory {
 	f := &RequestEventFactory{
-		o: defaultOptions,
+		o: defaultEventFactoryOptions,
 	}
 
 	for _, opt := range opts {
@@ -19,7 +19,7 @@ func NewRequestEventFactory(opts ...Option) *RequestEventFactory {
 
 // RequestEventFactory creates handles for request event.
 type RequestEventFactory struct {
-	o options
+	o eventFactoryOptions
 }
 
 // CreateRequestEvent creates a validated request event.

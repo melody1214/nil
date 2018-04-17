@@ -1,6 +1,7 @@
 package object
 
 import (
+	"fmt"
 	"net/http"
 	"net/rpc"
 	"strconv"
@@ -47,6 +48,8 @@ func NewHandlers(cMap *cmap.Controller, f *cr.RequestEventFactory, s Repository)
 // PutObjectHandler handles the client request for creating an object.
 func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.PutObjectHandler")
+
+	fmt.Printf("\n\n%+v\n\n", r)
 
 	req, err := h.requestEventFactory.CreateRequestEvent(w, r)
 	if err == client.ErrInvalidProtocol {
