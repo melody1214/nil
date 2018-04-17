@@ -10,9 +10,12 @@ type RequestEvent interface {
 	AccessKey() string
 	Region() string
 	Bucket() string
+	Type() RequestType
 
 	// Method includes business logic.
 	Auth(secretKey string) bool
+	// CopyAuthHeader copy headers which is used to authenticate.
+	CopyAuthHeader() map[string]string
 
 	// Methods for handling errors.
 	SendSuccess()

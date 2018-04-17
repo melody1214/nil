@@ -126,6 +126,29 @@ func (r *S3RequestEvent) SendInvalidURI() {
 	s3lib.SendError(r.httpWriter, s3lib.ErrInvalidURI, r.httpRequest.RequestURI, "")
 }
 
+// CopyAuthHeader copy headers which is used to authenticate.
+func (r *S3RequestEvent) CopyAuthHeader() map[string]string {
+	header := make(map[string]string)
+	header["Authorization"] = r.httpRequest.Header.Get("Authorization")
+	for _, key := range r.authArgs.SignedHeaders {
+		header[key] = r.httpRequest.Header.Get(key)
+	}
+	return header
+}
+
+// Type get the type of the request.
+func (r *S3RequestEvent) Type() client.RequestType {
+	t := r.httpRequest.Header.Get("Request-Type")
+	switch t {
+	case client.WriteToPrimary.String():
+		return client.WriteToPrimary
+	case client.WriteToFollower.String():
+		return client.WriteToFollower
+	default:
+		return client.UnknownType
+	}
+}
+
 func getAuthArgsV4(authString string) (*s3lib.SignV4, s3lib.ErrorCode) {
 	// Check the sign version is supported.
 	if err := s3lib.ValidateSignVersion(authString); err != s3lib.ErrNone {

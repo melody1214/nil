@@ -87,7 +87,7 @@ func (e *endec) do(r *request) {
 
 	ctxLogger := mlog.GetMethodLogger(logger, "endec.do")
 
-	lcid := r.r.Header.Get("Local-Chain-Id")
+	lcid := r.r.Request().Header.Get("Local-Chain-Id")
 	lc, ok := e.emap[lcid]
 	if !ok {
 		r.err = fmt.Errorf("no such local chain")
@@ -102,7 +102,7 @@ func (e *endec) do(r *request) {
 		}
 	}
 
-	osize, err := strconv.ParseInt(r.r.Header.Get("Content-Length"), 10, 64)
+	osize, err := strconv.ParseInt(r.r.Request().Header.Get("Content-Length"), 10, 64)
 	if err != nil {
 		r.err = err
 		return
@@ -111,13 +111,13 @@ func (e *endec) do(r *request) {
 	parityCID := e.chunkMap[lcid].chunkID + "-" + strconv.Itoa(e.chunkMap[lcid].seq)
 	req := &repository.Request{
 		Op:     repository.Write,
-		Vol:    r.r.Header.Get("Volume-Id"),
+		Vol:    r.r.Request().Header.Get("Volume-Id"),
 		LocGid: lcid,
-		Oid:    strings.Replace(strings.Trim(r.r.RequestURI, "/"), "/", ".", -1),
+		Oid:    strings.Replace(strings.Trim(r.r.Request().RequestURI, "/"), "/", ".", -1),
 		Cid:    parityCID,
 		Osize:  osize,
 
-		In: r.r.Body,
+		In: r.r.Request().Body,
 	}
 
 	r.err = e.s.Push(req)
@@ -131,7 +131,7 @@ func (e *endec) do(r *request) {
 		if e.chunkMap[lcid].seq == 2 {
 			cm := e.chunkMap[lcid]
 			go func() {
-				e.encode(cm, r.r.Header.Get("Volume-Id"), lcid)
+				e.encode(cm, r.r.Request().Header.Get("Volume-Id"), lcid)
 				// Do encode
 			}()
 
@@ -162,14 +162,9 @@ func (e *endec) do(r *request) {
 	}
 	addr = addr + lc.nodeAddrs[chunk.seq]
 
-	addr = addr + r.r.RequestURI
+	addr = addr + r.r.Request().RequestURI
 
 	pipeReader, pipeWriter := io.Pipe()
-	// copyReq, err := http.NewRequest(r.r.Method, addr, pipeReader)
-	// if err != nil {
-	// 	r.err = err
-	// 	return
-	// }
 
 	if len(lc.nodeIDs) < chunk.seq+1 {
 		ctxLogger.Error("no such volume seq")
@@ -177,19 +172,12 @@ func (e *endec) do(r *request) {
 		return
 	}
 	volID := strconv.FormatInt(lc.nodeIDs[chunk.seq], 10)
-	// copyReq.Header.Add("Encoding-Group-Volume", volID)
-
-	// copyReq.Header.Add("Local-Chain-Id", lcid)
-	// copyReq.Header.Add("Volume-Id", volID)
-	// copyReq.Header.Add("Chunk-Id", e.chunkMap[lcid].chunkID)
-	// copyReq.Header.Add("Md5", r.md5)
-	// copyReq.ContentLength = osize
 
 	req = &repository.Request{
 		Op:     repository.Read,
-		Vol:    r.r.Header.Get("Volume-Id"),
+		Vol:    r.r.Request().Header.Get("Volume-Id"),
 		LocGid: lcid,
-		Oid:    strings.Replace(strings.Trim(r.r.RequestURI, "/"), "/", ".", -1),
+		Oid:    strings.Replace(strings.Trim(r.r.Request().RequestURI, "/"), "/", ".", -1),
 		// Cid:   e.chunkMap[lcid].chunkID,
 		Cid:   parityCID,
 		Osize: osize,
@@ -210,29 +198,21 @@ func (e *endec) do(r *request) {
 		}
 	}(req)
 
-	// var netTransport = &http.Transport{
-	// 	Dial:                (&net.Dialer{Timeout: 5 * time.Second}).Dial,
-	// 	TLSClientConfig:     security.DefaultTLSConfig(),
-	// 	TLSHandshakeTimeout: 5 * time.Second,
-	// }
-
-	// var netClient = &http.Client{
-	// 	Timeout:   10 * time.Second,
-	// 	Transport: netTransport,
-	// }
-
 	headers := client.NewHeaders()
 	headers.SetEncodingGroupVolume(volID)
 	headers.SetLocalChainID(lcid)
 	headers.SetVolumeID(volID)
 	headers.SetChunkID(e.chunkMap[lcid].chunkID)
 	headers.SetMD5(r.md5)
-	copyReq, err := cli.NewRequest(client.WriteToFollower, r.r.Method, addr, pipeReader, headers, osize, cli.WithS3(true))
+	copyReq, err := cli.NewRequest(
+		client.WriteToFollower,
+		r.r.Request().Method, addr, pipeReader,
+		headers, osize, cli.WithS3(true),
+		cli.WithCopyHeaders(r.r.CopyAuthHeader()))
 	if err != nil {
 		r.err = err
 		return
 	}
-	// resp, err := netClient.Do(copyReq)
 	resp, err := copyReq.Send()
 	if err != nil {
 		r.err = err

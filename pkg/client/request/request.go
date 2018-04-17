@@ -35,7 +35,7 @@ func NewRequest(reqType client.RequestType, method, url string, body io.Reader, 
 	}
 
 	if o.useS3 {
-		return s3.NewS3Request(request, o.genSign, o.cred)
+		return s3.NewS3Request(request, o.genSign, o.cred, o.copyHeader)
 	}
 
 	return nil, fmt.Errorf("no matching client type")

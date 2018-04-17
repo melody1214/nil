@@ -22,9 +22,10 @@ func WithS3EventFactory(enabled bool) EventFactoryOption {
 type Option func(*options)
 
 type options struct {
-	useS3   bool
-	genSign bool
-	cred    map[string]string
+	useS3      bool
+	genSign    bool
+	cred       map[string]string
+	copyHeader map[string]string
 }
 
 var defaultOptions = options{
@@ -34,6 +35,7 @@ var defaultOptions = options{
 		// Hash value of empty string.
 		"content-hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 	},
+	copyHeader: make(map[string]string),
 }
 
 // WithS3 means to generate client request protocol to s3.
@@ -51,5 +53,13 @@ func WithSign(accessKey, secretKey, region, contentHash string) Option {
 		o.cred["secret-key"] = secretKey
 		o.cred["region"] = region
 		o.cred["content-hash"] = contentHash
+	}
+}
+
+// WithCopyHeaders copy the given headers to new request to replace generating sign.
+func WithCopyHeaders(header map[string]string) Option {
+	return func(o *options) {
+		o.genSign = false
+		o.copyHeader = header
 	}
 }

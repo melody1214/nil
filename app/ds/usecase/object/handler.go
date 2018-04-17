@@ -1,7 +1,6 @@
 package object
 
 import (
-	"fmt"
 	"net/http"
 	"net/rpc"
 	"strconv"
@@ -49,12 +48,36 @@ func NewHandlers(cMap *cmap.Controller, f *cr.RequestEventFactory, s Repository)
 func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.PutObjectHandler")
 
-	fmt.Printf("\n\n%+v\n\n", r)
-
 	req, err := h.requestEventFactory.CreateRequestEvent(w, r)
 	if err == client.ErrInvalidProtocol {
-		// http.Error(w, err.Error(), http.StatusBadRequest)
-		// TODO: make own protocol
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	switch req.Type() {
+	case client.WriteToPrimary:
+		attrs := r.Header.Get("X-Amz-Meta-S3cmd-Attrs")
+
+		var md5str string
+		for _, attr := range strings.Split(attrs, "/") {
+			if strings.HasPrefix(attr, "md5:") {
+				md5str = strings.Split(attr, ":")[1]
+				break
+			}
+		}
+
+		endecReq := newRequest(req)
+		endecReq.md5 = md5str
+		h.endec.Push(endecReq)
+		if err := endecReq.wait(); err != nil {
+			ctxLogger.Error(err)
+			req.SendInternalError()
+			return
+		}
+
+		req.ResponseWriter().Header().Set("ETag", md5str)
+		req.SendSuccess()
+	case client.WriteToFollower:
 		osize, err := strconv.ParseInt(r.Header.Get("Content-Length"), 10, 64)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -109,29 +132,10 @@ func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 
 		w.WriteHeader(http.StatusOK)
 		return
-	}
-
-	attrs := r.Header.Get("X-Amz-Meta-S3cmd-Attrs")
-
-	var md5str string
-	for _, attr := range strings.Split(attrs, "/") {
-		if strings.HasPrefix(attr, "md5:") {
-			md5str = strings.Split(attr, ":")[1]
-			break
-		}
-	}
-
-	endecReq := newRequest(r)
-	endecReq.md5 = md5str
-	h.endec.Push(endecReq)
-	if err := endecReq.wait(); err != nil {
-		ctxLogger.Error(err)
-		req.SendInternalError()
+	default:
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	req.ResponseWriter().Header().Set("ETag", md5str)
-	req.SendSuccess()
 }
 
 // GetObjectHandler handles the client request for getting an object.

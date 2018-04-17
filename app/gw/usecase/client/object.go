@@ -68,6 +68,7 @@ func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 	proxy := httputil.NewSingleHostReverseProxy(rpURL)
 	r.Header.Add("Volume-Id", strconv.FormatInt(res.ParityVolumeID, 10))
 	r.Header.Add("Local-Chain-Id", strconv.FormatInt(res.LocalChainID, 10))
+	r.Header.Add("Request-Type", client.WriteToPrimary.String())
 	proxy.ErrorLog = log.New(logger.Writer(), "http reverse proxy", log.Lshortfile)
 	proxy.ServeHTTP(w, r)
 }

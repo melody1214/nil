@@ -24,7 +24,7 @@ func (r *s3request) Send() (*http.Response, error) {
 }
 
 // NewS3Request creates a new s3 request.
-func NewS3Request(request *http.Request, genSign bool, cred map[string]string) (client.Request, error) {
+func NewS3Request(request *http.Request, genSign bool, cred, copyHeader map[string]string) (client.Request, error) {
 	if genSign {
 		request.Header.Set("X-Amz-Date", time.Now().UTC().Format(time.RFC3339))
 		request.Header.Set("X-Amz-Content-Sha256", cred["content-hash"])
@@ -70,7 +70,9 @@ func NewS3Request(request *http.Request, genSign bool, cred map[string]string) (
 			"Signature=" + signature
 		request.Header.Set("Authorization", authString)
 	} else {
-
+		for key, value := range copyHeader {
+			request.Header.Set(key, value)
+		}
 	}
 
 	// Create http transport.

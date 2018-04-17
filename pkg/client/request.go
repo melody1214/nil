@@ -9,7 +9,9 @@ const (
 	// WriteToPrimary means the request is head to primary ds and will write a single object.
 	WriteToPrimary RequestType = "WriteToPrimary"
 	// WriteToFollower means the request is head to followers and will wirte a single object.
-	WriteToFollower = "WriteToFollower"
+	WriteToFollower RequestType = "WriteToFollower"
+	// UnknownType means the type of the request is unknown.
+	UnknownType RequestType = "unknown"
 )
 
 func (t RequestType) String() string {

@@ -1,18 +1,19 @@
 package object
 
 import (
-	"net/http"
 	"sync"
+
+	"github.com/chanyoung/nil/pkg/client"
 )
 
 type request struct {
-	r   *http.Request
+	r   client.RequestEvent
 	md5 string
 	wg  sync.WaitGroup
 	err error
 }
 
-func newRequest(r *http.Request) *request {
+func newRequest(r client.RequestEvent) *request {
 	return &request{
 		r: r,
 	}
