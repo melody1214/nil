@@ -1,6 +1,7 @@
 package recovery
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/chanyoung/nil/pkg/cmap"
@@ -30,42 +31,31 @@ func NewHandlers(cfg *config.Mds, cMap *cmap.Controller, store Repository) (Hand
 	return &handlers{worker: worker}, nil
 }
 
-func (h *handlers) Recover(req *nilrpc.RecoverRequest, res *nilrpc.RecoverResponse) error {
-	ctxLogger := mlog.GetMethodLogger(logger, "handlers.Recover")
-	// Logging the error.
-	ctxLogger.WithFields(logrus.Fields{
-		"server":       "swim",
-		"message type": req.Pe.Type,
-		"destID":       req.Pe.DestID,
-	}).Warn(req.Pe.Err)
+// Recovery recieves the recovery requests from other domains.
+func (h *handlers) Recovery(req *nilrpc.RecoveryRequest, res *nilrpc.RecoveryResponse) error {
+	// Select the channel to send notification by the type of recovery request.
+	var notiCh chan interface{}
+	switch req.Type {
+	case nilrpc.Recover:
+		notiCh = h.worker.recoveryCh
+	case nilrpc.Rebalance:
+		notiCh = h.worker.rebalanceCh
+	default:
+		return fmt.Errorf("unknown recovery type: %+v", req.Type)
+	}
 
-	go func() {
-		select {
-		case h.worker.recoveryCh <- nil:
-			return
-		case <-time.After(10 * time.Millisecond):
-			return
-		}
-	}()
-
-	return nil
-}
-
-func (h *handlers) Rebalance(req *nilrpc.RebalanceRequest, res *nilrpc.RebalanceResponse) error {
-	go func() {
-		select {
-		case h.worker.rebalanceCh <- nil:
-			return
-		case <-time.After(10 * time.Millisecond):
-			return
-		}
-	}()
-
-	return nil
+	// Send the notification.
+	// Expire after very short time because blocked channel means
+	// the channel already pending the request.
+	select {
+	case notiCh <- nil:
+		return nil
+	case <-time.After(10 * time.Millisecond):
+		return nil
+	}
 }
 
 // Handlers is the interface that provides recovery domain's rpc handlers.
 type Handlers interface {
-	Recover(req *nilrpc.RecoverRequest, res *nilrpc.RecoverResponse) error
-	Rebalance(req *nilrpc.RebalanceRequest, res *nilrpc.RebalanceResponse) error
+	Recovery(req *nilrpc.RecoveryRequest, res *nilrpc.RecoveryResponse) error
 }

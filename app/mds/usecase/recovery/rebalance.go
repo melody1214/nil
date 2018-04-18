@@ -36,6 +36,7 @@ func isVolumeUnbalanced(chain, maxChain int) bool {
 func (w *worker) rebalanceWithinSameVolumeSpeedGroup(vols []*Volume) error {
 	ctxLogger := mlog.GetMethodLogger(logger, "worker.rebalance")
 
+	rebalanced := false
 	speedLv := []cmap.VolumeSpeed{cmap.Low, cmap.Mid, cmap.High}
 	for _, speed := range speedLv {
 		sVols := make([]*Volume, 0)
@@ -49,9 +50,15 @@ func (w *worker) rebalanceWithinSameVolumeSpeedGroup(vols []*Volume) error {
 
 		if err := w.rebalanceVolumeGroup(sVols); err != nil {
 			ctxLogger.Error(err)
+		} else {
+			// rebalanced is set when any volume group is rebalanced.
+			rebalanced = true
 		}
 	}
 
+	if rebalanced == false {
+		return fmt.Errorf("there is no rebalanceable volume group")
+	}
 	return nil
 }
 

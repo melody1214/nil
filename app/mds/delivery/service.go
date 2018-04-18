@@ -3,7 +3,6 @@ package delivery
 import (
 	"net"
 	"net/rpc"
-	"time"
 
 	"github.com/chanyoung/nil/app/mds/usecase/admin"
 	"github.com/chanyoung/nil/app/mds/usecase/auth"
@@ -129,33 +128,11 @@ func (s *Service) Run() error {
 	}
 
 	go s.meh.Run()
-	go s.rebalancer()
 	return nil
 }
 
 func (s *Service) Stop() error {
 	return s.coh.Stop()
-}
-
-func (s *Service) rebalancer() {
-	ctxLogger := mlog.GetMethodLogger(logger, "Service.rebalancer")
-
-	// Make ticker for routinely rebalancing.
-	t, err := time.ParseDuration(s.cfg.Rebalance)
-	if err != nil {
-		ctxLogger.Fatal(err)
-	}
-	rebalanceNoti := time.NewTicker(t)
-
-	for {
-		select {
-		case <-rebalanceNoti.C:
-			s.reh.Rebalance(
-				&nilrpc.RebalanceRequest{},
-				&nilrpc.RebalanceResponse{},
-			)
-		}
-	}
 }
 
 func (s *Service) serveNilRPC() {

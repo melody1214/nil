@@ -2,6 +2,7 @@ package swim
 
 import (
 	"fmt"
+	"time"
 )
 
 // Handler has exposed methods for rpc server.
@@ -54,9 +55,13 @@ func (s *Server) handlePing(req *Message, res *Ack) (err error) {
 			continue
 		}
 
-		// TODO: how if the notiC blocked?
 		go func(notiC chan interface{}) {
-			notiC <- nil
+			select {
+			case notiC <- nil:
+				return
+			case <-time.After(3 * time.Second):
+				return
+			}
 		}(f.notiC)
 	}
 

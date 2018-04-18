@@ -82,9 +82,15 @@ func (h *handlers) Run() {
 	for {
 		select {
 		case err := <-sc:
-			h.recover(err)
+			if err.Err == swim.ErrChanged.Error() {
+				// If the error message said it is occured by new member join,
+				// then do rebalance and finish.
+				h.recover()
+			}
 			h.rebalance()
 		case <-cmapUpdatedNotiC:
+			// TODO: redundant mechanism with the above swim error channel?
+			h.rebalance()
 			latest := h.cMap.LatestVersion()
 			h.swimSrv.SetCustomHeader("cmap_ver", strconv.FormatInt(latest.Int64(), 10))
 			cmapUpdatedNotiC = h.cMap.GetUpdatedNoti(latest)
@@ -92,18 +98,18 @@ func (h *handlers) Run() {
 	}
 }
 
-func (h *handlers) recover(pe swim.PingError) error {
+func (h *handlers) recover() error {
 	conn, err := nilrpc.Dial(h.cfg.ServerAddr+":"+h.cfg.ServerPort, nilrpc.RPCNil, time.Duration(2*time.Second))
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
-	req := &nilrpc.RecoverRequest{Pe: pe}
-	res := &nilrpc.RecoverResponse{}
+	req := &nilrpc.RecoveryRequest{Type: nilrpc.Recover}
+	res := &nilrpc.RecoveryResponse{}
 
 	cli := rpc.NewClient(conn)
-	return cli.Call(nilrpc.MdsRecoveryRecover.String(), req, res)
+	return cli.Call(nilrpc.MdsRecoveryRecovery.String(), req, res)
 }
 
 func (h *handlers) rebalance() error {
@@ -113,11 +119,11 @@ func (h *handlers) rebalance() error {
 	}
 	defer conn.Close()
 
-	req := &nilrpc.RebalanceRequest{}
-	res := &nilrpc.RebalanceResponse{}
+	req := &nilrpc.RecoveryRequest{Type: nilrpc.Rebalance}
+	res := &nilrpc.RecoveryResponse{}
 
 	cli := rpc.NewClient(conn)
-	return cli.Call(nilrpc.MdsRecoveryRebalance.String(), req, res)
+	return cli.Call(nilrpc.MdsRecoveryRecovery.String(), req, res)
 }
 
 // Handlers is the interface that provides membership domain's rpc handlers.

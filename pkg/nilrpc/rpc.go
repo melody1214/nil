@@ -55,8 +55,7 @@ const (
 	MdsObjectGet
 
 	// MDS recovery domain methods
-	MdsRecoveryRecover
-	MdsRecoveryRebalance
+	MdsRecoveryRecovery
 
 	// DS methods.
 	AddVolume
@@ -100,10 +99,8 @@ func (m MethodName) String() string {
 	case MdsObjectGet:
 		return MdsObjectPrefix + "." + "Get"
 
-	case MdsRecoveryRecover:
-		return MdsRecoveryPrefix + "." + "Recover"
-	case MdsRecoveryRebalance:
-		return MdsRecoveryPrefix + "." + "Rebalance"
+	case MdsRecoveryRecovery:
+		return MdsRecoveryPrefix + "." + "Recovery"
 
 	case AddVolume:
 		return DSRPCPrefix + "." + "AddVolume"
@@ -195,14 +192,6 @@ type GetMembershipListRequest struct{}
 type GetMembershipListResponse struct {
 	Nodes []swim.Member
 }
-
-type RecoverRequest struct {
-	Pe swim.PingError
-}
-type RecoverResponse struct{}
-
-type RebalanceRequest struct{}
-type RebalanceResponse struct{}
 
 type ObjectPutRequest struct {
 	Name                string
