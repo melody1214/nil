@@ -10,10 +10,10 @@ const (
 	Rebalance
 )
 
-// RecoveryRequest is a request message to recovery domain.
-type RecoveryRequest struct {
+// MRERecoveryRequest is a request message to recovery domain.
+type MRERecoveryRequest struct {
 	Type RecoveryType
 }
 
-// RecoveryResponse is a response message from recovery domain.
-type RecoveryResponse struct{}
+// MRERecoveryResponse is a response message from recovery domain.
+type MRERecoveryResponse struct{}

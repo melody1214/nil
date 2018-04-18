@@ -105,8 +105,8 @@ func (h *handlers) recover() error {
 	}
 	defer conn.Close()
 
-	req := &nilrpc.RecoveryRequest{Type: nilrpc.Recover}
-	res := &nilrpc.RecoveryResponse{}
+	req := &nilrpc.MRERecoveryRequest{Type: nilrpc.Recover}
+	res := &nilrpc.MRERecoveryResponse{}
 
 	cli := rpc.NewClient(conn)
 	return cli.Call(nilrpc.MdsRecoveryRecovery.String(), req, res)
@@ -119,8 +119,8 @@ func (h *handlers) rebalance() error {
 	}
 	defer conn.Close()
 
-	req := &nilrpc.RecoveryRequest{Type: nilrpc.Rebalance}
-	res := &nilrpc.RecoveryResponse{}
+	req := &nilrpc.MRERecoveryRequest{Type: nilrpc.Rebalance}
+	res := &nilrpc.MRERecoveryResponse{}
 
 	cli := rpc.NewClient(conn)
 	return cli.Call(nilrpc.MdsRecoveryRecovery.String(), req, res)

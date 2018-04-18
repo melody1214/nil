@@ -32,6 +32,7 @@ func mdsRun(cmd *cobra.Command, args []string) {
 
 func init() {
 	mdsCmd.AddCommand(mdsMapCmd)
+	mdsCmd.AddCommand(mdsRebalanceCmd)
 	mdsCmd.AddCommand(mdsUserCmd)
 
 	mdsCmd.Flags().StringVarP(&mdscfg.ServerAddr, "bind", "b", config.Get("mds.addr"), "address to which the mds will bind")

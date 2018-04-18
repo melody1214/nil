@@ -32,7 +32,7 @@ func NewHandlers(cfg *config.Mds, cMap *cmap.Controller, store Repository) (Hand
 }
 
 // Recovery recieves the recovery requests from other domains.
-func (h *handlers) Recovery(req *nilrpc.RecoveryRequest, res *nilrpc.RecoveryResponse) error {
+func (h *handlers) Recovery(req *nilrpc.MRERecoveryRequest, res *nilrpc.MRERecoveryResponse) error {
 	// Select the channel to send notification by the type of recovery request.
 	var notiCh chan interface{}
 	switch req.Type {
@@ -57,5 +57,5 @@ func (h *handlers) Recovery(req *nilrpc.RecoveryRequest, res *nilrpc.RecoveryRes
 
 // Handlers is the interface that provides recovery domain's rpc handlers.
 type Handlers interface {
-	Recovery(req *nilrpc.RecoveryRequest, res *nilrpc.RecoveryResponse) error
+	Recovery(req *nilrpc.MRERecoveryRequest, res *nilrpc.MRERecoveryResponse) error
 }
