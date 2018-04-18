@@ -79,7 +79,10 @@ func Bootstrap(cfg config.Mds) error {
 	clustermapHandlers := clustermap.NewHandlers(clusterMap, clustermapStore)
 	membershipHandlers := membership.NewHandlers(&cfg, clusterMap, membershipStore)
 	objectHandlers := object.NewHandlers(objectStore)
-	recoveryHandlers := recovery.NewHandlers(&cfg, clusterMap, recoveryStore)
+	recoveryHandlers, err := recovery.NewHandlers(&cfg, clusterMap, recoveryStore)
+	if err != nil {
+		return errors.Wrap(err, "failed to create recovery handler")
+	}
 
 	// Setup delivery service.
 	delivery, err := delivery.NewDeliveryService(

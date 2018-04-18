@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (h *handlers) needRebalance(vols []*Volume) bool {
+func (w *worker) needRebalance(vols []*Volume) bool {
 	for _, v := range vols {
 		if v.isUnbalanced() {
 			return true
@@ -33,8 +33,8 @@ func isVolumeUnbalanced(chain, maxChain int) bool {
 	return (chain*100)/maxChain < 70
 }
 
-func (h *handlers) rebalanceWithinSameVolumeSpeedGroup(vols []*Volume) error {
-	ctxLogger := mlog.GetMethodLogger(logger, "handlers.rebalance")
+func (w *worker) rebalanceWithinSameVolumeSpeedGroup(vols []*Volume) error {
+	ctxLogger := mlog.GetMethodLogger(logger, "worker.rebalance")
 
 	speedLv := []cmap.VolumeSpeed{cmap.Low, cmap.Mid, cmap.High}
 	for _, speed := range speedLv {
@@ -47,7 +47,7 @@ func (h *handlers) rebalanceWithinSameVolumeSpeedGroup(vols []*Volume) error {
 			sVols = append(sVols, v)
 		}
 
-		if err := h.rebalanceVolumeGroup(sVols); err != nil {
+		if err := w.rebalanceVolumeGroup(sVols); err != nil {
 			ctxLogger.Error(err)
 		}
 	}
@@ -55,13 +55,13 @@ func (h *handlers) rebalanceWithinSameVolumeSpeedGroup(vols []*Volume) error {
 	return nil
 }
 
-func (h *handlers) rebalanceVolumeGroup(vols []*Volume) error {
+func (w *worker) rebalanceVolumeGroup(vols []*Volume) error {
 	for _, v := range vols {
 		if v.isUnbalanced() == false {
 			continue
 		}
 
-		if err := h.doRebalance(v, vols); err != nil {
+		if err := w.doRebalance(v, vols); err != nil {
 			return err
 		}
 	}
@@ -69,14 +69,14 @@ func (h *handlers) rebalanceVolumeGroup(vols []*Volume) error {
 	return nil
 }
 
-func (h *handlers) doRebalance(target *Volume, group []*Volume) error {
+func (w *worker) doRebalance(target *Volume, group []*Volume) error {
 	perm := rand.Perm(len(group))
 	shuffledGroup := make([]*Volume, len(group))
 	for i, v := range perm {
 		shuffledGroup[v] = group[i]
 	}
 
-	shards, err := strconv.Atoi(h.cfg.LocalParityShards)
+	shards, err := strconv.Atoi(w.cfg.LocalParityShards)
 	if err != nil {
 		return errors.Wrap(err, "failed to parse local parity shards number")
 	}
@@ -87,10 +87,10 @@ func (h *handlers) doRebalance(target *Volume, group []*Volume) error {
 	}
 	sort.Sort(ByFreeChain(shuffledGroup))
 
-	return h.newEncodingGroup(target, shuffledGroup, shards)
+	return w.newEncodingGroup(target, shuffledGroup, shards)
 }
 
-func (h *handlers) pickOneNewEncodingGroupVolume(picked []*Volume, candidates []*Volume) (*Volume, error) {
+func (w *worker) pickOneNewEncodingGroupVolume(picked []*Volume, candidates []*Volume) (*Volume, error) {
 	if cap(picked) == len(picked) {
 		return nil, fmt.Errorf("selected encoding group is full")
 	}
@@ -123,14 +123,14 @@ func isPicked(target *Volume, picked []*Volume) bool {
 	return false
 }
 
-func (h *handlers) newEncodingGroup(primary *Volume, vols []*Volume, shards int) error {
-	ctxLogger := mlog.GetMethodLogger(logger, "handlers.newLocalChain")
+func (w *worker) newEncodingGroup(primary *Volume, vols []*Volume, shards int) error {
+	ctxLogger := mlog.GetMethodLogger(logger, "worker.newEncodingGroup")
 
 	// Pick volumes from candidates.
 	picked := make([]*Volume, 0, shards+1)
 	picked = append(picked, primary)
 	for i := 0; i < shards; i++ {
-		p, err := h.pickOneNewEncodingGroupVolume(picked, vols)
+		p, err := w.pickOneNewEncodingGroupVolume(picked, vols)
 		if err != nil {
 			return errors.Wrap(err, "failed to pick new volume")
 		}
@@ -156,17 +156,17 @@ func (h *handlers) newEncodingGroup(primary *Volume, vols []*Volume, shards int)
 	// TODO: prevent duplicated encoding group.
 
 	// Update repository.
-	txid, err := h.store.Begin()
+	txid, err := w.store.Begin()
 	if err != nil {
 		return errors.Wrap(err, "failed to start transaction")
 	}
-	err = h.store.MakeNewEncodingGroup(txid, &eg)
+	err = w.store.MakeNewEncodingGroup(txid, &eg)
 	if err != nil {
-		h.store.Rollback(txid)
+		w.store.Rollback(txid)
 		return errors.Wrap(err, "failed to make new encoding group")
 	}
-	if err := h.store.Commit(txid); err != nil {
-		h.store.Rollback(txid)
+	if err := w.store.Commit(txid); err != nil {
+		w.store.Rollback(txid)
 		return errors.Wrap(err, "failed to commit transaction")
 	}
 

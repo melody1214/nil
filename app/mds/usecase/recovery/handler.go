@@ -1,47 +1,37 @@
 package recovery
 
 import (
-	"log"
-	"net/rpc"
-	"sync"
 	"time"
 
-	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
-	"github.com/chanyoung/nil/pkg/swim"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
 var logger *logrus.Entry
 
 type handlers struct {
-	cfg   *config.Mds
-	store Repository
-	cMap  *cmap.Controller
-
-	l sync.RWMutex
+	worker *worker
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cfg *config.Mds, cMap *cmap.Controller, s Repository) Handlers {
+func NewHandlers(cfg *config.Mds, cMap *cmap.Controller, store Repository) (Handlers, error) {
 	logger = mlog.GetPackageLogger("app/mds/usecase/recovery")
 
-	return &handlers{
-		cfg:   cfg,
-		store: s,
-		cMap:  cMap,
+	worker, err := newWorker(cfg, cMap, store)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create recovery worker")
 	}
+	go worker.run()
+
+	return &handlers{worker: worker}, nil
 }
 
 func (h *handlers) Recover(req *nilrpc.RecoverRequest, res *nilrpc.RecoverResponse) error {
-	h.l.Lock()
-	defer h.l.Unlock()
-
 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.Recover")
-
 	// Logging the error.
 	ctxLogger.WithFields(logrus.Fields{
 		"server":       "swim",
@@ -49,50 +39,27 @@ func (h *handlers) Recover(req *nilrpc.RecoverRequest, res *nilrpc.RecoverRespon
 		"destID":       req.Pe.DestID,
 	}).Warn(req.Pe.Err)
 
-	// Updates membership.
-	h.updateMembership()
+	go func() {
+		select {
+		case h.worker.recoveryCh <- nil:
+			return
+		case <-time.After(10 * time.Millisecond):
+			return
+		}
+	}()
 
-	// Get the new version of cluster map.
-	if err := h.updateClusterMap(); err != nil {
-		ctxLogger.Error(err)
-	}
-
-	// If the error message is occured because just simple membership
-	// changed, then finish the recover routine here.
-	if req.Pe.Err == swim.ErrChanged.Error() {
-		return nil
-	}
-
-	// TODO: recovery routine.
 	return nil
 }
 
 func (h *handlers) Rebalance(req *nilrpc.RebalanceRequest, res *nilrpc.RebalanceResponse) error {
-	h.l.Lock()
-	defer h.l.Unlock()
-
-	ctxLogger := mlog.GetMethodLogger(logger, "handlers.Rebalance")
-
-	vols, err := h.store.FindAllVolumes(repository.NotTx)
-	if err != nil {
-		return err
-	}
-
-	if h.needRebalance(vols) == false {
-		ctxLogger.Info("no need rebalance")
-		return nil
-	}
-
-	ctxLogger.Info("do rebalance")
-	if err := h.rebalanceWithinSameVolumeSpeedGroup(vols); err != nil {
-		ctxLogger.Error(err)
-		return err
-	}
-
-	if err := h.updateClusterMap(); err != nil {
-		ctxLogger.Error(err)
-		return err
-	}
+	go func() {
+		select {
+		case h.worker.rebalanceCh <- nil:
+			return
+		case <-time.After(10 * time.Millisecond):
+			return
+		}
+	}()
 
 	return nil
 }
@@ -101,20 +68,4 @@ func (h *handlers) Rebalance(req *nilrpc.RebalanceRequest, res *nilrpc.Rebalance
 type Handlers interface {
 	Recover(req *nilrpc.RecoverRequest, res *nilrpc.RecoverResponse) error
 	Rebalance(req *nilrpc.RebalanceRequest, res *nilrpc.RebalanceResponse) error
-}
-
-func (h *handlers) updateClusterMap() error {
-	conn, err := nilrpc.Dial(h.cfg.ServerAddr+":"+h.cfg.ServerPort, nilrpc.RPCNil, time.Duration(2*time.Second))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer conn.Close()
-
-	req := &nilrpc.MCLUpdateClusterMapRequest{}
-	res := &nilrpc.MCLUpdateClusterMapResponse{}
-
-	cli := rpc.NewClient(conn)
-	defer cli.Close()
-
-	return cli.Call(nilrpc.MdsClustermapUpdateClusterMap.String(), req, res)
 }

@@ -3,6 +3,7 @@ package recovery
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"net/rpc"
 	"time"
 
@@ -12,10 +13,10 @@ import (
 	"github.com/chanyoung/nil/pkg/util/mlog"
 )
 
-func (h *handlers) updateMembership() {
-	ctxLogger := mlog.GetMethodLogger(logger, "handlers.updateMembership")
+func (w *worker) updateMembership() {
+	ctxLogger := mlog.GetMethodLogger(logger, "worker.updateMembership")
 
-	conn, err := nilrpc.Dial(h.cfg.ServerAddr+":"+h.cfg.ServerPort, nilrpc.RPCNil, time.Duration(2*time.Second))
+	conn, err := nilrpc.Dial(w.cfg.ServerAddr+":"+w.cfg.ServerPort, nilrpc.RPCNil, time.Duration(2*time.Second))
 	if err != nil {
 		ctxLogger.Error(err)
 		return
@@ -34,13 +35,13 @@ func (h *handlers) updateMembership() {
 	for _, member := range membership {
 		// Currently we only cares ds.
 		if member.Type == swim.DS || member.Type == swim.MDS {
-			h.doUpdateMembership(member)
+			w.doUpdateMembership(member)
 		}
 	}
 }
 
-func (h *handlers) doUpdateMembership(sm swim.Member) {
-	ctxLogger := mlog.GetMethodLogger(logger, "handlers.doUpdateMembership")
+func (w *worker) doUpdateMembership(sm swim.Member) {
+	ctxLogger := mlog.GetMethodLogger(logger, "worker.doUpdateMembership")
 
 	q := fmt.Sprintf(
 		`
@@ -55,7 +56,7 @@ func (h *handlers) doUpdateMembership(sm swim.Member) {
 	)
 
 	var oldStat, oldAddr string
-	row := h.store.QueryRow(repository.NotTx, q)
+	row := w.store.QueryRow(repository.NotTx, q)
 	if row == nil {
 		ctxLogger.Error("mysql is not connected yet")
 		return
@@ -65,19 +66,19 @@ func (h *handlers) doUpdateMembership(sm swim.Member) {
 	if err == nil {
 		// Member exists, compare if some fields are changed.
 		if sm.Status.String() != oldStat || string(sm.Address) != oldAddr {
-			h.updateMember(sm)
+			w.updateMember(sm)
 		}
 	} else if err == sql.ErrNoRows {
 		// Member not exists, add into the database.
-		h.insertNewMember(sm)
+		w.insertNewMember(sm)
 	} else {
 		ctxLogger.Error(err)
 		return
 	}
 }
 
-func (h *handlers) insertNewMember(sm swim.Member) {
-	ctxLogger := mlog.GetMethodLogger(logger, "handlers.insertNewMember")
+func (w *worker) insertNewMember(sm swim.Member) {
+	ctxLogger := mlog.GetMethodLogger(logger, "worker.insertNewMember")
 	ctxLogger.Infof("insert a new member %v", sm)
 
 	q := fmt.Sprintf(
@@ -87,14 +88,14 @@ func (h *handlers) insertNewMember(sm swim.Member) {
 		`, string(sm.ID), sm.Type.String(), sm.Status.String(), string(sm.Address),
 	)
 
-	_, err := h.store.Execute(repository.NotTx, q)
+	_, err := w.store.Execute(repository.NotTx, q)
 	if err != nil {
 		ctxLogger.Error(err)
 	}
 }
 
-func (h *handlers) updateMember(sm swim.Member) {
-	ctxLogger := mlog.GetMethodLogger(logger, "handlers.updateMember")
+func (w *worker) updateMember(sm swim.Member) {
+	ctxLogger := mlog.GetMethodLogger(logger, "worker.updateMember")
 	ctxLogger.Infof("update a member %v", sm)
 
 	q := fmt.Sprintf(
@@ -105,8 +106,24 @@ func (h *handlers) updateMember(sm swim.Member) {
 		`, sm.Status.String(), string(sm.Address), string(sm.ID),
 	)
 
-	_, err := h.store.Execute(repository.NotTx, q)
+	_, err := w.store.Execute(repository.NotTx, q)
 	if err != nil {
 		ctxLogger.Error(err)
 	}
+}
+
+func (w *worker) updateClusterMap() error {
+	conn, err := nilrpc.Dial(w.cfg.ServerAddr+":"+w.cfg.ServerPort, nilrpc.RPCNil, time.Duration(2*time.Second))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	req := &nilrpc.MCLUpdateClusterMapRequest{}
+	res := &nilrpc.MCLUpdateClusterMapResponse{}
+
+	cli := rpc.NewClient(conn)
+	defer cli.Close()
+
+	return cli.Call(nilrpc.MdsClustermapUpdateClusterMap.String(), req, res)
 }
