@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sync/atomic"
 
+	"time"
+
 	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -14,9 +16,11 @@ import (
 // worker works for recovering all kinds of failure in the cluster.
 // worker struct has all required references and channels for handling its job.
 type worker struct {
-	cfg   *config.Mds
-	store Repository
-	cMap  *cmap.Controller
+	cfg           *config.Mds
+	store         Repository
+	cMap          *cmap.Controller
+	recoveryJobs  map[jobID]recoveryJob
+	rebalanceJobs map[jobID]rebalanceJob
 
 	recoveryCh  chan interface{}
 	rebalanceCh chan interface{}
@@ -32,9 +36,11 @@ func newWorker(cfg *config.Mds, cMap *cmap.Controller, store Repository) (*worke
 	}
 
 	return &worker{
-		cfg:   cfg,
-		cMap:  cMap,
-		store: store,
+		cfg:           cfg,
+		cMap:          cMap,
+		store:         store,
+		recoveryJobs:  make(map[jobID]recoveryJob),
+		rebalanceJobs: make(map[jobID]rebalanceJob),
 
 		recoveryCh:  make(chan interface{}, 1),
 		rebalanceCh: make(chan interface{}, 1),
@@ -104,6 +110,37 @@ func (w *worker) recover() fsm {
 	return w.listen
 }
 
+func (w *worker) checkRunningRecoveryJobs() fsm {
+	if len(w.recoveryJobs) == 0 {
+		return w.makeRecoveryJobs
+	}
+	return w.fixAffectedRecoveryJobs
+}
+
+func (w *worker) fixAffectedRecoveryJobs() fsm {
+	// TODO: implement.
+	return w.makeRecoveryJobs
+}
+
+func (w *worker) makeRecoveryJobs() fsm {
+	// TODO: implement.
+	return w.checkPendingRecoveryCh
+}
+
+func (w *worker) checkPendingRecoveryCh() fsm {
+	select {
+	case <-w.recoveryCh:
+		return w.checkRunningRecoveryJobs
+	case <-time.After(0):
+		return w.dispatchRecoveryJobs
+	}
+}
+
+func (w *worker) dispatchRecoveryJobs() fsm {
+	// TODO: implement.
+	return w.listen
+}
+
 // rebalance is the state for rebalancing the cluster.
 func (w *worker) rebalance() fsm {
 	ctxLogger := mlog.GetMethodLogger(logger, "worker.rebalance")
@@ -130,6 +167,37 @@ func (w *worker) rebalance() fsm {
 		return w.listen
 	}
 
+	return w.listen
+}
+
+func (w *worker) checkRunningRebalanceJobs() fsm {
+	if len(w.rebalanceJobs) == 0 {
+		return w.makeRebalanceJobs
+	}
+	return w.cancelAffectedRebalanceJobs
+}
+
+func (w *worker) cancelAffectedRebalanceJobs() fsm {
+	// TODO: implement.
+	return w.makeRebalanceJobs
+}
+
+func (w *worker) makeRebalanceJobs() fsm {
+	// TODO: implement.
+	return w.checkPendingRebalanceCh
+}
+
+func (w *worker) checkPendingRebalanceCh() fsm {
+	select {
+	case <-w.rebalanceCh:
+		return w.checkRunningRebalanceJobs
+	case <-time.After(0):
+		return w.dispatchRebalanceJobs
+	}
+}
+
+func (w *worker) dispatchRebalanceJobs() fsm {
+	// TODO: implement.
 	return w.listen
 }
 
