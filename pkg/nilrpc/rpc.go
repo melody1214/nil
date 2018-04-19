@@ -194,10 +194,10 @@ type GetMembershipListResponse struct {
 }
 
 type ObjectPutRequest struct {
-	Name                string
-	Bucket              string
-	EncodingGroup       string
-	EncodingGroupVolume string
+	Name          string
+	Bucket        string
+	EncodingGroup string
+	Volume        string
 }
 type ObjectPutResponse struct{}
 
@@ -206,9 +206,9 @@ type ObjectGetRequest struct {
 	Bucket string
 }
 type ObjectGetResponse struct {
-	EncodingGroup         int64
-	EncodingGroupVolumeID int64
-	DsID                  int64
+	EncodingGroupID int64
+	VolumeID        int64
+	DsID            int64
 }
 
 type GetClusterConfigRequest struct{}

@@ -81,6 +81,7 @@ func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 		osize, err := strconv.ParseInt(r.Header.Get("Content-Length"), 10, 64)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
+			ctxLogger.Error(errors.Wrap(err, "failed to parse object size"))
 			return
 		}
 
@@ -100,33 +101,37 @@ func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 		err = storeReq.Wait()
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
+			ctxLogger.Error(errors.Wrap(err, "failed to wait backend store request finish"))
 			return
 		}
 
 		mds, err := h.cMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
+			ctxLogger.Error(errors.Wrap(err, "failed to get alive mds from cluster map"))
 			return
 		}
 
 		conn, err := nilrpc.Dial(mds.Addr, nilrpc.RPCNil, time.Duration(2*time.Second))
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
+			ctxLogger.Error(errors.Wrap(err, "failed to dial to mds"))
 			return
 		}
 		defer conn.Close()
 
 		req := &nilrpc.ObjectPutRequest{
-			Name:                storeReq.Oid,
-			Bucket:              strings.Split(strings.Trim(r.URL.Path, "/"), "/")[0],
-			EncodingGroup:       storeReq.LocGid,
-			EncodingGroupVolume: r.Header.Get("Encoding-Group-Volume"),
+			Name:          storeReq.Oid,
+			Bucket:        strings.Split(strings.Trim(r.URL.Path, "/"), "/")[0],
+			EncodingGroup: storeReq.LocGid,
+			Volume:        r.Header.Get("Volume-Id"),
 		}
 		res := &nilrpc.ObjectPutResponse{}
 
 		cli := rpc.NewClient(conn)
 		if err := cli.Call(nilrpc.MdsObjectPut.String(), req, res); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
+			ctxLogger.Error(errors.Wrap(err, "failed to write object meta to the mds"))
 			return
 		}
 
@@ -149,7 +154,7 @@ func (h *handlers) GetObjectHandler(w http.ResponseWriter, r *http.Request) {
 
 	size, ok := h.store.GetObjectSize(r.Header.Get("Volume-Id"), strings.Replace(strings.Trim(r.URL.Path, "/"), "/", ".", -1))
 	if ok == false {
-		ctxLogger.Error(errors.Wrap(err, "failed to get object size"))
+		ctxLogger.Error("failed to get object size")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -157,7 +162,7 @@ func (h *handlers) GetObjectHandler(w http.ResponseWriter, r *http.Request) {
 
 	md5, ok := h.store.GetObjectMD5(r.Header.Get("Volume-Id"), strings.Replace(strings.Trim(r.URL.Path, "/"), "/", ".", -1))
 	if ok == false {
-		ctxLogger.Error(errors.Wrap(err, "failed to get object md5"))
+		ctxLogger.Error("failed to get object md5")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

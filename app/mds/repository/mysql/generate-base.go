@@ -94,10 +94,11 @@ var generateSQLBase = []string{
 			obj_name varchar(255) NOT NULL,
 			obj_bucket int unsigned NOT NULL,
 			obj_encoding_group int unsigned NOT NULL,
-			obj_encoding_group_volume varchar(32) CHARACTER SET ascii NOT NULL,
+			obj_volume int unsigned NOT NULL,
 			PRIMARY KEY (obj_id),
 			FOREIGN KEY (obj_bucket) REFERENCES bucket (bk_id),
-			FOREIGN KEY (obj_encoding_group) REFERENCES encoding_group (eg_id)
+			FOREIGN KEY (obj_encoding_group) REFERENCES encoding_group (eg_id),
+			FOREIGN KEY (obj_volume) REFERENCES volume (vl_id)
 		) ENGINE=InnoDB DEFAULT CHARSET=ascii
 	`,
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"net/rpc"
 	"strconv"
 	"strings"
@@ -171,7 +172,7 @@ func (e *endec) do(r *request) {
 		r.err = fmt.Errorf("vol seq error")
 		return
 	}
-	volID := strconv.FormatInt(lc.nodeIDs[chunk.seq], 10)
+	volID := lc.Vols[chunk.seq].String()
 
 	req = &repository.Request{
 		Op:     repository.Read,
@@ -199,7 +200,6 @@ func (e *endec) do(r *request) {
 	}(req)
 
 	headers := client.NewHeaders()
-	headers.SetEncodingGroupVolume(volID)
 	headers.SetLocalChainID(lcid)
 	headers.SetVolumeID(volID)
 	headers.SetChunkID(e.chunkMap[lcid].chunkID)
@@ -220,7 +220,18 @@ func (e *endec) do(r *request) {
 		return
 	}
 
-	b, _ := ioutil.ReadAll(resp.Body)
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		r.err = err
+		ctxLogger.Errorf("%+v", r.err)
+		return
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		r.err = err
+		ctxLogger.Errorf("%+v", r.err)
+		return
+	}
 	ctxLogger.Infof("%+v", string(b))
 }
 

@@ -26,11 +26,6 @@ func NewHeaders() Headers {
 	return make(map[string]string)
 }
 
-// SetEncodingGroupVolume set the volume of the encoding group, which will be writed.
-func (h Headers) SetEncodingGroupVolume(vol string) {
-	h["Encoding-Group-Volume"] = vol
-}
-
 // SetLocalChainID set the id of the local chain.
 func (h Headers) SetLocalChainID(id string) {
 	h["Local-Chain-Id"] = id

@@ -29,11 +29,11 @@ func (h *handlers) Put(req *nilrpc.ObjectPutRequest, res *nilrpc.ObjectPutRespon
 
 	q := fmt.Sprintf(
 		`
-		INSERT INTO object (obj_name, obj_bucket, obj_encoding_group, obj_encoding_group_volume)
+		INSERT INTO object (obj_name, obj_bucket, obj_encoding_group, obj_volume)
 		SELECT '%s', b.bk_id, '%s', '%s'
 		FROM bucket b
 		WHERE bk_name = '%s'
-		`, req.Name, req.EncodingGroup, req.EncodingGroupVolume, req.Bucket,
+		`, req.Name, req.EncodingGroup, req.Volume, req.Bucket,
 	)
 
 	r, err := h.store.Execute(repository.NotTx, q)
@@ -61,7 +61,7 @@ func (h *handlers) Get(req *nilrpc.ObjectGetRequest, res *nilrpc.ObjectGetRespon
 	q := fmt.Sprintf(
 		`
 		SELECT
-			obj_encoding_group, obj_encoding_group_volume
+			obj_encoding_group, obj_volume
 		FROM
 			object
 		WHERE
@@ -74,29 +74,7 @@ func (h *handlers) Get(req *nilrpc.ObjectGetRequest, res *nilrpc.ObjectGetRespon
 		return fmt.Errorf("mysql not connected yet")
 	}
 
-	var role string
-	err := row.Scan(&res.EncodingGroup, &role)
-	if err != nil {
-		return err
-	}
-
-	q = fmt.Sprintf(
-		`
-		SELECT
-			egv_volume
-		FROM
-			encoding_group_volume
-		WHERE
-			egv_encoding_group = '%d' and egv_role = '%s'
-		`, res.EncodingGroup, role,
-	)
-
-	row = h.store.QueryRow(repository.NotTx, q)
-	if row == nil {
-		return fmt.Errorf("mysql not connected yet")
-	}
-
-	err = row.Scan(&res.EncodingGroupVolumeID)
+	err := row.Scan(&res.EncodingGroupID, &res.VolumeID)
 	if err != nil {
 		return err
 	}
@@ -109,7 +87,7 @@ func (h *handlers) Get(req *nilrpc.ObjectGetRequest, res *nilrpc.ObjectGetRespon
 			volume
 		WHERE
 			vl_id = '%d'
-		`, res.EncodingGroupVolumeID,
+		`, res.VolumeID,
 	)
 
 	row = h.store.QueryRow(repository.NotTx, q)
