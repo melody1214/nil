@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"syscall"
 )
 
@@ -51,12 +52,23 @@ func (s Status) String() string {
 	}
 }
 
-// ObjMap contains mapping information of objects.
+// ObjMap contains mapping information of objects and chunks.
 type ObjMap struct {
 	Cid    string
 	Offset int64
-	Size   int64
-	MD5    string
+}
+
+// ObjInfo contains information of objects.
+type ObjInfo struct {
+	Size int64
+	MD5  string
+}
+
+// Object contains a Map which contains mapping information between objects and chunks,
+// and an Info which contains the object information.
+type Object struct {
+	Map  ObjMap
+	Info ObjInfo
 }
 
 // Vol contains information about the volume.
@@ -71,7 +83,8 @@ type Vol struct {
 	Status   Status
 
 	ChunkSize int64
-	Objs      map[string]ObjMap
+	Obj       map[string]Object
+	Lock      *sync.RWMutex
 }
 
 // NewVol collects information about the volume with the given
@@ -86,7 +99,7 @@ func NewVol(dev string) (v *Vol, err error) {
 	v = &Vol{
 		Dev:    dev,
 		Status: Prepared,
-		Objs:   make(map[string]ObjMap),
+		Obj:    make(map[string]Object),
 	}
 
 	// Checks the given device path is valid.

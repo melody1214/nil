@@ -18,11 +18,14 @@ const (
 	Write
 	// Delete requests an object handle that can delete the requested object.
 	Delete
+	// ReadAll requests an object handle that can read the requested chunk.
+	ReadAll
 )
 
 // Request includes information abOut backend store request.
 type Request struct {
 	Op     Operation
+	User   string // User ID
 	Vol    string // Volume
 	LocGid string // Local group ID
 	Oid    string // Object ID
@@ -45,7 +48,7 @@ type Request struct {
 func (r *Request) Verify() error {
 	switch r.Op {
 	case Read:
-		if r.Vol == "" || r.Out == nil {
+		if r.Vol == "" || r.Oid == "" || r.Out == nil {
 			return fmt.Errorf("%v: invalid arguments", r)
 		}
 	case Write:
@@ -54,6 +57,10 @@ func (r *Request) Verify() error {
 		}
 	case Delete:
 		if r.Vol == "" || r.Oid == "" {
+			return fmt.Errorf("%v: invalid arguments", r)
+		}
+	case ReadAll:
+		if r.Vol == "" || r.Cid == "" || r.Out == nil {
 			return fmt.Errorf("%v: invalid arguments", r)
 		}
 	default:

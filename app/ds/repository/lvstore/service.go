@@ -116,12 +116,14 @@ func (s *service) GetObjectSize(lvID, objID string) (int64, bool) {
 		return 0, false
 	}
 
-	obj, ok := lv.Objs[objID]
+	lv.Lock.RLock()
+	obj, ok := lv.Obj[objID]
+	lv.Lock.RUnlock()
 	if ok == false {
 		return 0, false
 	}
 
-	return obj.Size, true
+	return obj.Info.Size, true
 }
 
 func (s *service) GetObjectMD5(lvID, objID string) (string, bool) {
@@ -130,12 +132,14 @@ func (s *service) GetObjectMD5(lvID, objID string) (string, bool) {
 		return "", false
 	}
 
-	obj, ok := lv.Objs[objID]
+	lv.Lock.RLock()
+	obj, ok := lv.Obj[objID]
+	lv.Lock.RUnlock()
 	if ok == false {
 		return "", false
 	}
 
-	return obj.MD5, true
+	return obj.Info.MD5, true
 }
 
 func (s *service) handleCall(r *repository.Request) {
@@ -152,12 +156,6 @@ func (s *service) handleCall(r *repository.Request) {
 }
 
 func (s *service) read(r *repository.Request) {
-	// Q: 이 부분 의미 질문
-	if r.Oid == "" {
-		s.readAll(r)
-		return
-	}
-
 	// Find and get the requested logical volume.
 	lv, ok := s.lvs[r.Vol]
 	if !ok {
@@ -166,14 +164,12 @@ func (s *service) read(r *repository.Request) {
 	}
 
 	// Find and get the requested object.
-	obj, ok := lv.Objs[r.Oid]
+	lv.Lock.RLock()
+	obj, ok := lv.Obj[r.Oid]
+	lv.Lock.RUnlock()
 	if !ok {
 		r.Err = fmt.Errorf("no such object: %s", r.Oid)
 		return
-	}
-
-	if r.Osize == 0 {
-		r.Osize = obj.Size
 	}
 
 	// Create a directory for a local group if not exist.
@@ -184,7 +180,7 @@ func (s *service) read(r *repository.Request) {
 	}
 
 	// Open a chunk requested by a client.
-	fChunk, err := os.Open(lgDir + "/" + obj.Cid)
+	fChunk, err := os.Open(lgDir + "/" + obj.Map.Cid)
 	if err != nil {
 		r.Err = err
 		return
@@ -192,17 +188,22 @@ func (s *service) read(r *repository.Request) {
 	defer fChunk.Close()
 
 	// Seek offset beginning of the requested object in the chunk.
-	_, err = fChunk.Seek(obj.Offset, os.SEEK_SET)
+	_, err = fChunk.Seek(obj.Map.Offset, os.SEEK_SET)
 	if err != nil {
 		r.Err = err
 		return
 	}
 
 	// Read contents of the requested object from the chunk.
-	if _, err = io.CopyN(r.Out, fChunk, r.Osize); err != nil {
+	_, err = io.CopyN(r.Out, fChunk, r.Osize)
+	if err != nil {
 		r.Err = err
 		return
 	}
+
+	// Complete to read the requested object.
+	r.Err = nil
+	return
 }
 
 func (s *service) readAll(r *repository.Request) {
@@ -234,14 +235,18 @@ func (s *service) readAll(r *repository.Request) {
 		r.Err = err
 		return
 	}
+
+	// Complete to read the all contents from the chunk.
+	r.Err = nil
+	return
 }
 
-func (s *service) write(r *repository.Request) error {
+func (s *service) write(r *repository.Request) {
 	// Find and get a logical volume.
 	lv, ok := s.lvs[r.Vol]
 	if !ok {
 		r.Err = fmt.Errorf("no such lv: %s", r.Vol)
-		return nil
+		return
 	}
 
 	// Create a directory for a local group if not exist.
@@ -255,7 +260,7 @@ func (s *service) write(r *repository.Request) error {
 	fChunk, err := os.OpenFile(lgDir+"/"+r.Cid, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0775)
 	if err != nil {
 		r.Err = err
-		return nil
+		return
 	}
 	defer fChunk.Close()
 
@@ -266,49 +271,98 @@ func (s *service) write(r *repository.Request) error {
 	fChunkInfo, err := os.Lstat(fChunkName)
 	if err != nil {
 		r.Err = err
-		return nil
+		return
 	}
 
 	// Get current length of the chunk.
 	fChunkLen := fChunkInfo.Size()
 
-	// Write the object into the chunk if it will not be full.
+	// If the chunk is newly generated, write a chunk header.
+	if fChunkLen == 0 {
+		cHeader := make([]byte, 1)
+
+		// ToDo: implement more information of cHeader.
+		cHeader[0] = 0x1
+		n, err := fChunk.Write(cHeader)
+
+		if n != len(cHeader) {
+			r.Err = err
+			return
+		}
+	}
+	// Create an object header for requested object.
+	oHeader := make([]string, 8)
+	oHeader[0] = r.User
+
+	// Check whether the chunk is full or has not enough space to write the object.
 	if fChunkLen >= lv.ChunkSize {
 		r.Err = fmt.Errorf("chunk full")
-		return nil
+		return
 	}
-
-	if fChunkLen+r.Osize > lv.ChunkSize {
+	if fChunkLen+int64(len(oHeader))+r.Osize > lv.ChunkSize {
 		err = fChunk.Truncate(lv.ChunkSize)
 		r.Err = fmt.Errorf("truncated")
-		return nil
+		return
 	}
 
+	// Write the object header into the chunk.
+	n, err := fChunk.WriteString(oHeader[0])
+
+	// ToDo: implement more information of cHeader.
+	if n != len(oHeader) {
+		r.Err = err
+		return
+	}
+
+	// Write the object into the chunk if it will not be full.
 	_, err = io.CopyN(fChunk, r.In, r.Osize)
 	if err != nil {
 		r.Err = err
-		return nil
+		return
 	}
 
 	// Store mapping information between the object and the chunk.
-	lv.Objs[r.Oid] = repository.ObjMap{
-		Cid:    r.Cid,
-		Offset: fChunkLen,
-		Size:   r.Osize,
-		MD5:    r.Md5,
+	lv.Lock.Lock()
+	lv.Obj[r.Oid] = repository.Object{
+		Map: repository.ObjMap{
+			Cid:    r.Cid,
+			Offset: fChunkLen,
+		},
+		Info: repository.ObjInfo{
+			Size: r.Osize,
+			MD5:  r.Md5,
+		},
 	}
+	lv.Lock.Unlock()
 
-	return nil
+	// Complete to write the object into the chunk.
+	r.Err = nil
+	return
 }
 
 func (s *service) delete(r *repository.Request) {
+	// Find and get a logical volume.
 	lv, ok := s.lvs[r.Vol]
 	if !ok {
 		r.Err = fmt.Errorf("no such lv: %s", r.Vol)
 		return
 	}
 
-	r.Err = os.Remove(lv.MntPoint + "/" + r.LocGid + "/" + r.Cid)
+	// Check if the requested object is in the object map.
+	_, ok = lv.Obj[r.Oid]
+	if !ok {
+		r.Err = fmt.Errorf("no such object: %s", r.Oid)
+		return
+	}
+
+	// Delete the object from the map.
+	lv.Lock.Lock()
+	delete(lv.Obj, r.Oid)
+	lv.Lock.Unlock()
+
+	// Complete to delete the object from the map.
+	r.Err = nil
+	return
 }
 
 // NewAdminRepository returns a new lv store inteface in a view of admin domain.
