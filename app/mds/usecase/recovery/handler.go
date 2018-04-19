@@ -50,7 +50,7 @@ func (h *handlers) Recovery(req *nilrpc.MRERecoveryRequest, res *nilrpc.MRERecov
 	select {
 	case notiCh <- nil:
 		return nil
-	case <-time.After(10 * time.Millisecond):
+	case <-time.After(0):
 		return nil
 	}
 }
