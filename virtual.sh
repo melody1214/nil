@@ -31,14 +31,18 @@ REGIONUSERS=5   # 5 users per region
 # Buckets per user
 BUCKETS=3
 
+# Test local recovery.
+TESTLOCALRECOVERY=false
+
 # Save settings.
 AUTOMOUNT_OPEN=""
 
 usage() {
     echo
-    echo "Usage: $0 [-p] [-s] [-h]"
+    echo "Usage: $0 [-p] [-l] [-s] [-h]"
     echo "Options:"
     echo "  -p Purge virtual cluster"
+    echo "  -l Test local recovery"
     echo "  -s Create mysql user and schema"
     echo "  -h Show this screen"
     echo
@@ -89,19 +93,17 @@ function createschema() {
 function purge() {
     # Kill all running processes of virtual cluster.
     if [ -e $PID ]; then
-        pids=$(cat $PID)
-        
         # Sends a stop signal to running processes.
-        for pid in $pids; do
-            kill $pid || true
-        done
+        while read region node pid;
+            do kill $pid || true
+        done < $PID
 
         sleep 1
 
         # Sends a kill signal to running processes.
-        for pid in $pids; do
-            kill -9 $pid || true
-        done
+        while read region node pid;
+            do kill -9 $pid || true
+        done < $PID
     fi
 
     # Unmount all disks in the virtual cluster.
@@ -178,7 +180,7 @@ function rungw() {
       --first-mds localhost:$MDSBASEPORT \
       --secure-certs-dir $CERTSDIR \
       -l log &
-    echo $! >> $PID
+    echo $region gw $! >> $PID
 }
 
 function runmds() {
@@ -200,7 +202,7 @@ function runmds() {
       --swim-coordinator-addr localhost:$MDSBASEPORT \
       --secure-certs-dir $CERTSDIR \
       -l log &
-    echo $! >> $PID
+    echo $region mds $! >> $PID
 }
 
 function runds() {
@@ -218,7 +220,7 @@ function runds() {
       --work-dir $workdir \
       --secure-certs-dir $CERTSDIR \
       -l log &
-    echo $! >> $PID
+    echo $region ds $! >> $PID
 
     createsdisks "$DISKNUM" "$DISKSIZE" "$workdir" "$port"
 }
@@ -299,6 +301,29 @@ function getobjects() {
     done
 }
 
+function killsingledsinregion() {
+    local targetregion="$1"
+
+    while read region node pid; do
+        if [ $region == $targetregion ] && [ $node == "ds" ]; then
+            echo "find ds $pid in region $region, send kill signal ..."
+            kill $pid || true
+            return
+        fi
+    done < $PID
+
+}
+
+function testlocalrecovery() {
+    for region in ${REGIONS[@]}; do
+        echo "kill a single ds in region $region ..."
+        killsingledsinregion $region
+        sleep 1
+    done
+
+    getobjects
+}
+
 function main() {
     purge
 
@@ -331,6 +356,11 @@ function main() {
     # Put objects.
     sleep 3
     putobjects
+
+    # Test local recovery
+    if [ $TESTLOCALRECOVERY = true ]; then
+        testlocalrecovery
+    fi
 }
 
 # Run as root.
@@ -345,11 +375,14 @@ changeset
 trap restore SIGINT
 trap restore EXIT
 
-while getopts psh o; do
+while getopts plsh o; do
     case $o in
     p)
         purge
         exit 0
+        ;;
+    l)
+        TESTLOCALRECOVERY=true
         ;;
     s)
         createschema
