@@ -94,7 +94,12 @@ func (h *handlers) GetAllChain(req *nilrpc.GetAllChainRequest, res *nilrpc.GetAl
 
 	res.EncGrps, err = h.store.GetAllEncodingGroups(txid)
 	if err != nil {
+		h.store.Rollback(txid)
 		return errors.Wrap(err, "failed to get all encoding groups")
+	}
+	if err = h.store.Commit(txid); err != nil {
+		h.store.Rollback(txid)
+		return err
 	}
 
 	return nil
