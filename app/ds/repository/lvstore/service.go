@@ -152,11 +152,13 @@ func (s *service) handleCall(r *repository.Request) {
 		s.write(r)
 	case repository.Delete:
 		s.delete(r)
+	case repository.ReadAll:
+		s.readAll(r)
 	}
 }
 
 func (s *service) read(r *repository.Request) {
-  // Find and get the requested logical volume.
+	// Find and get the requested logical volume.
 	lv, ok := s.lvs[r.Vol]
 	if !ok {
 		r.Err = fmt.Errorf("no such lv: %s", r.Vol)
