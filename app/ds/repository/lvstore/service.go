@@ -156,7 +156,7 @@ func (s *service) handleCall(r *repository.Request) {
 }
 
 func (s *service) read(r *repository.Request) {
-	// Find and get the requested logical volume.
+  // Find and get the requested logical volume.
 	lv, ok := s.lvs[r.Vol]
 	if !ok {
 		r.Err = fmt.Errorf("no such lv: %s", r.Vol)
@@ -282,7 +282,7 @@ func (s *service) write(r *repository.Request) {
 		cHeader := make([]byte, 1)
 
 		// ToDo: implement more information of cHeader.
-		cHeader[0] = 0x1
+		cHeader[0] = 0x01
 		n, err := fChunk.Write(cHeader)
 
 		if n != len(cHeader) {
@@ -309,10 +309,20 @@ func (s *service) write(r *repository.Request) {
 	n, err := fChunk.WriteString(oHeader[0])
 
 	// ToDo: implement more information of cHeader.
-	if n != len(oHeader) {
+	if n != len(oHeader[0]) {
 		r.Err = err
 		return
 	}
+
+	// Get an information of the chunk.
+	fChunkInfo, err = os.Lstat(fChunkName)
+	if err != nil {
+		r.Err = err
+		return
+	}
+
+	// Get current length of the chunk.
+	fChunkLen = fChunkInfo.Size()
 
 	// Write the object into the chunk if it will not be full.
 	_, err = io.CopyN(fChunk, r.In, r.Osize)

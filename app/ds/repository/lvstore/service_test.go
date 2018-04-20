@@ -60,15 +60,15 @@ func TestServiceAPIs(t *testing.T) {
 		},
 		{repository.Write, "lv1", "lg1", "banana", "chunk1", int64(len("banana is good\n")), "banana is good\n", nil},
 		{repository.Read, "lv1", "lg1", "banana", "chunk1", int64(len("banana is good\n")), "banana is good\n", nil},
-		//{repository.Delete, "lv2", "apple", "apple is sweet\n",
-		//fmt.Errorf("%s %s: %s", "remove", dir+"/lv2/apple", "no such file or directory"),
-		//},
+		{repository.Delete, "lv2", "lg2", "apple", "chunk1", int64(len("apple is sweet\n")), "apple is sweet\n",
+			fmt.Errorf("no such object: apple"),
+		},
 		{repository.Read, "lv2", "lg2", "apple", "chunk2", int64(len("apple is sweet\n")), "apple is sweet\n",
 			fmt.Errorf("no such object: apple"),
 		},
 		{repository.Write, "lv2", "lg2", "apple", "chunk2", int64(len("apple is sweet\n")), "apple is sweet\n", nil},
 		{repository.Read, "lv2", "lg2", "apple", "chunk2", int64(len("apple is sweet\n")), "apple is sweet\n", nil},
-		//{request.Delete, "lv2", "apple", "apple is sweet\n", nil},
+		{repository.Delete, "lv2", "lg2", "apple", "chunk2", int64(len("apple is sweet\n")), "apple is sweet\n", nil},
 	}
 
 	for _, c := range testCases {

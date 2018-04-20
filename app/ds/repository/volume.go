@@ -84,7 +84,7 @@ type Vol struct {
 
 	ChunkSize int64
 	Obj       map[string]Object
-	Lock      *sync.RWMutex
+	Lock      sync.RWMutex
 }
 
 // NewVol collects information about the volume with the given
