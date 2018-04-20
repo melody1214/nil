@@ -102,6 +102,9 @@ func (r *S3RequestEvent) Auth(secretKey string) bool {
 
 // SendSuccess sends success message to the client.
 func (r *S3RequestEvent) SendSuccess() {
+	if r.requireMD5() {
+		r.httpWriter.Header().Set("ETag", r.MD5())
+	}
 	s3lib.SendSuccess(r.httpWriter)
 }
 
@@ -157,4 +160,35 @@ func getAuthArgsV4(authString string) (*s3lib.SignV4, s3lib.ErrorCode) {
 
 	// Parse auth string.
 	return s3lib.ParseSignV4(authString)
+}
+
+func (r *S3RequestEvent) requireMD5() bool {
+	requestType := r.Type()
+	if requestType != client.WriteToPrimary && requestType != client.WriteToFollower {
+		return false
+	}
+
+	if isS3cmd(r.httpRequest) == false {
+		return false
+	}
+
+	return true
+}
+
+// MD5 returns md5 string.
+func (r *S3RequestEvent) MD5() string {
+	if isS3cmd(r.httpRequest) {
+		attrs := r.httpRequest.Header.Get("X-Amz-Meta-S3cmd-Attrs")
+		for _, attr := range strings.Split(attrs, "/") {
+			if strings.HasPrefix(attr, "md5:") {
+				md5str := strings.Split(attr, ":")[1]
+				return md5str
+			}
+		}
+	}
+	return r.httpRequest.Header.Get("Md5")
+}
+
+func isS3cmd(r *http.Request) bool {
+	return r.Header.Get("X-Amz-Meta-S3cmd-Attrs") != ""
 }

@@ -11,6 +11,7 @@ type RequestEvent interface {
 	Region() string
 	Bucket() string
 	Type() RequestType
+	MD5() string
 
 	// Method includes business logic.
 	Auth(secretKey string) bool

@@ -56,26 +56,15 @@ func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch req.Type() {
 	case client.WriteToPrimary:
-		attrs := r.Header.Get("X-Amz-Meta-S3cmd-Attrs")
-
-		var md5str string
-		for _, attr := range strings.Split(attrs, "/") {
-			if strings.HasPrefix(attr, "md5:") {
-				md5str = strings.Split(attr, ":")[1]
-				break
-			}
-		}
-
 		endecReq := newRequest(req)
-		endecReq.md5 = md5str
 		h.endec.Push(endecReq)
+
 		if err := endecReq.wait(); err != nil {
 			ctxLogger.Error(err)
 			req.SendInternalError()
 			return
 		}
 
-		req.ResponseWriter().Header().Set("ETag", md5str)
 		req.SendSuccess()
 	case client.WriteToFollower:
 		osize, err := strconv.ParseInt(r.Header.Get("Content-Length"), 10, 64)

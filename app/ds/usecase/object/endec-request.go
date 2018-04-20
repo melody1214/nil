@@ -8,7 +8,6 @@ import (
 
 type request struct {
 	r   client.RequestEvent
-	md5 string
 	wg  sync.WaitGroup
 	err error
 }

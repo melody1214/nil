@@ -203,7 +203,7 @@ func (e *endec) do(r *request) {
 	headers.SetLocalChainID(lcid)
 	headers.SetVolumeID(volID)
 	headers.SetChunkID(e.chunkMap[lcid].chunkID)
-	headers.SetMD5(r.md5)
+	headers.SetMD5(r.r.MD5())
 	copyReq, err := cli.NewRequest(
 		client.WriteToFollower,
 		r.r.Request().Method, addr, pipeReader,
