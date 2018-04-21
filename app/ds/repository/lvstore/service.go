@@ -142,6 +142,16 @@ func (s *service) GetObjectMD5(lvID, objID string) (string, bool) {
 	return obj.Info.MD5, true
 }
 
+func (s *service) GetChunkHeaderSize() int64 {
+	// TODO: fill the method
+	return 100
+}
+
+func (s *service) GetObjectHeaderSize() int64 {
+	// TODO: fill the method
+	return 100
+}
+
 func (s *service) handleCall(r *repository.Request) {
 	defer r.Wg.Done()
 

@@ -12,6 +12,7 @@ import (
 	cr "github.com/chanyoung/nil/pkg/client/request"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
+	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -21,13 +22,14 @@ var logger *logrus.Entry
 
 type handlers struct {
 	requestEventFactory *cr.RequestEventFactory
+	chunkPool           *chunkPool
 	store               Repository
 	endec               *endec
 	cMap                *cmap.Controller
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cMap *cmap.Controller, f *cr.RequestEventFactory, s Repository) (Handlers, error) {
+func NewHandlers(cfg *config.Ds, cMap *cmap.Controller, f *cr.RequestEventFactory, s Repository) (Handlers, error) {
 	logger = mlog.GetPackageLogger("app/ds/usecase/object")
 
 	ed, err := newEncoder(cMap, s)
@@ -36,8 +38,18 @@ func NewHandlers(cMap *cmap.Controller, f *cr.RequestEventFactory, s Repository)
 	}
 	go ed.Run()
 
+	shards, err := strconv.ParseInt(cfg.LocalParityShards, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	chunkSize, err := strconv.ParseInt(cfg.ChunkSize, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
 	return &handlers{
 		requestEventFactory: f,
+		chunkPool:           newChunkPool(shards, chunkSize, s.GetChunkHeaderSize(), s.GetObjectHeaderSize(), chunkSize-1000),
 		endec:               ed,
 		store:               s,
 		cMap:                cMap,
@@ -56,16 +68,7 @@ func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch req.Type() {
 	case client.WriteToPrimary:
-		endecReq := newRequest(req)
-		h.endec.Push(endecReq)
-
-		if err := endecReq.wait(); err != nil {
-			ctxLogger.Error(err)
-			req.SendInternalError()
-			return
-		}
-
-		req.SendSuccess()
+		h.writeToPrimary(req)
 	case client.WriteToFollower:
 		osize, err := strconv.ParseInt(r.Header.Get("Content-Length"), 10, 64)
 		if err != nil {
@@ -94,7 +97,7 @@ func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		mds, err := h.cMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
+		mds, err := h.cMap.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			ctxLogger.Error(errors.Wrap(err, "failed to get alive mds from cluster map"))
@@ -130,6 +133,79 @@ func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+}
+
+func (h *handlers) writeToPrimary(req client.RequestEvent) {
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.writeToPrimary")
+
+	cid, err := h.writeToAvailableChunk(req)
+	if err != nil {
+		ctxLogger.Error(errors.Wrap(err, "failed to write to available chunk"))
+		req.SendInternalError()
+		return
+	}
+
+	err = h.writeToRemoteFollower(req, cid)
+	if err != nil {
+		// TODO: handling error in writing.
+		ctxLogger.Error(errors.Wrap(err, "failed to write to available chunk"))
+		req.SendInternalError()
+		return
+	}
+
+	if h.needToEncode(cid) == false {
+		req.SendSuccess()
+	}
+
+	// encoding
+	req.SendSuccess()
+}
+
+func (h *handlers) writeToAvailableChunk(req client.RequestEvent) (chunkID, error) {
+	contentLength, err := strconv.ParseInt(req.Request().Header.Get("Content-Length"), 10, 64)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to convert content legnth")
+	}
+
+	cid := h.chunkPool.FindAvailableChunk(
+		vID(req.Request().Header.Get("Volume-Id")), contentLength,
+	)
+
+	storeReq := &repository.Request{
+		Op:     repository.Write,
+		Vol:    req.Request().Header.Get("Volume-Id"),
+		LocGid: req.Request().Header.Get("Local-Chain-Id"),
+		Oid:    strings.Replace(strings.Trim(req.Request().RequestURI, "/"), "/", ".", -1),
+		Cid:    string(cid),
+		Osize:  contentLength,
+
+		In: req.Request().Body,
+	}
+
+	err = h.store.Push(storeReq)
+	if err != nil {
+		return cid, errors.Wrap(err, "failed to push writing request into the backend store")
+	}
+
+	err = storeReq.Wait()
+	if err != nil {
+		// TODO: handling error in writing process.
+		storeReq.Op = repository.Delete
+		h.store.Push(storeReq)
+		storeReq.Wait()
+		return cid, errors.Wrap(err, "failed to write into the backend store")
+	}
+
+	h.chunkPool.FinishWriting(cid, contentLength)
+	return cid, nil
+}
+
+func (h *handlers) writeToRemoteFollower(req client.RequestEvent, cid chunkID) error {
+	return nil
+}
+
+func (h *handlers) needToEncode(cid chunkID) bool {
+	return false
 }
 
 // GetObjectHandler handles the client request for getting an object.

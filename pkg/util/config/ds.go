@@ -18,6 +18,10 @@ type Ds struct {
 	// ChunkSize is the size of backend store chunk.
 	ChunkSize string
 
+	// Encoding
+	// LocalParityShards is the number of shards that used to generate local parity.
+	LocalParityShards string
+
 	// Swim config.
 	Swim Swim
 	// Security config.

@@ -35,6 +35,7 @@
         "store": "lv",
 
         "chunk_size": "10000000",
+        "local_parity_shards": "3",
 
         "log_location": "stderr"
     },

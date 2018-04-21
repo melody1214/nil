@@ -43,6 +43,7 @@ func init() {
 	dsCmd.Flags().StringVarP(&dsCfg.Store, "store", "", config.Get("ds.store"), "type of backend store")
 
 	dsCmd.Flags().StringVarP(&dsCfg.ChunkSize, "chunk-size", "", config.Get("ds.chunk_size"), "size of backend store chunk")
+	dsCmd.Flags().StringVarP(&dsCfg.LocalParityShards, "local-parity-shards", "", config.Get("ds.local_parity_shards"), "number of shards for generating local parity")
 
 	dsCmd.Flags().StringVarP(&dsCfg.Security.CertsDir, "secure-certs-dir", "", config.Get("security.certs_dir"), "directory path of secure configuration files")
 	dsCmd.Flags().StringVarP(&dsCfg.Security.RootCAPem, "secure-rootca-pem", "", config.Get("security.rootca_pem"), "file name of rootCA.pem")

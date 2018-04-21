@@ -56,7 +56,7 @@ func (h *handlers) getSecretKeyFromRemote(accessKey string) (secretKey string, e
 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.getSecretKeyFromRemote")
 
 	// 1. Lookup mds from cluster map.
-	mds, err := h.cMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
+	mds, err := h.cMap.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
 	if err != nil {
 		ctxLogger.Error(errors.Wrap(err, "failed to find alive mds"))
 		return "", ErrInternal

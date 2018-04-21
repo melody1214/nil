@@ -54,7 +54,7 @@ func updater(c *cmap.Controller) {
 }
 
 func updateClusterMap(c *cmap.Controller) error {
-	mds, err := c.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
+	mds, err := c.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
 	if err != nil {
 		return err
 	}

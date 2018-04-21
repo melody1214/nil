@@ -47,7 +47,7 @@ func (h *handlers) makeBucket(accessKey, region, bucket string) error {
 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.makeBucket")
 
 	// 1. Lookup mds from cluster map.
-	mds, err := h.cMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
+	mds, err := h.cMap.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
 	if err != nil {
 		ctxLogger.Error(err)
 		return errInternal

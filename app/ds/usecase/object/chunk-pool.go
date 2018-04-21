@@ -21,15 +21,16 @@ type chunk struct {
 	volume vID
 
 	// Space information.
-	size int
-	free int
+	size int64
+	free int64
 }
 
 // newChunkPool returns a new chunk pool with the given configurations.
-func newChunkPool(shardSize, chunkSize, chunkHeaderSize, objectHeaderSize, maximumSize int) *chunkPool {
+func newChunkPool(shardSize, chunkSize, chunkHeaderSize, objectHeaderSize, maximumSize int64) *chunkPool {
 	return &chunkPool{
 		pool:             make(map[chunkID]*chunk),
 		writing:          make(map[chunkID]*chunk),
+		encoding:         make(map[chunkID]*chunk),
 		shardSize:        shardSize,
 		chunkSize:        chunkSize,
 		chunkHeaderSize:  chunkHeaderSize,
@@ -42,11 +43,12 @@ func newChunkPool(shardSize, chunkSize, chunkHeaderSize, objectHeaderSize, maxim
 type chunkPool struct {
 	pool             map[chunkID]*chunk
 	writing          map[chunkID]*chunk
-	shardSize        int
-	chunkSize        int
-	chunkHeaderSize  int
-	objectHeaderSize int
-	maximumSize      int
+	encoding         map[chunkID]*chunk
+	shardSize        int64
+	chunkSize        int64
+	chunkHeaderSize  int64
+	objectHeaderSize int64
+	maximumSize      int64
 
 	mu sync.Mutex
 }
@@ -68,7 +70,7 @@ func (p *chunkPool) newChunk(volume vID) chunkID {
 // FindAvailableChunk returns chunkID which is available for writing.
 // This method is never failed, because it will creates a new chunk
 // when there is no available chunk.
-func (p *chunkPool) FindAvailableChunk(volume vID, writingSize int) chunkID {
+func (p *chunkPool) FindAvailableChunk(volume vID, writingSize int64) chunkID {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -96,5 +98,25 @@ func (p *chunkPool) FindAvailableChunk(volume vID, writingSize int) chunkID {
 	return cid
 }
 
+// FinishWriting moves chunk with the given id int64o the other pools.
+// If the left free space of the chunk is less than allowed maximum
+// chunk size, then push it in the encoding pool. The endec will
+// encode it batch. If not, then push int64o the waiting pool to wait
+// another writing requests from the clients.
 func (p *chunkPool) FinishWriting(cid chunkID, writingSize int64) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	c, ok := p.writing[cid]
+	if ok == false {
+		return
+	}
+
+	c.free = c.free - writingSize
+	if c.free < p.maximumSize {
+		p.pool[cid] = c
+	} else {
+		p.encoding[cid] = c
+	}
+	delete(p.writing, cid)
 }

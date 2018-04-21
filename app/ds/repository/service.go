@@ -16,4 +16,6 @@ type Service interface {
 
 	GetObjectSize(lvID, objID string) (int64, bool)
 	GetObjectMD5(lvID, objID string) (string, bool)
+	GetChunkHeaderSize() int64
+	GetObjectHeaderSize() int64
 }

@@ -18,7 +18,7 @@ type encodeGroup struct {
 func (e *endec) updateGroup() {
 	ctxLogger := mlog.GetMethodLogger(logger, "endec.updateGroup")
 
-	mds, err := e.cMap.SearchCall().Type(cmap.MDS).Do()
+	mds, err := e.cMap.SearchCallNode().Type(cmap.MDS).Do()
 	if err != nil {
 		ctxLogger.Error(err)
 		return
@@ -66,7 +66,7 @@ func (e *endec) updateGroup() {
 				ctxLogger.Errorf("no such volume %d", v.Int64())
 				continue
 			}
-			n, err := e.cMap.SearchCall().ID(cmap.ID(id)).Do()
+			n, err := e.cMap.SearchCallNode().ID(cmap.ID(id)).Do()
 			if err != nil {
 				ctxLogger.Error(err)
 				continue

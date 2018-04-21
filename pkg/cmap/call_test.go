@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestSearchCall(t *testing.T) {
+func TestSearchCallNode(t *testing.T) {
 	testNodes := []Node{
 		{
 			ID:   ID(0),
@@ -50,7 +50,7 @@ func TestSearchCall(t *testing.T) {
 
 	for _, n := range testMap.Nodes {
 		// 1. Search with the all conditions are matched.
-		c := ct.SearchCall()
+		c := ct.SearchCallNode()
 		c.ID(n.ID).Name(n.Name).Type(n.Type).Status(n.Stat)
 
 		if find, err := c.Do(); err != nil {
@@ -60,7 +60,7 @@ func TestSearchCall(t *testing.T) {
 		}
 
 		// 2. Search with only condition for id.
-		c = ct.SearchCall()
+		c = ct.SearchCallNode()
 		c.ID(n.ID)
 
 		if find, err := c.Do(); err != nil {
@@ -70,7 +70,7 @@ func TestSearchCall(t *testing.T) {
 		}
 
 		// 3. Search with wrong contition.
-		c = ct.SearchCall()
+		c = ct.SearchCallNode()
 		c.Name(n.Name + "wrong name")
 
 		if _, err := c.Do(); err == nil {
@@ -78,7 +78,7 @@ func TestSearchCall(t *testing.T) {
 		}
 
 		// 4. Search with type and status.
-		c = ct.SearchCall()
+		c = ct.SearchCallNode()
 		c.Type(n.Type).Status(n.Stat)
 
 		if find, err := c.Do(); err != nil {

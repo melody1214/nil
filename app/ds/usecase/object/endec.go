@@ -241,7 +241,7 @@ func (e *endec) encode(chunkmap *chunkMap, volID, lgid string) {
 
 	pr1, pw1 := io.Pipe()
 	req1 := &repository.Request{
-		Op:     repository.Read,
+		Op:     repository.ReadAll,
 		Vol:    volID,
 		LocGid: lgid,
 		Cid:    chunkmap.chunkID + "-0",
@@ -262,7 +262,7 @@ func (e *endec) encode(chunkmap *chunkMap, volID, lgid string) {
 
 	pr2, pw2 := io.Pipe()
 	req2 := &repository.Request{
-		Op:     repository.Read,
+		Op:     repository.ReadAll,
 		Vol:    volID,
 		LocGid: lgid,
 		Cid:    chunkmap.chunkID + "-1",
@@ -283,7 +283,7 @@ func (e *endec) encode(chunkmap *chunkMap, volID, lgid string) {
 
 	pr3, pw3 := io.Pipe()
 	req3 := &repository.Request{
-		Op:     repository.Read,
+		Op:     repository.ReadAll,
 		Vol:    volID,
 		LocGid: lgid,
 		Cid:    chunkmap.chunkID + "-2",
@@ -359,7 +359,7 @@ func (e *endec) encode(chunkmap *chunkMap, volID, lgid string) {
 }
 
 func (e *endec) getConfigs() error {
-	mds, err := e.cMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
+	mds, err := e.cMap.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
 	if err != nil {
 		return errors.Wrap(err, "failed to search alive mds")
 	}

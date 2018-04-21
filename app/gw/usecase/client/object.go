@@ -23,13 +23,6 @@ func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
-	res, err := h.getLocalChain()
-	if err != nil {
-		ctxLogger.Error(err)
-		req.SendInternalError()
-		return
-	}
-
 	// Extract bucket name and object name.
 	// ex) /bucketname/object1
 	// ->  bucketname/object1
@@ -42,9 +35,7 @@ func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Test code
-	c := h.cMap.SearchCall()
-	node, err := c.ID(cmap.ID(res.ParityNodeID)).Do()
+	eg, node, err := h.findRandomPlaceToWrite()
 	if err != nil {
 		ctxLogger.Error(err)
 		req.SendInternalError()
@@ -53,24 +44,41 @@ func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 
 	rpURL, err := url.Parse("https://" + node.Addr)
 	if err != nil {
-		ctxLogger.Error(
-			errors.Wrapf(
-				err,
-				"parse ds url failed, ds ID: %s, ds url: %s",
-				node.ID.String(),
-				node.Addr,
-			),
+		ctxLogger.Error(errors.Wrapf(err,
+			"parse ds url failed, ds ID: %s, ds url: %s",
+			node.ID.String(), node.Addr),
 		)
 		req.SendInternalError()
 		return
 	}
 
+	const primary = 0
 	proxy := httputil.NewSingleHostReverseProxy(rpURL)
-	r.Header.Add("Volume-Id", strconv.FormatInt(res.ParityVolumeID, 10))
-	r.Header.Add("Local-Chain-Id", strconv.FormatInt(res.LocalChainID, 10))
+	r.Header.Add("Volume-Id", eg.Vols[primary].String())
+	r.Header.Add("Local-Chain-Id", eg.ID.String())
 	r.Header.Add("Request-Type", client.WriteToPrimary.String())
 	proxy.ErrorLog = log.New(logger.Writer(), "http reverse proxy", log.Lshortfile)
 	proxy.ServeHTTP(w, r)
+}
+
+func (h *handlers) findRandomPlaceToWrite() (cmap.EncodingGroup, cmap.Node, error) {
+	eg, err := h.cMap.SearchCallEncGrp().Random().Status(cmap.EGAlive).Do()
+	if err != nil {
+		return cmap.EncodingGroup{}, cmap.Node{}, errors.Wrap(err, "failed to search writable encoding group")
+	}
+
+	const primary = 0
+	vol, err := h.cMap.SearchCallVolume().ID(eg.Vols[primary]).Status(cmap.Active).Do()
+	if err != nil {
+		return cmap.EncodingGroup{}, cmap.Node{}, errors.Wrapf(err, "failed to search active volume %+v", eg.Vols[primary])
+	}
+
+	node, err := h.cMap.SearchCallNode().ID(vol.Node).Status(cmap.Alive).Do()
+	if err != nil {
+		return cmap.EncodingGroup{}, cmap.Node{}, errors.Wrapf(err, "failed to search alive node %+v", vol.Node)
+	}
+
+	return eg, node, nil
 }
 
 // GetObjectHandler handles the client request for getting an object.
@@ -97,7 +105,7 @@ func (h *handlers) GetObjectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Test code
-	c := h.cMap.SearchCall()
+	c := h.cMap.SearchCallNode()
 	node, err := c.ID(cmap.ID(res.DsID)).Do()
 	if err != nil {
 		ctxLogger.Error(err)

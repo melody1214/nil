@@ -35,7 +35,7 @@ func NewHandlers(cMap *cmap.Controller, f *request.RequestEventFactory, authHand
 }
 
 func (h *handlers) getLocalChain() (*nilrpc.GetLocalChainResponse, error) {
-	mds, err := h.cMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
+	mds, err := h.cMap.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
 	if err != nil {
 		return nil, errors.Wrap(err, "find alive mds failed")
 	}
@@ -58,7 +58,7 @@ func (h *handlers) getLocalChain() (*nilrpc.GetLocalChainResponse, error) {
 }
 
 func (h *handlers) getObjectLocation(oid, bucket string) (*nilrpc.ObjectGetResponse, error) {
-	mds, err := h.cMap.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
+	mds, err := h.cMap.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
 	if err != nil {
 		return nil, errors.Wrap(err, "find alive mds failed")
 	}

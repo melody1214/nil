@@ -1,6 +1,7 @@
 package cmap
 
 import (
+	"math/rand"
 	"sync"
 	"time"
 )
@@ -11,6 +12,7 @@ type Controller struct {
 	cMaps                map[Version]*CMap
 	notiChannels         map[time.Time](chan interface{})
 	outdatedNotiChannels map[time.Time](chan interface{})
+	random               *rand.Rand
 
 	mu sync.RWMutex
 }
@@ -44,6 +46,7 @@ func NewController(coordinator string) (*Controller, error) {
 		cMaps:                make(map[Version]*CMap),
 		notiChannels:         make(map[time.Time](chan interface{})),
 		outdatedNotiChannels: make(map[time.Time](chan interface{})),
+		random:               rand.New(rand.NewSource(time.Now().Unix())),
 	}
 	c.cMaps[cm.Version] = cm
 	c.latest = cm.Version
@@ -153,12 +156,31 @@ func (c *Controller) sendUpdateNotiToAll() {
 	}
 }
 
-// SearchCall returns a new search call.
-func (c *Controller) SearchCall() *SearchCall {
-	return &SearchCall{
+// SearchCallNode returns a new search call for finding node.
+func (c *Controller) SearchCallNode() *SearchCallNode {
+	return &SearchCallNode{
 		m: c,
 		i: ID(-1),
 		n: "",
+	}
+}
+
+// SearchCallEncGrp returns a new search call for finding encoding group.
+func (c *Controller) SearchCallEncGrp() *SearchCallEncGrp {
+	return &SearchCallEncGrp{
+		m: c,
+		i: ID(-1),
+		s: EncodingGroupStatus(unknown),
+		r: false,
+	}
+}
+
+// SearchCallVolume returns a new search call for finding volume.
+func (c *Controller) SearchCallVolume() *SearchCallVolume {
+	return &SearchCallVolume{
+		m: c,
+		i: ID(-1),
+		s: VolumeStatus(unknown),
 	}
 }
 
@@ -180,7 +202,7 @@ func (c *Controller) getMdsAddr() (string, error) {
 		cm = &m
 	}
 
-	mds, err := c.SearchCall().Type(MDS).Status(Alive).Do()
+	mds, err := c.SearchCallNode().Type(MDS).Status(Alive).Do()
 	if err != nil {
 		return "", err
 	}

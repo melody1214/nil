@@ -53,7 +53,7 @@ func realtimeUpdater(c *cmap.Controller) {
 	ctxLogger := mlog.GetFunctionLogger(logger, "realtimeUpdater")
 
 	for {
-		mds, err := c.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
+		mds, err := c.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
 		if err != nil {
 			ctxLogger.Error(errors.Wrap(err, "failed to find alive mds"))
 			time.Sleep(10 * time.Second)
@@ -94,7 +94,7 @@ func isUpdated(mds string, ver cmap.Version) bool {
 }
 
 func updateClusterMap(c *cmap.Controller) error {
-	mds, err := c.SearchCall().Type(cmap.MDS).Status(cmap.Alive).Do()
+	mds, err := c.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
 	if err != nil {
 		return err
 	}
