@@ -14,11 +14,15 @@ const notFound chunkID = "not found"
 // vID is the ID of volume.
 type vID string
 
+// egID is the ID of encoding group.
+type egID string
+
 // chunk holds the information which are required for object writing.
 type chunk struct {
 	// volume ID.
-	id     chunkID
-	volume vID
+	id            chunkID
+	encodingGroup egID
+	volume        vID
 
 	// Space information.
 	size int64
@@ -54,14 +58,15 @@ type chunkPool struct {
 }
 
 // newChunk creates a new chunk object within the given volume.
-func (p *chunkPool) newChunk(volume vID) chunkID {
+func (p *chunkPool) newChunk(encodingGroup egID, volume vID) chunkID {
 	cid := chunkID(uuid.Gen())
 
 	p.pool[cid] = &chunk{
-		id:     cid,
-		volume: volume,
-		size:   p.chunkSize,
-		free:   p.chunkSize - p.chunkHeaderSize,
+		id:            cid,
+		volume:        volume,
+		encodingGroup: encodingGroup,
+		size:          p.chunkSize,
+		free:          p.chunkSize - p.chunkHeaderSize,
 	}
 
 	return cid
@@ -70,13 +75,15 @@ func (p *chunkPool) newChunk(volume vID) chunkID {
 // FindAvailableChunk returns chunkID which is available for writing.
 // This method is never failed, because it will creates a new chunk
 // when there is no available chunk.
-func (p *chunkPool) FindAvailableChunk(volume vID, writingSize int64) chunkID {
+func (p *chunkPool) FindAvailableChunk(encodingGroup egID, volume vID, writingSize int64) chunkID {
+	// TODO: remove volume in parameters.
+	// read directly from cmap by using egID.
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
 	cid := notFound
 	for id, c := range p.pool {
-		if c.volume != volume {
+		if c.encodingGroup != encodingGroup {
 			continue
 		}
 
@@ -89,7 +96,7 @@ func (p *chunkPool) FindAvailableChunk(volume vID, writingSize int64) chunkID {
 	}
 
 	if cid == notFound {
-		cid = p.newChunk(volume)
+		cid = p.newChunk(encodingGroup, volume)
 	}
 
 	p.writing[cid] = p.pool[cid]

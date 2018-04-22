@@ -168,6 +168,7 @@ func (h *handlers) writeToAvailableChunk(req client.RequestEvent) (chunkID, erro
 	}
 
 	cid := h.chunkPool.FindAvailableChunk(
+		egID(req.Request().Header.Get("Local-Chain-Id")),
 		vID(req.Request().Header.Get("Volume-Id")), contentLength,
 	)
 
