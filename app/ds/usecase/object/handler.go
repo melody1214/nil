@@ -138,35 +138,14 @@ func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 func (h *handlers) writeToPrimary(req client.RequestEvent) {
 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.writeToPrimary")
 
-	cid, err := h.writeToAvailableChunk(req)
-	if err != nil {
-		ctxLogger.Error(errors.Wrap(err, "failed to write to available chunk"))
-		req.SendInternalError()
-		return
-	}
-
-	err = h.writeToRemoteFollower(req, cid)
-	if err != nil {
-		// TODO: handling error in writing.
-		ctxLogger.Error(errors.Wrap(err, "failed to write to available chunk"))
-		req.SendInternalError()
-		return
-	}
-
-	if h.needToEncode(cid) == false {
-		req.SendSuccess()
-	}
-
-	// encoding
-	req.SendSuccess()
-}
-
-func (h *handlers) writeToAvailableChunk(req client.RequestEvent) (chunkID, error) {
 	contentLength, err := strconv.ParseInt(req.Request().Header.Get("Content-Length"), 10, 64)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to convert content legnth")
+		ctxLogger.Error(errors.Wrap(err, "invalid content length"))
+		req.SendInternalError()
+		return
 	}
 
+	// Write into the available chunk.
 	cid := h.chunkPool.FindAvailableChunk(
 		egID(req.Request().Header.Get("Local-Chain-Id")),
 		vID(req.Request().Header.Get("Volume-Id")), contentLength,
@@ -185,28 +164,48 @@ func (h *handlers) writeToAvailableChunk(req client.RequestEvent) (chunkID, erro
 
 	err = h.store.Push(storeReq)
 	if err != nil {
-		return cid, errors.Wrap(err, "failed to push writing request into the backend store")
+		ctxLogger.Error(errors.Wrap(err, "failed to push writing request into the backend store"))
+		req.SendInternalError()
+		return
 	}
 
 	err = storeReq.Wait()
 	if err != nil {
 		// TODO: handling error in writing process.
+
+		// Rollback writed data.
 		storeReq.Op = repository.Delete
 		h.store.Push(storeReq)
 		storeReq.Wait()
-		return cid, errors.Wrap(err, "failed to write into the backend store")
+
+		ctxLogger.Error(errors.Wrap(err, "failed to write into the backend store"))
+		req.SendInternalError()
+		return
 	}
 
+	// Copy to the remote follower node
+	err = h.writeToRemoteFollower(req, cid)
+	if err != nil {
+		// TODO: handling error in writing.
+
+		// Rollback writed data.
+		storeReq.Op = repository.Delete
+		h.store.Push(storeReq)
+		storeReq.Wait()
+
+		ctxLogger.Error(errors.Wrap(err, "failed to write to available chunk"))
+		req.SendInternalError()
+		return
+	}
+
+	// Commit writed data.
 	h.chunkPool.FinishWriting(cid, contentLength)
-	return cid, nil
+
+	req.SendSuccess()
 }
 
 func (h *handlers) writeToRemoteFollower(req client.RequestEvent, cid chunkID) error {
 	return nil
-}
-
-func (h *handlers) needToEncode(cid chunkID) bool {
-	return false
 }
 
 // GetObjectHandler handles the client request for getting an object.

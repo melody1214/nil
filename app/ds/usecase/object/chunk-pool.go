@@ -19,10 +19,10 @@ type egID string
 
 // chunk holds the information which are required for object writing.
 type chunk struct {
-	// volume ID.
 	id            chunkID
 	encodingGroup egID
 	volume        vID
+	encoding      bool
 
 	// Space information.
 	size int64
@@ -105,7 +105,7 @@ func (p *chunkPool) FindAvailableChunk(encodingGroup egID, volume vID, writingSi
 	return cid
 }
 
-// FinishWriting moves chunk with the given id int64o the other pools.
+// FinishWriting moves chunk with the given id into the other pools.
 // If the left free space of the chunk is less than allowed maximum
 // chunk size, then push it in the encoding pool. The endec will
 // encode it batch. If not, then push int64o the waiting pool to wait
@@ -126,4 +126,44 @@ func (p *chunkPool) FinishWriting(cid chunkID, writingSize int64) {
 		p.encoding[cid] = c
 	}
 	delete(p.writing, cid)
+}
+
+// GetNeedEncodingChunk returns a chunk object that need to be encoded.
+func (p *chunkPool) GetNeedEncodingChunk() (c chunk, ok bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	for _, chunk := range p.encoding {
+		if chunk.encoding {
+			continue
+		}
+
+		chunk.encoding = true
+		return *chunk, true
+	}
+
+	return c, false
+}
+
+// EncodingFailed set the encoding field to false.
+func (p *chunkPool) EncodingFailed(cid chunkID) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	for id, chunk := range p.encoding {
+		if id != cid {
+			continue
+		}
+
+		chunk.encoding = false
+		return
+	}
+}
+
+// EncodingSuccess remove chunk with the given id from encoding list.
+func (p *chunkPool) EncodingSuccess(cid chunkID) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	delete(p.encoding, cid)
 }
