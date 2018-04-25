@@ -1,6 +1,8 @@
 package object
 
 import (
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/chanyoung/nil/pkg/util/uuid"
@@ -23,6 +25,7 @@ type chunk struct {
 	encodingGroup egID
 	volume        vID
 	encoding      bool
+	shard         int
 
 	// Space information.
 	size int64
@@ -65,6 +68,7 @@ func (p *chunkPool) newChunk(encodingGroup egID, volume vID) chunkID {
 		id:            cid,
 		volume:        volume,
 		encodingGroup: encodingGroup,
+		shard:         1,
 		size:          p.chunkSize,
 		free:          p.chunkSize - p.chunkHeaderSize,
 	}
@@ -81,6 +85,7 @@ func (p *chunkPool) FindAvailableChunk(encodingGroup egID, volume vID, writingSi
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
+	var shard string
 	cid := notFound
 	for id, c := range p.pool {
 		if c.encodingGroup != encodingGroup {
@@ -92,17 +97,20 @@ func (p *chunkPool) FindAvailableChunk(encodingGroup egID, volume vID, writingSi
 		}
 
 		cid = id
+		shard = strconv.Itoa(c.shard)
 		break
 	}
 
 	if cid == notFound {
 		cid = p.newChunk(encodingGroup, volume)
+		shard = strconv.Itoa(p.pool[cid].shard)
 	}
 
 	p.writing[cid] = p.pool[cid]
 	delete(p.pool, cid)
 
-	return cid
+	// chunk ID = "cid" + "_" + "shard"
+	return chunkID(string(cid) + "_" + shard)
 }
 
 // FinishWriting moves chunk with the given id into the other pools.
@@ -114,18 +122,70 @@ func (p *chunkPool) FinishWriting(cid chunkID, writingSize int64) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
+	cid = chunkID(strings.Split(string(cid), "_")[0])
+
 	c, ok := p.writing[cid]
 	if ok == false {
 		return
 	}
+	defer delete(p.writing, cid)
 
 	c.free = c.free - writingSize
 	if c.free < p.maximumSize {
 		p.pool[cid] = c
-	} else {
-		p.encoding[cid] = c
+		return
 	}
-	delete(p.writing, cid)
+
+	// // Chunk is full. Make the chunk is truncated.
+	// storeReq := &repository.Request{
+	// 	Op:     repository.Write,
+	// 	Vol:    string(c.volume),
+	// 	LocGid: string(c.encodingGroup),
+	// 	Oid:    "ForceToMakeTruncated",
+	// 	Cid:    string(c.id),
+	// 	Osize:  c.size,
+
+	// 	In: io.LimitedReader{},
+	// }
+	// h.store.Push(storeReq)
+	// storeReq.Wait()
+
+	if int64(c.shard) < p.shardSize {
+		c.shard++
+		c.free = c.size - p.chunkHeaderSize
+		p.pool[cid] = c
+		return
+	}
+
+	p.encoding[cid] = c
+}
+
+// GetChunk returns chunk with the given chunk id.
+func (p *chunkPool) GetChunk(cid chunkID) (c chunk, ok bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	cid = chunkID(strings.Split(string(cid), "_")[0])
+
+	for id, c := range p.pool {
+		if id == cid {
+			return *c, true
+		}
+	}
+
+	for id, c := range p.writing {
+		if id == cid {
+			return *c, true
+		}
+	}
+
+	for id, c := range p.encoding {
+		if id == cid {
+			return *c, true
+		}
+	}
+
+	return c, false
 }
 
 // GetNeedEncodingChunk returns a chunk object that need to be encoded.

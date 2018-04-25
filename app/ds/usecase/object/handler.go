@@ -1,6 +1,8 @@
 package object
 
 import (
+	"fmt"
+	"io"
 	"net/http"
 	"net/rpc"
 	"strconv"
@@ -49,7 +51,7 @@ func NewHandlers(cfg *config.Ds, cMap *cmap.Controller, f *cr.RequestEventFactor
 
 	return &handlers{
 		requestEventFactory: f,
-		chunkPool:           newChunkPool(shards, chunkSize, s.GetChunkHeaderSize(), s.GetObjectHeaderSize(), chunkSize-1000),
+		chunkPool:           newChunkPool(shards, chunkSize, s.GetChunkHeaderSize(), s.GetObjectHeaderSize(), chunkSize-1024),
 		endec:               ed,
 		store:               s,
 		cMap:                cMap,
@@ -62,6 +64,7 @@ func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 
 	req, err := h.requestEventFactory.CreateRequestEvent(w, r)
 	if err == client.ErrInvalidProtocol {
+		ctxLogger.Error(errors.Wrap(err, "failed to create request event"))
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -70,65 +73,7 @@ func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 	case client.WriteToPrimary:
 		h.writeToPrimary(req)
 	case client.WriteToFollower:
-		osize, err := strconv.ParseInt(r.Header.Get("Content-Length"), 10, 64)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			ctxLogger.Error(errors.Wrap(err, "failed to parse object size"))
-			return
-		}
-
-		storeReq := &repository.Request{
-			Op:     repository.Write,
-			Vol:    r.Header.Get("Volume-Id"),
-			Oid:    strings.Replace(strings.Trim(r.URL.Path, "/"), "/", ".", -1),
-			Cid:    r.Header.Get("Chunk-Id"),
-			LocGid: r.Header.Get("Local-Chain-Id"),
-			Osize:  osize,
-			Md5:    r.Header.Get("Md5"),
-
-			In: r.Body,
-		}
-		h.store.Push(storeReq)
-
-		err = storeReq.Wait()
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			ctxLogger.Error(errors.Wrap(err, "failed to wait backend store request finish"))
-			return
-		}
-
-		mds, err := h.cMap.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			ctxLogger.Error(errors.Wrap(err, "failed to get alive mds from cluster map"))
-			return
-		}
-
-		conn, err := nilrpc.Dial(mds.Addr, nilrpc.RPCNil, time.Duration(2*time.Second))
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			ctxLogger.Error(errors.Wrap(err, "failed to dial to mds"))
-			return
-		}
-		defer conn.Close()
-
-		req := &nilrpc.ObjectPutRequest{
-			Name:          storeReq.Oid,
-			Bucket:        strings.Split(strings.Trim(r.URL.Path, "/"), "/")[0],
-			EncodingGroup: storeReq.LocGid,
-			Volume:        r.Header.Get("Volume-Id"),
-		}
-		res := &nilrpc.ObjectPutResponse{}
-
-		cli := rpc.NewClient(conn)
-		if err := cli.Call(nilrpc.MdsObjectPut.String(), req, res); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			ctxLogger.Error(errors.Wrap(err, "failed to write object meta to the mds"))
-			return
-		}
-
-		w.WriteHeader(http.StatusOK)
-		return
+		h.writeCopy(req)
 	default:
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -165,6 +110,156 @@ func (h *handlers) writeToPrimary(req client.RequestEvent) {
 	err = h.store.Push(storeReq)
 	if err != nil {
 		ctxLogger.Error(errors.Wrap(err, "failed to push writing request into the backend store"))
+		h.chunkPool.FinishWriting(cid, 0)
+		req.SendInternalError()
+		return
+	}
+
+	err = storeReq.Wait()
+	if err != nil {
+		// TODO: handling error in writing process.
+
+		// Rollback writed data.
+		storeReq.Op = repository.Delete
+		h.store.Push(storeReq)
+		storeReq.Wait()
+		h.chunkPool.FinishWriting(cid, 0)
+
+		ctxLogger.Error(errors.Wrap(err, "failed to write into the backend store"))
+		req.SendInternalError()
+		return
+	}
+
+	// Copy to the remote follower node
+	err = h.writeToRemoteFollower(req, contentLength, cid)
+	if err != nil {
+		// TODO: handling error in writing.
+
+		// Rollback writed data.
+		storeReq.Op = repository.Delete
+		h.store.Push(storeReq)
+		storeReq.Wait()
+		h.chunkPool.FinishWriting(cid, 0)
+
+		ctxLogger.Error(errors.Wrap(err, "failed to write to remote follower"))
+		req.SendInternalError()
+		return
+	}
+
+	// Commit writed data.
+	h.chunkPool.FinishWriting(cid, contentLength)
+
+	req.SendSuccess()
+}
+
+func (h *handlers) writeToRemoteFollower(req client.RequestEvent, size int64, cid chunkID) error {
+	c, ok := h.chunkPool.GetChunk(cid)
+	if ok == false {
+		return fmt.Errorf("no such chunk: %s", cid)
+	}
+
+	encGrpID, err := strconv.ParseInt(string(c.encodingGroup), 10, 64)
+	if err != nil {
+		return errors.Wrap(err, "failed to convert encoding group id")
+	}
+
+	encGrp, err := h.cMap.SearchCallEncGrp().ID(cmap.ID(encGrpID)).Do()
+	if err != nil {
+		return errors.Wrapf(err, "failed to find such encoding group: %d", encGrpID)
+	}
+
+	vol, err := h.cMap.SearchCallVolume().ID(encGrp.Vols[c.shard]).Do()
+	if err != nil {
+		return errors.Wrapf(err, "failed to find such volume: %d", encGrp.Vols[c.shard])
+	}
+
+	node, err := h.cMap.SearchCallNode().ID(vol.Node).Do()
+	if err != nil {
+		return errors.Wrapf(err, "failed to find such node: %d", vol.Node)
+	}
+
+	remoteAddr := "https://" + node.Addr + req.Request().RequestURI
+
+	pReader, pWriter := io.Pipe()
+
+	storeReq := &repository.Request{
+		Op:     repository.Read,
+		Vol:    string(c.volume),
+		LocGid: string(c.encodingGroup),
+		Oid:    strings.Replace(strings.Trim(req.Request().RequestURI, "/"), "/", ".", -1),
+		Cid:    string(c.id),
+		Osize:  size,
+
+		Out: pWriter,
+	}
+
+	err = h.store.Push(storeReq)
+	if err != nil {
+		return errors.Wrap(err, "failed to push read request to store")
+	}
+
+	go func(readReq *repository.Request) {
+		defer pWriter.Close()
+		err := readReq.Wait()
+		if err != nil {
+			logger.WithField("method", "handlers.writeToRemoteFollower").Errorf("failed to read from store: %+v", err)
+			return
+		}
+	}(storeReq)
+
+	headers := client.NewHeaders()
+	headers.SetLocalChainID(encGrp.ID.String())
+	headers.SetVolumeID(vol.ID.String())
+	headers.SetChunkID(string(c.id))
+	headers.SetMD5(req.MD5())
+
+	copyReq, err := cr.NewRequest(
+		client.WriteToFollower, req.Request().Method,
+		remoteAddr, pReader, headers, size,
+		cr.WithS3(true), cr.WithCopyHeaders(req.CopyAuthHeader()),
+	)
+	if err != nil {
+		return errors.Wrap(err, "failed to create copy request")
+	}
+
+	resp, err := copyReq.Send()
+	if err != nil {
+		return errors.Wrap(err, "failed to send copy request")
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("copy request returns http status code: %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
+// writeCopy writes the copy request from the primary into the store.
+func (h *handlers) writeCopy(req client.RequestEvent) {
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.writeCopy")
+
+	contentLength, err := strconv.ParseInt(req.Request().Header.Get("Content-Length"), 10, 64)
+	if err != nil {
+		ctxLogger.Error(errors.Wrap(err, "failed to parse object size"))
+		req.SendInternalError()
+		return
+	}
+
+	storeReq := &repository.Request{
+		Op:     repository.Write,
+		Vol:    req.Request().Header.Get("Volume-Id"),
+		Oid:    strings.Replace(strings.Trim(req.Request().URL.Path, "/"), "/", ".", -1),
+		Cid:    req.Request().Header.Get("Chunk-Id"),
+		LocGid: req.Request().Header.Get("Local-Chain-Id"),
+		Osize:  contentLength,
+		Md5:    req.Request().Header.Get("Md5"),
+
+		In: req.Request().Body,
+	}
+
+	err = h.store.Push(storeReq)
+	if err != nil {
+		ctxLogger.Error(errors.Wrap(err, "failed to push writing request into the backend store"))
 		req.SendInternalError()
 		return
 	}
@@ -183,29 +278,52 @@ func (h *handlers) writeToPrimary(req client.RequestEvent) {
 		return
 	}
 
-	// Copy to the remote follower node
-	err = h.writeToRemoteFollower(req, cid)
+	mds, err := h.cMap.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
 	if err != nil {
-		// TODO: handling error in writing.
-
 		// Rollback writed data.
 		storeReq.Op = repository.Delete
 		h.store.Push(storeReq)
 		storeReq.Wait()
 
-		ctxLogger.Error(errors.Wrap(err, "failed to write to available chunk"))
+		ctxLogger.Error(errors.Wrap(err, "failed to get alive mds from cluster map"))
 		req.SendInternalError()
 		return
 	}
 
-	// Commit writed data.
-	h.chunkPool.FinishWriting(cid, contentLength)
+	conn, err := nilrpc.Dial(mds.Addr, nilrpc.RPCNil, time.Duration(2*time.Second))
+	if err != nil {
+		// Rollback writed data.
+		storeReq.Op = repository.Delete
+		h.store.Push(storeReq)
+		storeReq.Wait()
+
+		ctxLogger.Error(errors.Wrap(err, "failed to dial to mds"))
+		req.SendInternalError()
+		return
+	}
+	defer conn.Close()
+
+	metaReq := &nilrpc.ObjectPutRequest{
+		Name:          storeReq.Oid,
+		Bucket:        strings.Split(strings.Trim(req.Request().URL.Path, "/"), "/")[0],
+		EncodingGroup: storeReq.LocGid,
+		Volume:        storeReq.Vol,
+	}
+	metaRes := &nilrpc.ObjectPutResponse{}
+
+	cli := rpc.NewClient(conn)
+	if err := cli.Call(nilrpc.MdsObjectPut.String(), metaReq, metaRes); err != nil {
+		// Rollback writed data.
+		storeReq.Op = repository.Delete
+		h.store.Push(storeReq)
+		storeReq.Wait()
+
+		ctxLogger.Error(errors.Wrap(err, "failed to write object meta to the mds"))
+		req.SendInternalError()
+		return
+	}
 
 	req.SendSuccess()
-}
-
-func (h *handlers) writeToRemoteFollower(req client.RequestEvent, cid chunkID) error {
-	return nil
 }
 
 // GetObjectHandler handles the client request for getting an object.
