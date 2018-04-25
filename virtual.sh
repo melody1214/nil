@@ -268,7 +268,13 @@ function createbuckets() {
 }
 
 function putobjects() {
-    fallocate -l 3M $DIR/dummy3M
+    local dummyarray=()
+    local dummysize=32
+    for i in {1..10}; do
+        dummysize=$(($dummysize*2))
+        base64 /dev/urandom | head -c $dummysize > $DIR/$dummysize.txt
+        dummyarray+=($DIR/$dummysize.txt)
+    done
 
     for i in $(seq 1 $TOTALUSERS); do
         local ak=user$i[accesskey]
@@ -278,8 +284,9 @@ function putobjects() {
         for j in $(seq 1 $BUCKETS); do
             local bucket="user$i-bucket$j"
 
-            for k in $(seq 1 10); do
-                s3cmd put virtual.sh s3://$bucket/obj$k --access_key=${!ak} --secret_key=${!sk} --region=${!region} --no-check-hostname
+            for k in $(seq 1 50); do
+                # echo ${dummyarray[$RANDOM % ${#dummyarray[@]}]}
+                s3cmd put ${dummyarray[$RANDOM % ${#dummyarray[@]}]} s3://$bucket/obj$k --access_key=${!ak} --secret_key=${!sk} --region=${!region} --no-check-hostname
             done
         done
     done
