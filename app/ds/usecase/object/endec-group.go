@@ -1,80 +1,71 @@
 package object
 
-import (
-	"net/rpc"
-	"time"
+// type encodeGroup struct {
+// 	cmap.EncodingGroup
+// 	nodeIDs   []int64
+// 	nodeAddrs []string
+// }
 
-	"github.com/chanyoung/nil/pkg/cmap"
-	"github.com/chanyoung/nil/pkg/nilrpc"
-	"github.com/chanyoung/nil/pkg/util/mlog"
-)
+// func (e *endec) updateGroup() {
+// 	ctxLogger := mlog.GetMethodLogger(logger, "endec.updateGroup")
 
-type encodeGroup struct {
-	cmap.EncodingGroup
-	nodeIDs   []int64
-	nodeAddrs []string
-}
+// 	mds, err := e.cMap.SearchCallNode().Type(cmap.MDS).Do()
+// 	if err != nil {
+// 		ctxLogger.Error(err)
+// 		return
+// 	}
 
-func (e *endec) updateGroup() {
-	ctxLogger := mlog.GetMethodLogger(logger, "endec.updateGroup")
+// 	conn, err := nilrpc.Dial(mds.Addr, nilrpc.RPCNil, time.Duration(2*time.Second))
+// 	if err != nil {
+// 		ctxLogger.Error(err)
+// 		return
+// 	}
+// 	defer conn.Close()
 
-	mds, err := e.cMap.SearchCallNode().Type(cmap.MDS).Do()
-	if err != nil {
-		ctxLogger.Error(err)
-		return
-	}
+// 	vreq := &nilrpc.GetAllVolumeRequest{}
+// 	vres := &nilrpc.GetAllVolumeResponse{}
 
-	conn, err := nilrpc.Dial(mds.Addr, nilrpc.RPCNil, time.Duration(2*time.Second))
-	if err != nil {
-		ctxLogger.Error(err)
-		return
-	}
-	defer conn.Close()
+// 	cli := rpc.NewClient(conn)
+// 	if err := cli.Call(nilrpc.MdsAdminGetAllVolume.String(), vreq, vres); err != nil {
+// 		ctxLogger.Error(err)
+// 		return
+// 	}
 
-	vreq := &nilrpc.GetAllVolumeRequest{}
-	vres := &nilrpc.GetAllVolumeResponse{}
+// 	volumeMap := make(map[int64]int64)
+// 	for _, v := range vres.Volumes {
+// 		volumeMap[v.ID] = v.NodeID
+// 	}
 
-	cli := rpc.NewClient(conn)
-	if err := cli.Call(nilrpc.MdsAdminGetAllVolume.String(), vreq, vres); err != nil {
-		ctxLogger.Error(err)
-		return
-	}
+// 	creq := &nilrpc.GetAllChainRequest{}
+// 	cres := &nilrpc.GetAllChainResponse{}
 
-	volumeMap := make(map[int64]int64)
-	for _, v := range vres.Volumes {
-		volumeMap[v.ID] = v.NodeID
-	}
+// 	if err := cli.Call(nilrpc.MdsAdminGetAllChain.String(), creq, cres); err != nil {
+// 		ctxLogger.Error(err)
+// 		return
+// 	}
 
-	creq := &nilrpc.GetAllChainRequest{}
-	cres := &nilrpc.GetAllChainResponse{}
+// 	for _, eg := range cres.EncGrps {
+// 		newEg := encodeGroup{
+// 			EncodingGroup: eg,
+// 			nodeIDs:       make([]int64, len(eg.Vols)),
+// 			nodeAddrs:     make([]string, len(eg.Vols)),
+// 		}
 
-	if err := cli.Call(nilrpc.MdsAdminGetAllChain.String(), creq, cres); err != nil {
-		ctxLogger.Error(err)
-		return
-	}
+// 		for i, v := range eg.Vols {
+// 			id, ok := volumeMap[v.Int64()]
+// 			if ok == false {
+// 				ctxLogger.Errorf("no such volume %d", v.Int64())
+// 				continue
+// 			}
+// 			n, err := e.cMap.SearchCallNode().ID(cmap.ID(id)).Do()
+// 			if err != nil {
+// 				ctxLogger.Error(err)
+// 				continue
+// 			}
+// 			newEg.nodeIDs[i] = id
+// 			newEg.nodeAddrs[i] = n.Addr
+// 		}
 
-	for _, eg := range cres.EncGrps {
-		newEg := encodeGroup{
-			EncodingGroup: eg,
-			nodeIDs:       make([]int64, len(eg.Vols)),
-			nodeAddrs:     make([]string, len(eg.Vols)),
-		}
-
-		for i, v := range eg.Vols {
-			id, ok := volumeMap[v.Int64()]
-			if ok == false {
-				ctxLogger.Errorf("no such volume %d", v.Int64())
-				continue
-			}
-			n, err := e.cMap.SearchCallNode().ID(cmap.ID(id)).Do()
-			if err != nil {
-				ctxLogger.Error(err)
-				continue
-			}
-			newEg.nodeIDs[i] = id
-			newEg.nodeAddrs[i] = n.Addr
-		}
-
-		e.emap[newEg.ID.String()] = newEg
-	}
-}
+// 		e.emap[newEg.ID.String()] = newEg
+// 	}
+// }

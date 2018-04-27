@@ -34,12 +34,6 @@ type handlers struct {
 func NewHandlers(cfg *config.Ds, cMap *cmap.Controller, f *cr.RequestEventFactory, s Repository) (Handlers, error) {
 	logger = mlog.GetPackageLogger("app/ds/usecase/object")
 
-	ed, err := newEncoder(cMap, s)
-	if err != nil {
-		return nil, err
-	}
-	go ed.Run()
-
 	shards, err := strconv.ParseInt(cfg.LocalParityShards, 10, 64)
 	if err != nil {
 		return nil, err
@@ -49,9 +43,17 @@ func NewHandlers(cfg *config.Ds, cMap *cmap.Controller, f *cr.RequestEventFactor
 		return nil, err
 	}
 
+	pool := newChunkPool(shards, chunkSize, s.GetChunkHeaderSize(), s.GetObjectHeaderSize(), chunkSize-1024)
+
+	ed, err := newEndec(cMap, pool, s)
+	if err != nil {
+		return nil, err
+	}
+	go ed.Run()
+
 	return &handlers{
 		requestEventFactory: f,
-		chunkPool:           newChunkPool(shards, chunkSize, s.GetChunkHeaderSize(), s.GetObjectHeaderSize(), chunkSize-1024),
+		chunkPool:           pool,
 		endec:               ed,
 		store:               s,
 		cMap:                cMap,

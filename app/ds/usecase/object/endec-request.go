@@ -1,25 +1,19 @@
 package object
 
-import (
-	"sync"
+// type request struct {
+// 	r   client.RequestEvent
+// 	wg  sync.WaitGroup
+// 	err error
+// }
 
-	"github.com/chanyoung/nil/pkg/client"
-)
+// func newRequest(r client.RequestEvent) *request {
+// 	return &request{
+// 		r: r,
+// 	}
+// }
 
-type request struct {
-	r   client.RequestEvent
-	wg  sync.WaitGroup
-	err error
-}
+// func (r *request) wait() error {
+// 	r.wg.Wait()
 
-func newRequest(r client.RequestEvent) *request {
-	return &request{
-		r: r,
-	}
-}
-
-func (r *request) wait() error {
-	r.wg.Wait()
-
-	return r.err
-}
+// 	return r.err
+// }
