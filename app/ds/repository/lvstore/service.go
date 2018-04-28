@@ -160,6 +160,8 @@ func (s *service) handleCall(r *repository.Request) {
 		s.read(r)
 	case repository.Write:
 		s.write(r)
+	case repository.WriteAll:
+		s.writeAll(r)
 	case repository.Delete:
 		s.delete(r)
 	case repository.ReadAll:
@@ -349,6 +351,68 @@ func (s *service) write(r *repository.Request) {
 		Map: repository.ObjMap{
 			Cid:    r.Cid,
 			Offset: fChunkLen,
+		},
+		Info: repository.ObjInfo{
+			Size: r.Osize,
+			MD5:  r.Md5,
+		},
+	}
+	lv.Lock.Unlock()
+
+	// Complete to write the object into the chunk.
+	r.Err = nil
+	return
+}
+
+func (s *service) writeAll(r *repository.Request) {
+	// Find and get a logical volume.
+	lv, ok := s.lvs[r.Vol]
+	if !ok {
+		r.Err = fmt.Errorf("no such lv: %s", r.Vol)
+		return
+	}
+
+	// Check if the requested object is in the object map.
+	_, ok = lv.Obj[r.Oid]
+	if ok {
+		r.Err = fmt.Errorf("same name of the chunk is existed: %s", r.Oid)
+		return
+	}
+
+	// Create a directory for a local group if not exist.
+	lgDir := lv.MntPoint + "/" + r.LocGid
+	_, err := os.Stat(lgDir)
+	if os.IsNotExist(err) {
+		os.MkdirAll(lgDir, 0775)
+	}
+
+	// Open a chunk that objects will be written to.
+	fChunk, err := os.OpenFile(lgDir+"/"+r.Cid, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0775)
+	if err != nil {
+		r.Err = err
+		return
+	}
+	defer fChunk.Close()
+
+	// Check whether the chunk is full or has not enough space to write the object.
+	if r.Osize != lv.ChunkSize {
+		r.Err = fmt.Errorf("write all must writes same length with the chunk size")
+		return
+	}
+
+	// Write the object into the chunk if it will not be full.
+	_, err = io.CopyN(fChunk, r.In, r.Osize)
+	if err != nil {
+		r.Err = err
+		return
+	}
+
+	// Store mapping information between the object and the chunk.
+	lv.Lock.Lock()
+	lv.Obj[r.Oid] = repository.Object{
+		Map: repository.ObjMap{
+			Cid:    r.Cid,
+			Offset: 0,
 		},
 		Info: repository.ObjInfo{
 			Size: r.Osize,

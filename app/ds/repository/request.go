@@ -16,6 +16,8 @@ const (
 	Read Operation = iota
 	// Write requests an object handle that can write the requested object.
 	Write
+	// WriteAll requests an object handle that can write the requested object.
+	WriteAll
 	// Delete requests an object handle that can delete the requested object.
 	Delete
 	// ReadAll requests an object handle that can read the requested chunk.
@@ -61,6 +63,10 @@ func (r *Request) Verify() error {
 		}
 	case ReadAll:
 		if r.Vol == "" || r.Cid == "" || r.Out == nil {
+			return fmt.Errorf("%v: invalid arguments", r)
+		}
+	case WriteAll:
+		if r.Vol == "" || r.Cid == "" || r.In == nil {
 			return fmt.Errorf("%v: invalid arguments", r)
 		}
 	default:

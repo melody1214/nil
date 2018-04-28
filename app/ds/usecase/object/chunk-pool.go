@@ -136,20 +136,6 @@ func (p *chunkPool) FinishWriting(cid chunkID, writingSize int64) {
 		return
 	}
 
-	// // Chunk is full. Make the chunk is truncated.
-	// storeReq := &repository.Request{
-	// 	Op:     repository.Write,
-	// 	Vol:    string(c.volume),
-	// 	LocGid: string(c.encodingGroup),
-	// 	Oid:    "ForceToMakeTruncated",
-	// 	Cid:    string(c.id),
-	// 	Osize:  c.size,
-
-	// 	In: io.LimitedReader{},
-	// }
-	// h.store.Push(storeReq)
-	// storeReq.Wait()
-
 	if int64(c.shard) < p.shardSize {
 		c.shard++
 		c.free = c.size - p.chunkHeaderSize
