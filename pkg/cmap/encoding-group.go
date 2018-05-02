@@ -10,12 +10,14 @@ const (
 	EGSuspect = "suspect"
 	// EGFaulty : faulty
 	EGFaulty = "faulty"
+	// EGRdonly : readonly, maybe rebalancing or recovering.
+	EGRdonly = "rdonly"
 )
 
 // String returns a string of the node status.
 func (s EncodingGroupStatus) String() string {
 	switch s {
-	case EGAlive, EGSuspect, EGFaulty:
+	case EGAlive, EGSuspect, EGFaulty, EGRdonly:
 		return string(s)
 	default:
 		return unknown
