@@ -9,6 +9,7 @@ import (
 	"github.com/chanyoung/nil/app/ds/delivery"
 	"github.com/chanyoung/nil/app/ds/repository"
 	"github.com/chanyoung/nil/app/ds/repository/lvstore"
+	"github.com/chanyoung/nil/app/ds/repository/partstore"
 	"github.com/chanyoung/nil/app/ds/usecase/admin"
 	"github.com/chanyoung/nil/app/ds/usecase/clustermap"
 	"github.com/chanyoung/nil/app/ds/usecase/membership"
@@ -51,6 +52,11 @@ func Bootstrap(cfg config.Ds) error {
 		adminStore = lvstore.NewAdminRepository(store)
 		objectStore = lvstore.NewObjectRepository(store)
 		recoveryStore = lvstore.NewRecoveryRepository(store)
+	} else if cfg.Store == "part" {
+		store = partstore.NewService(cfg.WorkDir)
+		adminStore = partstore.NewAdminRepository(store)
+		objectStore = partstore.NewObjectRepository(store)
+		recoveryStore = partstore.NewRecoveryRepository(store)
 	} else {
 		return fmt.Errorf("not supported store type: %s", cfg.Store)
 	}
