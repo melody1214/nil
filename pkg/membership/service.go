@@ -1,6 +1,9 @@
 package membership
 
 import "github.com/pkg/errors"
+import "github.com/sirupsen/logrus"
+
+var logger *logrus.Entry
 
 // Service is the root manager of membership package.
 // The service consists of four parts described below.
@@ -32,7 +35,9 @@ type Service struct {
 }
 
 // NewService returns new membership service.
-func NewService(cfg Config) (*Service, error) {
+func NewService(cfg Config, log *logrus.Entry) (*Service, error) {
+	logger = log
+
 	s := &Service{
 		cfg: cfg,
 	}

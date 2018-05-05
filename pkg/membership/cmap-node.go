@@ -6,6 +6,9 @@ type NodeName string
 // NodeAddress is a combination of host:port string of node network address.
 type NodeAddress string
 
+// String returns its value converted to string type.
+func (a NodeAddress) String() string { return string(a) }
+
 // NodeType represents the type of the node.
 type NodeType int
 
@@ -55,6 +58,7 @@ func (s NodeStatus) String() string {
 // Node is the member of cluster.
 type Node struct {
 	ID   ID          `xml:"id"`
+	Incr Incarnation `xml:"incarnation"`
 	Name NodeName    `xml:"name"`
 	Addr NodeAddress `xml:"address"`
 	Type NodeType    `xml:"type"`

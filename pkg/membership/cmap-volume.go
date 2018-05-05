@@ -44,12 +44,11 @@ func (s VolumeStatus) String() string {
 
 // Volume is volumes which is attached in the ds.
 type Volume struct {
-	ID      ID
-	Size    uint64
-	Free    uint64
-	Used    uint64
-	Speed   VolumeSpeed
-	Status  VolumeStatus
-	Node    ID
-	EncGrps []ID
+	ID      ID           `xml:"id"`
+	Incr    Incarnation  `xml:"incarnation"`
+	Size    uint64       `xml:"size"`
+	Speed   VolumeSpeed  `xml:"speed"`
+	Stat    VolumeStatus `xml:"status"`
+	Node    ID           `xml:"node"`
+	EncGrps []ID         `xml:"encgrp"`
 }

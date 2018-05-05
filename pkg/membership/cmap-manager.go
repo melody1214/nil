@@ -67,8 +67,12 @@ func (m *cMapManager) LatestCMap() CMap {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
+	return *m.latestCMap()
+}
+
+func (m *cMapManager) latestCMap() *CMap {
 	cm := m.cMaps[m.latest]
-	return *cm
+	return cm
 }
 
 // Update updates the latest cluster map.
@@ -76,6 +80,10 @@ func (m *cMapManager) Update(cm *CMap) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	return m.update(cm)
+}
+
+func (m *cMapManager) update(cm *CMap) error {
 	// If version is less or equal to current latest version,
 	// then we don't need to do anything.
 	if cm.Version <= m.latest {
@@ -221,4 +229,76 @@ func getLatestMapFromLocal() (*CMap, error) {
 	// 2. Decode the file and return the cluster map.
 	m, err := decode(path)
 	return &m, err
+}
+
+// mergeCMap compares cluster map mine with received by swim protocol one,
+// and merge it to newer version. Set merged cmap to the cluster map manager.
+func (m *cMapManager) mergeCMap(received *CMap) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	mine := m.latestCMap()
+	if mine.Version < received.Version {
+		// Mine is outdated.
+		mergeCMap(mine, received)
+		m.update(received)
+	} else {
+		// Same version or received is outdated.
+		mergeCMap(received, mine)
+	}
+}
+
+// mergeCMap compares each incarnation of members and merge to destination cmap.
+func mergeCMap(src, dst *CMap) {
+	// Merge nodes.
+	for _, sn := range src.Nodes {
+		for i, dn := range dst.Nodes {
+			if sn.ID != dn.ID {
+				continue
+			}
+
+			if sn.Incr <= dn.Incr {
+				break
+			}
+
+			dst.Nodes[i].Stat = sn.Stat
+			dst.Nodes[i].Incr = sn.Incr
+		}
+	}
+
+	// Merge volumes.
+	for _, sv := range src.Vols {
+		for i, dv := range dst.Vols {
+			if sv.ID != dv.ID {
+				continue
+			}
+
+			if sv.Incr <= dv.Incr {
+				break
+			}
+
+			dst.Vols[i].Size = sv.Size
+			dst.Vols[i].Stat = sv.Stat
+			dst.Vols[i].Incr = sv.Incr
+		}
+	}
+
+	// Merge encoding groups.
+	for _, se := range src.EncGrps {
+		for i, de := range dst.EncGrps {
+			if se.ID != de.ID {
+				continue
+			}
+
+			if se.Incr <= de.Incr {
+				break
+			}
+
+			dst.EncGrps[i].Size = se.Size
+			dst.EncGrps[i].Used = se.Used
+			dst.EncGrps[i].Free = se.Free
+			dst.EncGrps[i].Stat = se.Stat
+			dst.EncGrps[i].Incr = se.Incr
+		}
+	}
 }

@@ -12,6 +12,7 @@ type SearchCallNode struct {
 	nType    NodeType
 	status   NodeStatus
 	volumeID ID
+	random   bool
 }
 
 // ID set the node id search condition.
@@ -38,10 +39,29 @@ func (c *SearchCallNode) Status(s NodeStatus) *SearchCallNode {
 	return c
 }
 
+// Random will return the result in random.
+func (c *SearchCallNode) Random() *SearchCallNode {
+	c.random = true
+	return c
+}
+
 // Do returns the search result.
 func (c *SearchCallNode) Do() (Node, error) {
 	m := c.manager.cMaps[c.manager.latest]
-	for _, n := range m.Nodes {
+
+	var randIdx []int
+	if c.random {
+		randIdx = c.manager.random.Perm(len(m.Nodes))
+	}
+
+	for i := 0; i < len(m.Nodes); i++ {
+		var n Node
+		if c.random {
+			n = m.Nodes[randIdx[i]]
+		} else {
+			n = m.Nodes[i]
+		}
+
 		// If search condition for ID is set, but the ID is not matched.
 		if c.id != ID(-1) && n.ID != c.id {
 			continue
@@ -62,7 +82,6 @@ func (c *SearchCallNode) Do() (Node, error) {
 			continue
 		}
 
-		// All conditions are mathced, return the find node.
 		return n, nil
 	}
 
@@ -116,7 +135,7 @@ func (c *SearchCallEncGrp) Do() (EncodingGroup, error) {
 			continue
 		}
 
-		if c.status.String() != unknown && c.status != eg.Status {
+		if c.status.String() != unknown && c.status != eg.Stat {
 			continue
 		}
 
@@ -154,7 +173,7 @@ func (c *SearchCallVolume) Do() (Volume, error) {
 			continue
 		}
 
-		if c.status.String() != unknown && c.status != v.Status {
+		if c.status.String() != unknown && c.status != v.Stat {
 			continue
 		}
 

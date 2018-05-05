@@ -100,18 +100,16 @@ func (m *CMap) HumanReadable() string {
 	out += "\n"
 	out += "+---------------------+\n"
 	out += "| Volumes information |\n"
-	out += "+------+---------+----+----+---------+---------+---------+------+-----------------+\n"
-	out += "| ID   | Size    | Free    | Used    | Speed   | Status  | Node | EncGrps         |\n"
-	out += "+------+---------+---------+---------+---------+---------+------+-----------------+\n"
+	out += "+------+---------+----+----+---------+------+-----------------+\n"
+	out += "| ID   | Size    | Speed   | Status  | Node | EncGrps         |\n"
+	out += "+------+---------+---------+---------+------+-----------------+\n"
 	for _, v := range m.Vols {
 		row := fmt.Sprintf(
-			"| %-4s | %-7d | %-7d | %-7d | %-7s | %-7s | %-4s | %-15s |\n",
+			"| %-4s | %-7d | %-7s | %-7s | %-4s | %-15s |\n",
 			v.ID.String(),
 			v.Size,
-			v.Free,
-			v.Used,
 			v.Speed.String(),
-			v.Status.String(),
+			v.Stat.String(),
 			v.Node.String(),
 			ids2str(v.EncGrps),
 		)
@@ -133,7 +131,7 @@ func (m *CMap) HumanReadable() string {
 			eg.Size,
 			eg.Free,
 			eg.Used,
-			eg.Status.String(),
+			eg.Stat.String(),
 			ids2str(eg.Vols),
 		)
 		out += row
