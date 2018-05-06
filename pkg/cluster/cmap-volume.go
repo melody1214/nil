@@ -1,4 +1,4 @@
-package membership
+package cluster
 
 // VolumeSpeed represents a disk speed level.
 type VolumeSpeed string

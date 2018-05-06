@@ -1,4 +1,4 @@
-package membership
+package cluster
 
 type rpcHandler interface {
 	Ping(req *PingMessage, res *Ack) error

@@ -1,4 +1,4 @@
-package membership
+package cluster
 
 import (
 	"fmt"

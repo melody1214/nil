@@ -1,4 +1,4 @@
-package membership
+package cluster
 
 // EncodingGroupStatus is the status of the node.
 type EncodingGroupStatus string

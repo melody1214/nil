@@ -1,4 +1,4 @@
-package membership
+package cluster
 
 // NodeName is a string for identifying node.
 type NodeName string

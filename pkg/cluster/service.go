@@ -1,4 +1,4 @@
-package membership
+package cluster
 
 import "github.com/pkg/errors"
 import "github.com/sirupsen/logrus"

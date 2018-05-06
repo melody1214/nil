@@ -16,6 +16,7 @@ import (
 	"github.com/chanyoung/nil/app/mds/usecase/membership"
 	"github.com/chanyoung/nil/app/mds/usecase/object"
 	"github.com/chanyoung/nil/app/mds/usecase/recovery"
+	"github.com/chanyoung/nil/pkg/cluster"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
@@ -64,6 +65,18 @@ func Bootstrap(cfg config.Mds) error {
 	} else {
 		return fmt.Errorf("not supported store type")
 	}
+
+	// Setup membership service.
+	clusterCfg := cluster.DefaultConfig()
+	clusterCfg.Name = cluster.NodeName(cfg.ID)
+	clusterCfg.Address = cluster.NodeAddress(cfg.ServerAddr + ":" + cfg.ServerPort)
+	clusterCfg.Coordinator = cluster.NodeAddress(cfg.ServerAddr + ":" + cfg.ServerPort)
+	clusterCfg.Type = cluster.MDS
+	clusterService, err := cluster.NewService(*clusterCfg, mlog.GetPackageLogger("pkg/cluster"))
+	if err != nil {
+		return errors.Wrap(err, "failed to create cluster service")
+	}
+	_ = clusterService
 
 	// Setup cluster map.
 	clusterMap, err := cmap.NewController(cfg.ServerAddr + ":" + cfg.ServerPort)
