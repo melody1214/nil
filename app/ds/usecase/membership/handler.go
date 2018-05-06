@@ -1,10 +1,9 @@
 package membership
 
 import (
-	"strconv"
 	"time"
 
-	"github.com/chanyoung/nil/pkg/cmap"
+	"github.com/chanyoung/nil/pkg/cluster"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/swim"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -21,95 +20,120 @@ type handlers struct {
 	swimTransL *nilmux.SwimTransportLayer
 
 	needCMapUpdate chan interface{}
-	cMap           *cmap.Controller
+	clusterService *cluster.Service
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cfg *config.Ds, cMap *cmap.Controller) Handlers {
+func NewHandlers(cfg *config.Ds, clusterService *cluster.Service) Handlers {
 	logger = mlog.GetPackageLogger("app/ds/usecase/membership")
 
 	return &handlers{
 		cfg:            cfg,
 		needCMapUpdate: make(chan interface{}, 1),
-		cMap:           cMap,
+		clusterService: clusterService,
 	}
 }
 
-// Create makes swim server.
-func (h *handlers) Create(swimL *nilmux.Layer) (err error) {
-	ctxLogger := mlog.GetMethodLogger(logger, "handlers.Create")
+// // Create makes swim server.
+// func (h *handlers) Create(swimL *nilmux.Layer) (err error) {
+// 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.Create")
 
-	h.swimTransL = nilmux.NewSwimTransportLayer(swimL)
+// 	h.swimTransL = nilmux.NewSwimTransportLayer(swimL)
+
+// 	// Setup configuration.
+// 	swimConf := swim.DefaultConfig()
+// 	swimConf.ID = swim.ServerID(h.cfg.ID)
+// 	swimConf.Address = swim.ServerAddress(h.cfg.ServerAddr + ":" + h.cfg.ServerPort)
+// 	swimConf.Coordinator = swim.ServerAddress(h.cfg.Swim.CoordinatorAddr)
+// 	if t, err := time.ParseDuration(h.cfg.Swim.Period); err != nil {
+// 		ctxLogger.Error(err)
+// 	} else {
+// 		swimConf.PingPeriod = t
+// 	}
+// 	if t, err := time.ParseDuration(h.cfg.Swim.Expire); err != nil {
+// 		ctxLogger.Error(err)
+// 	} else {
+// 		swimConf.PingExpire = t
+// 	}
+// 	swimConf.Type = swim.DS
+
+// 	h.swimSrv, err = swim.NewServer(swimConf, h.swimTransL)
+// 	if err != nil {
+// 		ctxLogger.Error(err)
+// 		return
+// 	}
+
+// 	h.swimSrv.RegisterCustomHeader("cmap_ver", "0",
+// 		func(have, rcv string) bool {
+// 			intHave, err := strconv.Atoi(have)
+// 			if err != nil {
+// 				return false
+// 			}
+
+// 			intRcv, err := strconv.Atoi(rcv)
+// 			if err != nil {
+// 				return false
+// 			}
+
+// 			return intHave < intRcv
+// 		}, h.needCMapUpdate)
+
+// 	return nil
+// }
+
+// // Run starts swim service.
+// func (h *handlers) Run() {
+// 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.Run")
+
+// 	sc := make(chan swim.PingError, 1)
+// 	go h.swimSrv.Serve(sc)
+
+// 	cmapUpdatedNotiC := h.cMap.GetUpdatedNoti(cmap.Version(0))
+// 	for {
+// 		select {
+// 		case err := <-sc:
+// 			ctxLogger.WithFields(logrus.Fields{
+// 				"server":       "swim",
+// 				"message type": err.Type,
+// 				"destID":       err.DestID,
+// 			}).Error(err.Err)
+// 		case <-h.needCMapUpdate:
+// 			h.cMap.Outdated()
+// 		case <-cmapUpdatedNotiC:
+// 			latest := h.cMap.LatestVersion()
+// 			h.swimSrv.SetCustomHeader("cmap_ver", strconv.FormatInt(latest.Int64(), 10))
+// 			cmapUpdatedNotiC = h.cMap.GetUpdatedNoti(latest)
+// 		}
+// 	}
+// }
+
+func (h *handlers) Run(swimL *nilmux.Layer) (err error) {
+	ctxLogger := mlog.GetMethodLogger(logger, "handlers.Run")
 
 	// Setup configuration.
-	swimConf := swim.DefaultConfig()
-	swimConf.ID = swim.ServerID(h.cfg.ID)
-	swimConf.Address = swim.ServerAddress(h.cfg.ServerAddr + ":" + h.cfg.ServerPort)
-	swimConf.Coordinator = swim.ServerAddress(h.cfg.Swim.CoordinatorAddr)
+	clusterConf := cluster.DefaultConfig()
+	clusterConf.Name = cluster.NodeName(h.cfg.ID)
+	clusterConf.Address = cluster.NodeAddress(h.cfg.ServerAddr + ":" + h.cfg.ServerPort)
+	clusterConf.Coordinator = cluster.NodeAddress(h.cfg.Swim.CoordinatorAddr)
 	if t, err := time.ParseDuration(h.cfg.Swim.Period); err != nil {
 		ctxLogger.Error(err)
 	} else {
-		swimConf.PingPeriod = t
+		clusterConf.PingPeriod = t
 	}
 	if t, err := time.ParseDuration(h.cfg.Swim.Expire); err != nil {
 		ctxLogger.Error(err)
 	} else {
-		swimConf.PingExpire = t
+		clusterConf.PingExpire = t
 	}
-	swimConf.Type = swim.DS
+	clusterConf.Type = cluster.DS
 
-	h.swimSrv, err = swim.NewServer(swimConf, h.swimTransL)
-	if err != nil {
-		ctxLogger.Error(err)
-		return
-	}
-
-	h.swimSrv.RegisterCustomHeader("cmap_ver", "0",
-		func(have, rcv string) bool {
-			intHave, err := strconv.Atoi(have)
-			if err != nil {
-				return false
-			}
-
-			intRcv, err := strconv.Atoi(rcv)
-			if err != nil {
-				return false
-			}
-
-			return intHave < intRcv
-		}, h.needCMapUpdate)
-
+	h.clusterService.StartMembershipServer(*clusterConf, nilmux.NewSwimTransportLayer(swimL))
 	return nil
-}
-
-// Run starts swim service.
-func (h *handlers) Run() {
-	ctxLogger := mlog.GetMethodLogger(logger, "handlers.Run")
-
-	sc := make(chan swim.PingError, 1)
-	go h.swimSrv.Serve(sc)
-
-	cmapUpdatedNotiC := h.cMap.GetUpdatedNoti(cmap.Version(0))
-	for {
-		select {
-		case err := <-sc:
-			ctxLogger.WithFields(logrus.Fields{
-				"server":       "swim",
-				"message type": err.Type,
-				"destID":       err.DestID,
-			}).Error(err.Err)
-		case <-h.needCMapUpdate:
-			h.cMap.Outdated()
-		case <-cmapUpdatedNotiC:
-			latest := h.cMap.LatestVersion()
-			h.swimSrv.SetCustomHeader("cmap_ver", strconv.FormatInt(latest.Int64(), 10))
-			cmapUpdatedNotiC = h.cMap.GetUpdatedNoti(latest)
-		}
-	}
 }
 
 // Handlers is the interface that provides client http handlers.
 type Handlers interface {
-	Create(swimL *nilmux.Layer) error
-	Run()
+	// Create(swimL *nilmux.Layer) error
+	// Run()
+	Run(swimL *nilmux.Layer) error
 }

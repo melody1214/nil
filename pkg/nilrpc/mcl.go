@@ -1,6 +1,6 @@
 package nilrpc
 
-import "github.com/chanyoung/nil/pkg/cmap"
+import "github.com/chanyoung/nil/pkg/cluster"
 
 // MCLGetClusterMapRequest requests to get local cluster map.
 // Version == 0; requests the latest version.
@@ -11,7 +11,7 @@ type MCLGetClusterMapRequest struct {
 
 // MCLGetClusterMapResponse contains a current local cluster members.
 type MCLGetClusterMapResponse struct {
-	ClusterMap cmap.CMap
+	ClusterMap cluster.CMap
 }
 
 // MCLGetUpdateNotiRequest requests to receive notification

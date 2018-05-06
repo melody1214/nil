@@ -26,7 +26,6 @@ func (s *recoveryStore) FindAllVolumes(txid repository.TxID) ([]*recovery.Volume
 			vl_id,
 			vl_status,
 			vl_node,
-			vl_used,
 			vl_encoding_group,
 			vl_max_encoding_group,
 			vl_speed
@@ -45,7 +44,7 @@ func (s *recoveryStore) FindAllVolumes(txid repository.TxID) ([]*recovery.Volume
 	for rows.Next() {
 		v := &recovery.Volume{}
 
-		if err = rows.Scan(&v.ID, &v.Status, &v.NodeID, &v.Used, &v.Chain, &v.MaxChain, &v.Speed); err != nil {
+		if err = rows.Scan(&v.ID, &v.Stat, &v.NodeID, v.Chain, &v.MaxChain, &v.Speed); err != nil {
 			return nil, err
 		}
 
@@ -61,7 +60,7 @@ func (s recoveryStore) MakeNewEncodingGroup(txid repository.TxID, encGrp *recove
 		`
 		INSERT INTO encoding_group (eg_status)
 		VALUES ('%s')
-		`, encGrp.Status.String(),
+		`, encGrp.Stat.String(),
 	)
 	r, err := s.Store.Execute(txid, q)
 	if err != nil {

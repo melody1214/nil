@@ -66,10 +66,10 @@ func NewDeliveryService(cfg *config.Mds, adh admin.Handlers, auh auth.Handlers, 
 	m.RegisterLayer(raftL)
 	m.RegisterLayer(membershipL)
 
-	// Create swim server.
-	if err := meh.Create(membershipL); err != nil {
-		return nil, err
-	}
+	// // Create swim server.
+	// if err := meh.Create(membershipL); err != nil {
+	// 	return nil, err
+	// }
 
 	// Create rpc server.
 	rpcSrv := rpc.NewServer()
@@ -85,9 +85,9 @@ func NewDeliveryService(cfg *config.Mds, adh admin.Handlers, auh auth.Handlers, 
 	if err := rpcSrv.RegisterName(nilrpc.MdsClustermapPrefix, clh); err != nil {
 		return nil, err
 	}
-	if err := rpcSrv.RegisterName(nilrpc.MdsMembershipPrefix, meh); err != nil {
-		return nil, err
-	}
+	// if err := rpcSrv.RegisterName(nilrpc.MdsMembershipPrefix, meh); err != nil {
+	// 	return nil, err
+	// }
 	if err := rpcSrv.RegisterName(nilrpc.MdsObjectPrefix, obh); err != nil {
 		return nil, err
 	}
@@ -126,9 +126,7 @@ func (s *Service) Run() error {
 	if err := s.coh.Join(); err != nil {
 		return err
 	}
-
-	go s.meh.Run()
-	return nil
+	return s.meh.Run(s.membershipLayer)
 }
 
 func (s *Service) Stop() error {

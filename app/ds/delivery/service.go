@@ -73,10 +73,10 @@ func NewDeliveryService(cfg *config.Ds, ah admin.Handlers, oh object.Handlers, m
 		ErrorLog:       log.New(logger.Writer(), "http server", log.Lshortfile),
 	}
 
-	// Create swim server.
-	if err := mh.Create(membershipL); err != nil {
-		return nil, err
-	}
+	// // Create swim server.
+	// if err := mh.Create(membershipL); err != nil {
+	// 	return nil, err
+	// }
 
 	// Create admin server.
 	ads := rpc.NewServer()
@@ -108,7 +108,7 @@ func (s *Service) Run() {
 	go s.nilMux.ListenAndServeTLS()
 	go s.serveAdmin()
 	go s.httpSrv.Serve(s.objectL)
-	go s.membershipHandler.Run()
+	go s.membershipHandler.Run(s.membershipL)
 }
 
 // Stop cleans up the services and shut down the server.

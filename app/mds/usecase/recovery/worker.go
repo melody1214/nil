@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/chanyoung/nil/app/mds/repository"
-	"github.com/chanyoung/nil/pkg/cmap"
+	"github.com/chanyoung/nil/pkg/cluster"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/pkg/errors"
@@ -18,7 +18,7 @@ import (
 type worker struct {
 	cfg           *config.Mds
 	store         Repository
-	cMap          *cmap.Controller
+	clusterAPI    cluster.SlaveAPI
 	recoveryJobs  map[jobID]recoveryJob
 	rebalanceJobs map[jobID]rebalanceJob
 
@@ -30,14 +30,14 @@ type worker struct {
 
 // newWorker returns a new worker.
 // Note: recovery domain must have only one working worker.
-func newWorker(cfg *config.Mds, cMap *cmap.Controller, store Repository) (*worker, error) {
-	if cfg == nil || cMap == nil || store == nil {
+func newWorker(cfg *config.Mds, clusterAPI cluster.SlaveAPI, store Repository) (*worker, error) {
+	if cfg == nil || clusterAPI == nil || store == nil {
 		return nil, fmt.Errorf("invalid arguments")
 	}
 
 	return &worker{
 		cfg:           cfg,
-		cMap:          cMap,
+		clusterAPI:    clusterAPI,
 		store:         store,
 		recoveryJobs:  make(map[jobID]recoveryJob),
 		rebalanceJobs: make(map[jobID]rebalanceJob),

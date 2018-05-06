@@ -4,7 +4,7 @@ import (
 	"net/rpc"
 	"time"
 
-	"github.com/chanyoung/nil/pkg/cmap"
+	"github.com/chanyoung/nil/pkg/cluster"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/pkg/errors"
@@ -19,17 +19,17 @@ type Handlers interface {
 }
 
 type handlers struct {
-	cache Repository
-	cMap  *cmap.Controller
+	cache      Repository
+	clusterAPI cluster.SlaveAPI
 }
 
 // NewHandlers creates an authentication handlers with necessary dependencies.
-func NewHandlers(cMap *cmap.Controller, repo Repository) Handlers {
+func NewHandlers(clusterAPI cluster.SlaveAPI, repo Repository) Handlers {
 	logger = mlog.GetPackageLogger("app/gw/usecase/auth")
 
 	return &handlers{
-		cache: repo,
-		cMap:  cMap,
+		cache:      repo,
+		clusterAPI: clusterAPI,
 	}
 }
 
@@ -56,14 +56,14 @@ func (h *handlers) getSecretKeyFromRemote(accessKey string) (secretKey string, e
 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.getSecretKeyFromRemote")
 
 	// 1. Lookup mds from cluster map.
-	mds, err := h.cMap.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
+	mds, err := h.clusterAPI.SearchCallNode().Type(cluster.MDS).Status(cluster.Alive).Do()
 	if err != nil {
 		ctxLogger.Error(errors.Wrap(err, "failed to find alive mds"))
 		return "", ErrInternal
 	}
 
 	// 2. Try dial to mds.
-	conn, err := nilrpc.Dial(mds.Addr, nilrpc.RPCNil, time.Duration(2*time.Second))
+	conn, err := nilrpc.Dial(mds.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
 	if err != nil {
 		ctxLogger.Error(errors.Wrap(err, "failed to dial to mds"))
 		return "", ErrInternal

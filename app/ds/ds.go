@@ -11,12 +11,11 @@ import (
 	"github.com/chanyoung/nil/app/ds/repository/lvstore"
 	"github.com/chanyoung/nil/app/ds/repository/partstore"
 	"github.com/chanyoung/nil/app/ds/usecase/admin"
-	"github.com/chanyoung/nil/app/ds/usecase/clustermap"
 	"github.com/chanyoung/nil/app/ds/usecase/membership"
 	"github.com/chanyoung/nil/app/ds/usecase/object"
 	"github.com/chanyoung/nil/app/ds/usecase/recovery"
 	"github.com/chanyoung/nil/pkg/client/request"
-	"github.com/chanyoung/nil/pkg/cmap"
+	"github.com/chanyoung/nil/pkg/cluster"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/chanyoung/nil/pkg/util/uuid"
@@ -67,22 +66,26 @@ func Bootstrap(cfg config.Ds) error {
 	requestEventFactory := request.NewRequestEventFactory()
 
 	// Setup cluster map.
-	clusterMap, err := cmap.NewController(cfg.Swim.CoordinatorAddr)
+	// clusterMap, err := cmap.NewController(cfg.Swim.CoordinatorAddr)
+	// if err != nil {
+	// 	return errors.Wrap(err, "failed to init cluster map")
+	// }
+	clusterService, err := cluster.NewService(cluster.NodeAddress(cfg.ServerAddr+":"+cfg.ServerPort), mlog.GetPackageLogger("pkg/cluster"))
 	if err != nil {
-		return errors.Wrap(err, "failed to init cluster map")
+		return errors.Wrap(err, "failed to create cluster service")
 	}
 
 	// Setup each usecase handlers.
-	adminHandlers := admin.NewHandlers(&cfg, clusterMap, adminStore)
-	objectHandlers, err := object.NewHandlers(&cfg, clusterMap, requestEventFactory, objectStore)
+	adminHandlers := admin.NewHandlers(&cfg, clusterService.SlaveAPI(), adminStore)
+	objectHandlers, err := object.NewHandlers(&cfg, clusterService.SlaveAPI(), requestEventFactory, objectStore)
 	if err != nil {
 		return errors.Wrap(err, "failed to setup object handler")
 	}
-	membershipHandlers := membership.NewHandlers(&cfg, clusterMap)
-	clustermapService := clustermap.NewService(clusterMap)
+	membershipHandlers := membership.NewHandlers(&cfg, clusterService)
+	// clustermapService := clustermap.NewService(clusterService.SlaveAPI())
 
-	// Starts to update cluster map.
-	clustermapService.Run()
+	// // Starts to update cluster map.
+	// clustermapService.Run()
 
 	// Setup delivery service.
 	delivery, err := delivery.NewDeliveryService(&cfg, adminHandlers, objectHandlers, membershipHandlers)

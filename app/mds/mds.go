@@ -17,7 +17,6 @@ import (
 	"github.com/chanyoung/nil/app/mds/usecase/object"
 	"github.com/chanyoung/nil/app/mds/usecase/recovery"
 	"github.com/chanyoung/nil/pkg/cluster"
-	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/chanyoung/nil/pkg/util/uuid"
@@ -67,21 +66,14 @@ func Bootstrap(cfg config.Mds) error {
 	}
 
 	// Setup membership service.
-	clusterCfg := cluster.DefaultConfig()
-	clusterCfg.Name = cluster.NodeName(cfg.ID)
-	clusterCfg.Address = cluster.NodeAddress(cfg.ServerAddr + ":" + cfg.ServerPort)
-	clusterCfg.Coordinator = cluster.NodeAddress(cfg.ServerAddr + ":" + cfg.ServerPort)
-	clusterCfg.Type = cluster.MDS
-	clusterService, err := cluster.NewService(*clusterCfg, mlog.GetPackageLogger("pkg/cluster"))
+	// clusterCfg := cluster.DefaultConfig()
+	// clusterCfg.Name = cluster.NodeName(cfg.ID)
+	// clusterCfg.Address = cluster.NodeAddress(cfg.ServerAddr + ":" + cfg.ServerPort)
+	// clusterCfg.Coordinator = cluster.NodeAddress(cfg.ServerAddr + ":" + cfg.ServerPort)
+	// clusterCfg.Type = cluster.MDS
+	clusterService, err := cluster.NewService(cluster.NodeAddress(cfg.ServerAddr+":"+cfg.ServerPort), mlog.GetPackageLogger("pkg/cluster"))
 	if err != nil {
 		return errors.Wrap(err, "failed to create cluster service")
-	}
-	_ = clusterService
-
-	// Setup cluster map.
-	clusterMap, err := cmap.NewController(cfg.ServerAddr + ":" + cfg.ServerPort)
-	if err != nil {
-		return errors.Wrap(err, "failed to init cluster map")
 	}
 
 	// Setup usecase handlers.
@@ -89,10 +81,10 @@ func Bootstrap(cfg config.Mds) error {
 	authHandlers := auth.NewHandlers(authStore)
 	bucketHandlers := bucket.NewHandlers(bucketStore)
 	consensusHandlers := consensus.NewHandlers(&cfg, consensusStore)
-	clustermapHandlers := clustermap.NewHandlers(clusterMap, clustermapStore)
-	membershipHandlers := membership.NewHandlers(&cfg, clusterMap, membershipStore)
+	clustermapHandlers := clustermap.NewHandlers(clusterService.MasterAPI(), clustermapStore)
+	membershipHandlers := membership.NewHandlers(&cfg, clusterService, membershipStore)
 	objectHandlers := object.NewHandlers(objectStore)
-	recoveryHandlers, err := recovery.NewHandlers(&cfg, clusterMap, recoveryStore)
+	recoveryHandlers, err := recovery.NewHandlers(&cfg, clusterService.SlaveAPI(), recoveryStore)
 	if err != nil {
 		return errors.Wrap(err, "failed to create recovery handler")
 	}

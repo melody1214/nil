@@ -22,8 +22,8 @@ func (t CMapTime) String() string {
 	return string(t)
 }
 
-// cMapNow returns the current time of CMapTime.
-func cMapNow() CMapTime {
+// CMapNow returns the current time of CMapTime.
+func CMapNow() CMapTime {
 	return CMapTime(time.Now().UTC().String())
 }
 

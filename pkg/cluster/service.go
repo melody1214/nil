@@ -27,25 +27,39 @@ var logger *logrus.Entry
 // remove, update node functions and all of this kind of changes will increment
 // the version number of the cluster map. (for MDS functions)
 type Service struct {
-	cfg         Config
+	// cfg         Config
 	cMapManager *cMapManager
+	server      *server
 }
 
 // NewService returns new membership service.
-func NewService(cfg Config, log *logrus.Entry) (*Service, error) {
+func NewService(coordinator NodeAddress, log *logrus.Entry) (*Service, error) {
 	logger = log
 
-	s := &Service{
-		cfg: cfg,
-	}
+	// s := &Service{
+	// 	cfg: cfg,
+	// }
 
-	cm, err := newCMapManager(cfg.Coordinator)
+	cm, err := newCMapManager(coordinator)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create cmap manager")
 	}
 
-	s.cMapManager = cm
-	return s, nil
+	return &Service{
+		cMapManager: cm,
+	}, nil
+}
+
+// StartMembershipServer starts membership server to gossip.
+func (s *Service) StartMembershipServer(cfg Config, trans Transport) error {
+	swimSrv, err := newServer(cfg, s.cMapManager, trans)
+	if err != nil {
+		return errors.Wrap(err, "failed to make new swim server")
+	}
+	s.server = swimSrv
+
+	go s.server.run()
+	return nil
 }
 
 // SlaveAPI is the interface for access the membership service with slave mode.
@@ -53,11 +67,13 @@ type SlaveAPI interface {
 	SearchCallNode() *SearchCallNode
 	SearchCallVolume() *SearchCallVolume
 	SearchCallEncGrp() *SearchCallEncGrp
+	GetLatestCMapVersion() CMapVersion
 	UpdateNodeStatus(nID ID, stat NodeStatus) error
 	UpdateVolumeStatus(vID ID, stat VolumeStatus) error
 	UpdateEncodingGroupStatus(egID ID, stat EncodingGroupStatus) error
 	UpdateEncodingGroupUsed(egID ID, used uint64) error
 	GetUpdatedNoti(ver CMapVersion) <-chan interface{}
+	UpdateFromMDS() error
 }
 
 // SlaveAPI returns a set of APIs that can be used by nodes in slave mode.
@@ -70,6 +86,7 @@ type MasterAPI interface {
 	SearchCallNode() *SearchCallNode
 	SearchCallVolume() *SearchCallVolume
 	SearchCallEncGrp() *SearchCallEncGrp
+	GetLatestCMap() CMap
 	UpdateCMap(cmap CMap) error
 	GetOutdatedNoti() <-chan interface{}
 	GetUpdatedNoti(ver CMapVersion) <-chan interface{}
@@ -100,8 +117,23 @@ func (s *Service) UpdateEncodingGroupUsed(egID ID, used uint64) error {
 	return nil
 }
 
+// GetLatestCMap returns the latest cluster map.
+func (s *Service) GetLatestCMap() CMap {
+	return s.cMapManager.LatestCMap()
+}
+
+// GetLatestCMapVersion returns the latest version of cluster map.
+func (s *Service) GetLatestCMapVersion() CMapVersion {
+	return s.cMapManager.latest
+}
+
 // UpdateCMap updates the new cmap manager with the given cmap.
 func (s *Service) UpdateCMap(cmap CMap) error {
+	return nil
+}
+
+// UpdateFromMDS update the latest cmap from the mds.
+func (s *Service) UpdateFromMDS() error {
 	return nil
 }
 

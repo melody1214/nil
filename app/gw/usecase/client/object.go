@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/chanyoung/nil/pkg/client"
-	"github.com/chanyoung/nil/pkg/cmap"
+	"github.com/chanyoung/nil/pkg/cluster"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/pkg/errors"
 )
@@ -42,7 +42,7 @@ func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rpURL, err := url.Parse("https://" + node.Addr)
+	rpURL, err := url.Parse("https://" + node.Addr.String())
 	if err != nil {
 		ctxLogger.Error(errors.Wrapf(err,
 			"parse ds url failed, ds ID: %s, ds url: %s",
@@ -61,21 +61,21 @@ func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 	proxy.ServeHTTP(w, r)
 }
 
-func (h *handlers) findRandomPlaceToWrite() (cmap.EncodingGroup, cmap.Node, error) {
-	eg, err := h.cMap.SearchCallEncGrp().Random().Status(cmap.EGAlive).Do()
+func (h *handlers) findRandomPlaceToWrite() (cluster.EncodingGroup, cluster.Node, error) {
+	eg, err := h.clusterAPI.SearchCallEncGrp().Random().Status(cluster.EGAlive).Do()
 	if err != nil {
-		return cmap.EncodingGroup{}, cmap.Node{}, errors.Wrap(err, "failed to search writable encoding group")
+		return cluster.EncodingGroup{}, cluster.Node{}, errors.Wrap(err, "failed to search writable encoding group")
 	}
 
 	const primary = 0
-	vol, err := h.cMap.SearchCallVolume().ID(eg.Vols[primary]).Status(cmap.Active).Do()
+	vol, err := h.clusterAPI.SearchCallVolume().ID(eg.Vols[primary]).Status(cluster.Active).Do()
 	if err != nil {
-		return cmap.EncodingGroup{}, cmap.Node{}, errors.Wrapf(err, "failed to search active volume %+v", eg.Vols[primary])
+		return cluster.EncodingGroup{}, cluster.Node{}, errors.Wrapf(err, "failed to search active volume %+v", eg.Vols[primary])
 	}
 
-	node, err := h.cMap.SearchCallNode().ID(vol.Node).Status(cmap.Alive).Do()
+	node, err := h.clusterAPI.SearchCallNode().ID(vol.Node).Status(cluster.Alive).Do()
 	if err != nil {
-		return cmap.EncodingGroup{}, cmap.Node{}, errors.Wrapf(err, "failed to search alive node %+v", vol.Node)
+		return cluster.EncodingGroup{}, cluster.Node{}, errors.Wrapf(err, "failed to search alive node %+v", vol.Node)
 	}
 
 	return eg, node, nil
@@ -105,15 +105,15 @@ func (h *handlers) GetObjectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Test code
-	c := h.cMap.SearchCallNode()
-	node, err := c.ID(cmap.ID(res.DsID)).Do()
+	c := h.clusterAPI.SearchCallNode()
+	node, err := c.ID(cluster.ID(res.DsID)).Do()
 	if err != nil {
 		ctxLogger.Error(err)
 		req.SendInternalError()
 		return
 	}
 
-	rpURL, err := url.Parse("https://" + node.Addr)
+	rpURL, err := url.Parse("https://" + node.Addr.String())
 	if err != nil {
 		ctxLogger.Error(
 			errors.Wrapf(

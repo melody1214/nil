@@ -23,7 +23,7 @@ func newCMapManager(coordinator NodeAddress) (*cMapManager, error) {
 	// Create an empty map.
 	cm := &CMap{
 		Version: CMapVersion(0),
-		Time:    cMapNow(),
+		Time:    CMapNow(),
 		Nodes:   make([]Node, 1),
 		Vols:    make([]Volume, 0),
 		EncGrps: make([]EncodingGroup, 0),
@@ -116,7 +116,7 @@ func (m *cMapManager) GetUpdatedNoti(ver CMapVersion) <-chan interface{} {
 
 		// Add notification channel.
 		if m.latest <= ver {
-			m.notiChannels[cMapNow()] = notiC
+			m.notiChannels[CMapNow()] = notiC
 			return
 		}
 
@@ -141,7 +141,7 @@ func (m *cMapManager) GetOutdatedNoti() <-chan interface{} {
 		m.mu.Lock()
 		defer m.mu.Unlock()
 
-		m.outdatedNotiChannels[cMapNow()] = notiC
+		m.outdatedNotiChannels[CMapNow()] = notiC
 	}()
 
 	return notiC

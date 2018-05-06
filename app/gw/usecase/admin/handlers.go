@@ -6,7 +6,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/chanyoung/nil/pkg/cmap"
+	"github.com/chanyoung/nil/pkg/cluster"
 	"github.com/chanyoung/nil/pkg/security"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/pkg/errors"
@@ -16,15 +16,15 @@ import (
 var logger *logrus.Entry
 
 type handlers struct {
-	cMap *cmap.Controller
+	clusterAPI cluster.SlaveAPI
 }
 
 // NewHandlers creates an admin handlers with necessary dependencies.
-func NewHandlers(cMap *cmap.Controller) Handlers {
+func NewHandlers(clusterAPI cluster.SlaveAPI) Handlers {
 	logger = mlog.GetPackageLogger("app/gw/usecase/admin")
 
 	return &handlers{
-		cMap: cMap,
+		clusterAPI: clusterAPI,
 	}
 }
 
@@ -37,14 +37,14 @@ func (h *handlers) Proxying(conn net.Conn) {
 	tlsConfig := security.DefaultTLSConfig()
 
 	// 2. Lookup mds from cluster map.
-	mds, err := h.cMap.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
+	mds, err := h.clusterAPI.SearchCallNode().Type(cluster.MDS).Status(cluster.Alive).Do()
 	if err != nil {
 		ctxLogger.Error(errors.Wrap(err, "find alive mds failed"))
 		return
 	}
 
 	// 3. Dial with tls.
-	remote, err := tls.DialWithDialer(dialer, "tcp", mds.Addr, tlsConfig)
+	remote, err := tls.DialWithDialer(dialer, "tcp", mds.Addr.String(), tlsConfig)
 	if err != nil {
 		ctxLogger.Error(errors.Wrap(err, "dial to mds failed"))
 		return

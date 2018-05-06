@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/chanyoung/nil/pkg/cmap"
+	"github.com/chanyoung/nil/pkg/cluster"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/pkg/errors"
 )
@@ -37,7 +37,7 @@ func (w *worker) rebalanceWithinSameVolumeSpeedGroup(vols []*Volume) error {
 	ctxLogger := mlog.GetMethodLogger(logger, "worker.rebalance")
 
 	rebalanced := false
-	speedLv := []cmap.VolumeSpeed{cmap.Low, cmap.Mid, cmap.High}
+	speedLv := []cluster.VolumeSpeed{cluster.Low, cluster.Mid, cluster.High}
 	for _, speed := range speedLv {
 		sVols := make([]*Volume, 0)
 		for _, v := range vols {
@@ -147,9 +147,9 @@ func (w *worker) newEncodingGroup(primary *Volume, vols []*Volume, shards int) e
 
 	// Make encoding group.
 	eg := EncodingGroup{
-		EncodingGroup: cmap.EncodingGroup{
-			Status: cmap.EGAlive,
-			Vols:   make([]cmap.ID, shards+1),
+		EncodingGroup: cluster.EncodingGroup{
+			Stat: cluster.EGAlive,
+			Vols: make([]cluster.ID, shards+1),
 		},
 		parityVol: picked[0].ID,
 		firstVol:  picked[1].ID,

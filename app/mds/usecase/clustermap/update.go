@@ -1,10 +1,8 @@
 package clustermap
 
 import (
-	"time"
-
 	"github.com/chanyoung/nil/app/mds/repository"
-	"github.com/chanyoung/nil/pkg/cmap"
+	"github.com/chanyoung/nil/pkg/cluster"
 	"github.com/pkg/errors"
 )
 
@@ -21,10 +19,10 @@ func (h *handlers) updateClusterMap(txid repository.TxID) error {
 		return errors.Wrap(err, "failed to create cluster map")
 	}
 
-	return h.cMap.Update(cm)
+	return h.clusterAPI.UpdateCMap(*cm)
 }
 
-func (h *handlers) createClusterMap(ver cmap.Version, txid repository.TxID) (*cmap.CMap, error) {
+func (h *handlers) createClusterMap(ver cluster.CMapVersion, txid repository.TxID) (*cluster.CMap, error) {
 	nodes, err := h.store.FindAllNodes(txid)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get cluster map nodes")
@@ -40,9 +38,9 @@ func (h *handlers) createClusterMap(ver cmap.Version, txid repository.TxID) (*cm
 		return nil, errors.Wrap(err, "failed to get cluster map encoding groups")
 	}
 
-	return &cmap.CMap{
+	return &cluster.CMap{
 		Version: ver,
-		Time:    time.Now().UTC().String(),
+		Time:    cluster.CMapNow(),
 		Nodes:   nodes,
 		Vols:    vols,
 		EncGrps: encGrps,

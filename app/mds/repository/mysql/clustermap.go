@@ -6,7 +6,7 @@ import (
 
 	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/app/mds/usecase/clustermap"
-	"github.com/chanyoung/nil/pkg/cmap"
+	"github.com/chanyoung/nil/pkg/cluster"
 )
 
 type clustermapStore struct {
@@ -20,7 +20,7 @@ func NewClusterMapRepository(s *Store) clustermap.Repository {
 	}
 }
 
-func (s *clustermapStore) FindAllNodes(txid repository.TxID) (nodes []cmap.Node, err error) {
+func (s *clustermapStore) FindAllNodes(txid repository.TxID) (nodes []cluster.Node, err error) {
 	q := fmt.Sprintf(
 		`
 		SELECT
@@ -41,9 +41,9 @@ func (s *clustermapStore) FindAllNodes(txid repository.TxID) (nodes []cmap.Node,
 	}
 	defer rows.Close()
 
-	nodes = make([]cmap.Node, 0)
+	nodes = make([]cluster.Node, 0)
 	for rows.Next() {
-		n := cmap.Node{}
+		n := cluster.Node{}
 
 		if err = rows.Scan(&n.ID, &n.Name, &n.Type, &n.Stat, &n.Addr); err != nil {
 			return nil, err
@@ -55,7 +55,7 @@ func (s *clustermapStore) FindAllNodes(txid repository.TxID) (nodes []cmap.Node,
 	return
 }
 
-func (s *clustermapStore) FindAllVolumes(txid repository.TxID) (vols []cmap.Volume, err error) {
+func (s *clustermapStore) FindAllVolumes(txid repository.TxID) (vols []cluster.Volume, err error) {
 	q := fmt.Sprintf(
 		`
 		SELECT
@@ -63,8 +63,6 @@ func (s *clustermapStore) FindAllVolumes(txid repository.TxID) (vols []cmap.Volu
 			vl_status,
 			vl_node,
 			vl_size,
-			vl_free,
-			vl_used,
 			vl_speed
 		FROM
 			volume
@@ -78,11 +76,11 @@ func (s *clustermapStore) FindAllVolumes(txid repository.TxID) (vols []cmap.Volu
 	}
 	defer rows.Close()
 
-	vols = make([]cmap.Volume, 0)
+	vols = make([]cluster.Volume, 0)
 	for rows.Next() {
-		v := cmap.Volume{}
+		v := cluster.Volume{}
 
-		if err = rows.Scan(&v.ID, &v.Status, &v.Node, &v.Size, &v.Free, &v.Used, &v.Speed); err != nil {
+		if err = rows.Scan(&v.ID, &v.Stat, &v.Node, &v.Size, &v.Speed); err != nil {
 			return nil, err
 		}
 
@@ -92,7 +90,7 @@ func (s *clustermapStore) FindAllVolumes(txid repository.TxID) (vols []cmap.Volu
 	return
 }
 
-func (s *clustermapStore) FindAllEncGrps(txid repository.TxID) (egs []cmap.EncodingGroup, err error) {
+func (s *clustermapStore) FindAllEncGrps(txid repository.TxID) (egs []cluster.EncodingGroup, err error) {
 	q := fmt.Sprintf(
 		`
 		SELECT
@@ -110,11 +108,11 @@ func (s *clustermapStore) FindAllEncGrps(txid repository.TxID) (egs []cmap.Encod
 	}
 	defer rows.Close()
 
-	egs = make([]cmap.EncodingGroup, 0)
+	egs = make([]cluster.EncodingGroup, 0)
 	for rows.Next() {
-		eg := cmap.EncodingGroup{}
+		eg := cluster.EncodingGroup{}
 
-		if err = rows.Scan(&eg.ID, &eg.Status); err != nil {
+		if err = rows.Scan(&eg.ID, &eg.Stat); err != nil {
 			return nil, err
 		}
 
@@ -128,7 +126,7 @@ func (s *clustermapStore) FindAllEncGrps(txid repository.TxID) (egs []cmap.Encod
 	return
 }
 
-func (s *clustermapStore) FindAllEncGrpVols(txid repository.TxID, id cmap.ID) (vols []cmap.ID, err error) {
+func (s *clustermapStore) FindAllEncGrpVols(txid repository.TxID, id cluster.ID) (vols []cluster.ID, err error) {
 	q := fmt.Sprintf(
 		`
 		SELECT
@@ -149,9 +147,9 @@ func (s *clustermapStore) FindAllEncGrpVols(txid repository.TxID, id cmap.ID) (v
 	}
 	defer rows.Close()
 
-	vols = make([]cmap.ID, 0)
+	vols = make([]cluster.ID, 0)
 	for rows.Next() {
-		var volID cmap.ID
+		var volID cluster.ID
 
 		if err = rows.Scan(&volID); err != nil {
 			return nil, err
@@ -163,7 +161,7 @@ func (s *clustermapStore) FindAllEncGrpVols(txid repository.TxID, id cmap.ID) (v
 	return
 }
 
-func (s *clustermapStore) GetNewClusterMapVer(txid repository.TxID) (cmap.Version, error) {
+func (s *clustermapStore) GetNewClusterMapVer(txid repository.TxID) (cluster.CMapVersion, error) {
 	q := fmt.Sprintf(
 		`
 		INSERT INTO cmap (cmap_id)
@@ -181,5 +179,5 @@ func (s *clustermapStore) GetNewClusterMapVer(txid repository.TxID) (cmap.Versio
 		return -1, err
 	}
 
-	return cmap.Version(ver), nil
+	return cluster.CMapVersion(ver), nil
 }

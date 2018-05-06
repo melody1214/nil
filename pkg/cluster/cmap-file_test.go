@@ -40,7 +40,7 @@ func TestGetLatestMapFile(t *testing.T) {
 func TestEncodeDecode(t *testing.T) {
 	testMap := CMap{
 		Version: 1,
-		Time:    cMapNow(),
+		Time:    CMapNow(),
 		Nodes: []Node{
 			{
 				Addr: "localhost:1000",

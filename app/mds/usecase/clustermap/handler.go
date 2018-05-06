@@ -3,7 +3,7 @@ package clustermap
 import (
 	"time"
 
-	"github.com/chanyoung/nil/pkg/cmap"
+	"github.com/chanyoung/nil/pkg/cluster"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/pkg/errors"
@@ -13,29 +13,29 @@ import (
 var logger *logrus.Entry
 
 type handlers struct {
-	store Repository
-	cMap  *cmap.Controller
+	store      Repository
+	clusterAPI cluster.MasterAPI
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cMap *cmap.Controller, s Repository) Handlers {
+func NewHandlers(clusterAPI cluster.MasterAPI, s Repository) Handlers {
 	logger = mlog.GetPackageLogger("app/mds/usecase/clustermap")
 
 	return &handlers{
-		store: s,
-		cMap:  cMap,
+		store:      s,
+		clusterAPI: clusterAPI,
 	}
 }
 
 // GetClusterMap returns a current local cluster map.
 func (h *handlers) GetClusterMap(req *nilrpc.MCLGetClusterMapRequest, res *nilrpc.MCLGetClusterMapResponse) error {
-	res.ClusterMap = h.cMap.LatestCMap()
+	res.ClusterMap = h.clusterAPI.GetLatestCMap()
 	return nil
 }
 
 // GetUpdateNoti returns when the cluster map is updated or timeout.
 func (h *handlers) GetUpdateNoti(req *nilrpc.MCLGetUpdateNotiRequest, res *nilrpc.MCLGetUpdateNotiResponse) error {
-	notiC := h.cMap.GetUpdatedNoti(cmap.Version(req.Version))
+	notiC := h.clusterAPI.GetUpdatedNoti(cluster.CMapVersion(req.Version))
 
 	timeout := time.After(10 * time.Minute)
 	for {

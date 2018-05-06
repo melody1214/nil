@@ -8,7 +8,7 @@ import (
 
 	"github.com/chanyoung/nil/app/gw/usecase/auth"
 	"github.com/chanyoung/nil/pkg/client/request"
-	"github.com/chanyoung/nil/pkg/cmap"
+	"github.com/chanyoung/nil/pkg/cluster"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/pkg/errors"
@@ -20,27 +20,27 @@ var logger *logrus.Entry
 type handlers struct {
 	requestEventFactory *request.RequestEventFactory
 	authHandlers        auth.Handlers
-	cMap                *cmap.Controller
+	clusterAPI          cluster.SlaveAPI
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cMap *cmap.Controller, f *request.RequestEventFactory, authHandlers auth.Handlers) Handlers {
+func NewHandlers(clusterAPI cluster.SlaveAPI, f *request.RequestEventFactory, authHandlers auth.Handlers) Handlers {
 	logger = mlog.GetPackageLogger("app/gw/usecase/client")
 
 	return &handlers{
 		requestEventFactory: f,
 		authHandlers:        authHandlers,
-		cMap:                cMap,
+		clusterAPI:          clusterAPI,
 	}
 }
 
 func (h *handlers) getLocalChain() (*nilrpc.GetLocalChainResponse, error) {
-	mds, err := h.cMap.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
+	mds, err := h.clusterAPI.SearchCallNode().Type(cluster.MDS).Status(cluster.Alive).Do()
 	if err != nil {
 		return nil, errors.Wrap(err, "find alive mds failed")
 	}
 
-	conn, err := nilrpc.Dial(mds.Addr, nilrpc.RPCNil, time.Duration(2*time.Second))
+	conn, err := nilrpc.Dial(mds.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
 	if err != nil {
 		return nil, errors.Wrap(err, "dial to mds failed")
 	}
@@ -58,12 +58,12 @@ func (h *handlers) getLocalChain() (*nilrpc.GetLocalChainResponse, error) {
 }
 
 func (h *handlers) getObjectLocation(oid, bucket string) (*nilrpc.ObjectGetResponse, error) {
-	mds, err := h.cMap.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
+	mds, err := h.clusterAPI.SearchCallNode().Type(cluster.MDS).Status(cluster.Alive).Do()
 	if err != nil {
 		return nil, errors.Wrap(err, "find alive mds failed")
 	}
 
-	conn, err := nilrpc.Dial(mds.Addr, nilrpc.RPCNil, time.Duration(2*time.Second))
+	conn, err := nilrpc.Dial(mds.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
 	if err != nil {
 		return nil, errors.Wrap(err, "dial to mds failed")
 	}

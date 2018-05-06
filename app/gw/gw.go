@@ -12,7 +12,7 @@ import (
 	"github.com/chanyoung/nil/app/gw/usecase/client"
 	"github.com/chanyoung/nil/app/gw/usecase/clustermap"
 	"github.com/chanyoung/nil/pkg/client/request"
-	"github.com/chanyoung/nil/pkg/cmap"
+	"github.com/chanyoung/nil/pkg/cluster"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/chanyoung/nil/pkg/util/uuid"
@@ -42,17 +42,21 @@ func Bootstrap(cfg config.Gw) error {
 	// Setup request event factory.
 	requestEventFactory := request.NewRequestEventFactory()
 
-	// Setup cluster map.
-	clusterMap, err := cmap.NewController(cfg.FirstMds)
+	// // Setup cluster map.
+	// clusterMap, err := cmap.NewController(cfg.FirstMds)
+	// if err != nil {
+	// 	return errors.Wrap(err, "failed to init cluster map")
+	// }
+	clusterService, err := cluster.NewService(cluster.NodeAddress(cfg.ServerAddr+":"+cfg.ServerPort), mlog.GetPackageLogger("pkg/cluster"))
 	if err != nil {
-		return errors.Wrap(err, "failed to init cluster map")
+		return errors.Wrap(err, "failed to create cluster service")
 	}
 
 	// Setup each usecase handlers.
-	authHandlers := auth.NewHandlers(clusterMap, authCache)
-	adminHandlers := admin.NewHandlers(clusterMap)
-	clientHandlers := client.NewHandlers(clusterMap, requestEventFactory, authHandlers)
-	clustermapService := clustermap.NewService(clusterMap)
+	authHandlers := auth.NewHandlers(clusterService.SlaveAPI(), authCache)
+	adminHandlers := admin.NewHandlers(clusterService.SlaveAPI())
+	clientHandlers := client.NewHandlers(clusterService.SlaveAPI(), requestEventFactory, authHandlers)
+	clustermapService := clustermap.NewService(clusterService.SlaveAPI())
 
 	// Starts to update cluster map.
 	clustermapService.Run()

@@ -12,7 +12,7 @@ import (
 	"github.com/chanyoung/nil/app/ds/repository"
 	"github.com/chanyoung/nil/pkg/client"
 	cr "github.com/chanyoung/nil/pkg/client/request"
-	"github.com/chanyoung/nil/pkg/cmap"
+	"github.com/chanyoung/nil/pkg/cluster"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
@@ -27,11 +27,11 @@ type handlers struct {
 	chunkPool           *chunkPool
 	store               Repository
 	endec               *endec
-	cMap                *cmap.Controller
+	clusterAPI          cluster.SlaveAPI
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cfg *config.Ds, cMap *cmap.Controller, f *cr.RequestEventFactory, s Repository) (Handlers, error) {
+func NewHandlers(cfg *config.Ds, clusterAPI cluster.SlaveAPI, f *cr.RequestEventFactory, s Repository) (Handlers, error) {
 	logger = mlog.GetPackageLogger("app/ds/usecase/object")
 
 	shards, err := strconv.ParseInt(cfg.LocalParityShards, 10, 64)
@@ -45,7 +45,7 @@ func NewHandlers(cfg *config.Ds, cMap *cmap.Controller, f *cr.RequestEventFactor
 
 	pool := newChunkPool(shards, chunkSize, s.GetChunkHeaderSize(), s.GetObjectHeaderSize(), chunkSize-1024)
 
-	ed, err := newEndec(cMap, pool, s)
+	ed, err := newEndec(clusterAPI, pool, s)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func NewHandlers(cfg *config.Ds, cMap *cmap.Controller, f *cr.RequestEventFactor
 		chunkPool:           pool,
 		endec:               ed,
 		store:               s,
-		cMap:                cMap,
+		clusterAPI:          clusterAPI,
 	}, nil
 }
 
@@ -165,22 +165,22 @@ func (h *handlers) writeToRemoteFollower(req client.RequestEvent, size int64, ci
 		return errors.Wrap(err, "failed to convert encoding group id")
 	}
 
-	encGrp, err := h.cMap.SearchCallEncGrp().ID(cmap.ID(encGrpID)).Do()
+	encGrp, err := h.clusterAPI.SearchCallEncGrp().ID(cluster.ID(encGrpID)).Do()
 	if err != nil {
 		return errors.Wrapf(err, "failed to find such encoding group: %d", encGrpID)
 	}
 
-	vol, err := h.cMap.SearchCallVolume().ID(encGrp.Vols[c.shard]).Do()
+	vol, err := h.clusterAPI.SearchCallVolume().ID(encGrp.Vols[c.shard]).Do()
 	if err != nil {
 		return errors.Wrapf(err, "failed to find such volume: %d", encGrp.Vols[c.shard])
 	}
 
-	node, err := h.cMap.SearchCallNode().ID(vol.Node).Do()
+	node, err := h.clusterAPI.SearchCallNode().ID(vol.Node).Do()
 	if err != nil {
 		return errors.Wrapf(err, "failed to find such node: %d", vol.Node)
 	}
 
-	remoteAddr := "https://" + node.Addr + req.Request().RequestURI
+	remoteAddr := "https://" + node.Addr.String() + req.Request().RequestURI
 
 	pReader, pWriter := io.Pipe()
 
@@ -280,7 +280,7 @@ func (h *handlers) writeCopy(req client.RequestEvent) {
 		return
 	}
 
-	mds, err := h.cMap.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
+	mds, err := h.clusterAPI.SearchCallNode().Type(cluster.MDS).Status(cluster.Alive).Do()
 	if err != nil {
 		// Rollback writed data.
 		storeReq.Op = repository.Delete
@@ -292,7 +292,7 @@ func (h *handlers) writeCopy(req client.RequestEvent) {
 		return
 	}
 
-	conn, err := nilrpc.Dial(mds.Addr, nilrpc.RPCNil, time.Duration(2*time.Second))
+	conn, err := nilrpc.Dial(mds.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
 	if err != nil {
 		// Rollback writed data.
 		storeReq.Op = repository.Delete
