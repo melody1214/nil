@@ -69,7 +69,7 @@ func Bootstrap(cfg config.Ds) error {
 	// if err != nil {
 	// 	return errors.Wrap(err, "failed to init cluster map")
 	// }
-	clusterService, err := cluster.NewService(cluster.NodeAddress(cfg.ServerAddr+":"+cfg.ServerPort), mlog.GetPackageLogger("pkg/cluster"))
+	clusterService, err := cluster.NewService(cluster.NodeAddress(cfg.Swim.CoordinatorAddr), mlog.GetPackageLogger("pkg/cluster"))
 	if err != nil {
 		return errors.Wrap(err, "failed to create cluster service")
 	}

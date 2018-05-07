@@ -70,7 +70,7 @@ func Bootstrap(cfg config.Mds) error {
 	// clusterCfg.Address = cluster.NodeAddress(cfg.ServerAddr + ":" + cfg.ServerPort)
 	// clusterCfg.Coordinator = cluster.NodeAddress(cfg.ServerAddr + ":" + cfg.ServerPort)
 	// clusterCfg.Type = cluster.MDS
-	clusterService, err := cluster.NewService(cluster.NodeAddress(cfg.ServerAddr+":"+cfg.ServerPort), mlog.GetPackageLogger("pkg/cluster"))
+	clusterService, err := cluster.NewService(cluster.NodeAddress(cfg.Swim.CoordinatorAddr), mlog.GetPackageLogger("pkg/cluster"))
 	if err != nil {
 		return errors.Wrap(err, "failed to create cluster service")
 	}

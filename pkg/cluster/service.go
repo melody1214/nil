@@ -73,7 +73,6 @@ type SlaveAPI interface {
 	UpdateEncodingGroupStatus(egID ID, stat EncodingGroupStatus) error
 	UpdateEncodingGroupUsed(egID ID, used uint64) error
 	GetUpdatedNoti(ver CMapVersion) <-chan interface{}
-	UpdateFromMDS() error
 }
 
 // SlaveAPI returns a set of APIs that can be used by nodes in slave mode.
@@ -130,11 +129,6 @@ func (s *Service) GetLatestCMapVersion() CMapVersion {
 // UpdateCMap updates the new cmap manager with the given cmap.
 func (s *Service) UpdateCMap(cmap *CMap) error {
 	s.cMapManager.mergeCMap(cmap)
-	return nil
-}
-
-// UpdateFromMDS update the latest cmap from the mds.
-func (s *Service) UpdateFromMDS() error {
 	return nil
 }
 

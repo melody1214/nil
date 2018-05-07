@@ -47,7 +47,7 @@ func Bootstrap(cfg config.Gw) error {
 	// if err != nil {
 	// 	return errors.Wrap(err, "failed to init cluster map")
 	// }
-	clusterService, err := cluster.NewService(cluster.NodeAddress(cfg.ServerAddr+":"+cfg.ServerPort), mlog.GetPackageLogger("pkg/cluster"))
+	clusterService, err := cluster.NewService(cluster.NodeAddress(cfg.FirstMds), mlog.GetPackageLogger("pkg/cluster"))
 	if err != nil {
 		return errors.Wrap(err, "failed to create cluster service")
 	}
@@ -56,7 +56,7 @@ func Bootstrap(cfg config.Gw) error {
 	authHandlers := auth.NewHandlers(clusterService.SlaveAPI(), authCache)
 	adminHandlers := admin.NewHandlers(clusterService.SlaveAPI())
 	clientHandlers := client.NewHandlers(clusterService.SlaveAPI(), requestEventFactory, authHandlers)
-	clustermapService := clustermap.NewService(clusterService.SlaveAPI())
+	clustermapService := clustermap.NewService(clusterService)
 
 	// Starts to update cluster map.
 	clustermapService.Run()
