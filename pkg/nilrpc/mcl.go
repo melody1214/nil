@@ -29,3 +29,12 @@ type MCLUpdateClusterMapRequest struct{}
 
 // MCLUpdateClusterMapResponse includes the result of update cluster map.
 type MCLUpdateClusterMapResponse struct{}
+
+// MCLJoinRequest requests to join the local IDC cluster.
+type MCLJoinRequest struct {
+	Node cluster.Node
+}
+
+// MCLJoinResponse reponse the result of join request.
+type MCLJoinResponse struct {
+}

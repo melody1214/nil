@@ -34,8 +34,8 @@ func NewHandlers(cfg *config.Mds, clusterService *cluster.Service, s Repository)
 // 	return nil
 // }
 
-// Run swim server.
-func (h *handlers) Run(swimL *nilmux.Layer) (err error) {
+// Setup setup the swim server and run.
+func (h *handlers) Setup(swimL *nilmux.Layer) (err error) {
 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.Create")
 
 	// Setup configuration.
@@ -116,5 +116,5 @@ func (h *handlers) Run(swimL *nilmux.Layer) (err error) {
 type Handlers interface {
 	// GetMembershipList(req *nilrpc.GetMembershipListRequest, res *nilrpc.GetMembershipListResponse) error
 	// Create(swimL *nilmux.Layer) error
-	Run(swimL *nilmux.Layer) error
+	Setup(swimL *nilmux.Layer) error
 }

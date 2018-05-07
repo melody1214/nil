@@ -3,6 +3,8 @@ package cluster
 // NodeName is a string for identifying node.
 type NodeName string
 
+func (n NodeName) String() string { return string(n) }
+
 // NodeAddress is a combination of host:port string of node network address.
 type NodeAddress string
 
@@ -10,27 +12,25 @@ type NodeAddress string
 func (a NodeAddress) String() string { return string(a) }
 
 // NodeType represents the type of the node.
-type NodeType int
+type NodeType string
 
 const (
 	// MDS : Metadata server.
-	MDS NodeType = iota
+	MDS NodeType = "MDS"
 	// DS : Disk server.
-	DS
+	DS NodeType = "DS"
 	// GW : Gateway.
-	GW
+	GW NodeType = "GW"
 )
 
 // String returns the string of node type.
 func (t NodeType) String() string {
-	if t == MDS {
-		return "MDS"
-	} else if t == DS {
-		return "DS"
-	} else if t == GW {
-		return "GW"
+	switch t {
+	case MDS, DS, GW:
+		return string(t)
+	default:
+		return unknown
 	}
-	return unknown
 }
 
 // NodeStatus is the status of the node.
@@ -40,9 +40,9 @@ const (
 	// Alive : healthy node
 	Alive NodeStatus = "Alive"
 	// Suspect : maybe faulty
-	Suspect = "Suspect"
+	Suspect NodeStatus = "Suspect"
 	// Faulty : faulty
-	Faulty = "Faulty"
+	Faulty NodeStatus = "Faulty"
 )
 
 // String returns a string of the node status.

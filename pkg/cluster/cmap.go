@@ -115,7 +115,7 @@ func (m *CMap) HumanReadable() string {
 		)
 		out += row
 	}
-	out += "+------+---------+---------+---------+---------+---------+------+-----------------+\n"
+	out += "+------+---------+---------+---------+------+-----------------+\n"
 
 	// Make human readable information for each encoding groups.
 	out += "\n"

@@ -11,7 +11,6 @@ import (
 	"github.com/chanyoung/nil/app/ds/repository/lvstore"
 	"github.com/chanyoung/nil/app/ds/repository/partstore"
 	"github.com/chanyoung/nil/app/ds/usecase/admin"
-	"github.com/chanyoung/nil/app/ds/usecase/membership"
 	"github.com/chanyoung/nil/app/ds/usecase/object"
 	"github.com/chanyoung/nil/app/ds/usecase/recovery"
 	"github.com/chanyoung/nil/pkg/client/request"
@@ -81,18 +80,18 @@ func Bootstrap(cfg config.Ds) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to setup object handler")
 	}
-	membershipHandlers := membership.NewHandlers(&cfg, clusterService)
+	// membershipHandlers := membership.NewHandlers(&cfg, clusterService)
 	// clustermapService := clustermap.NewService(clusterService.SlaveAPI())
 
 	// // Starts to update cluster map.
 	// clustermapService.Run()
 
 	// Setup delivery service.
-	delivery, err := delivery.NewDeliveryService(&cfg, adminHandlers, objectHandlers, membershipHandlers)
+	delivery, err := delivery.SetupDeliveryService(&cfg, adminHandlers, objectHandlers, clusterService)
 	if err != nil {
 		return errors.Wrap(err, "failed to setup delivery")
 	}
-	delivery.Run()
+	// delivery.Run()
 
 	ctxLogger.Info("bootstrap ds succeeded")
 

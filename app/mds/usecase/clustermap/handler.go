@@ -1,6 +1,7 @@
 package clustermap
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/chanyoung/nil/pkg/cluster"
@@ -65,9 +66,28 @@ func (h *handlers) UpdateClusterMap(req *nilrpc.MCLUpdateClusterMapRequest, res 
 	return nil
 }
 
+// Join handles the join request from the other nodes.
+func (h *handlers) Join(req *nilrpc.MCLJoinRequest, res *nilrpc.MCLJoinResponse) error {
+	if h.canJoin(req.Node) == false {
+		return fmt.Errorf("can't join into the cluster")
+	}
+
+	if err := h.store.JoinNewNode(req.Node); err != nil {
+		return errors.Wrap(err, "failed to add new node into the database")
+	}
+
+	return h.UpdateClusterMap(nil, nil)
+}
+
+func (h *handlers) canJoin(node cluster.Node) bool {
+	// TODO: fill the checking rule.
+	return true
+}
+
 // Handlers is the interface that provides clustermap domain's rpc handlers.
 type Handlers interface {
 	GetClusterMap(req *nilrpc.MCLGetClusterMapRequest, res *nilrpc.MCLGetClusterMapResponse) error
 	GetUpdateNoti(req *nilrpc.MCLGetUpdateNotiRequest, res *nilrpc.MCLGetUpdateNotiResponse) error
 	UpdateClusterMap(req *nilrpc.MCLUpdateClusterMapRequest, res *nilrpc.MCLUpdateClusterMapResponse) error
+	Join(req *nilrpc.MCLJoinRequest, res *nilrpc.MCLJoinResponse) error
 }

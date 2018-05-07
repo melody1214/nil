@@ -46,6 +46,7 @@ const (
 	MdsClustermapGetClusterMap
 	MdsClustermapGetUpdateNoti
 	MdsClustermapUpdateClusterMap
+	MdsClustermapJoin
 
 	// MDS membership domain methods.
 	MdsMembershipGetMembershipList
@@ -90,6 +91,8 @@ func (m MethodName) String() string {
 		return MdsClustermapPrefix + "." + "GetUpdateNoti"
 	case MdsClustermapUpdateClusterMap:
 		return MdsClustermapPrefix + "." + "UpdateClusterMap"
+	case MdsClustermapJoin:
+		return MdsClustermapPrefix + "." + "Join"
 
 	case MdsMembershipGetMembershipList:
 		return MdsMembershipPrefix + "." + "GetMembershipList"

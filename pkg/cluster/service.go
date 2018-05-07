@@ -87,7 +87,7 @@ type MasterAPI interface {
 	SearchCallVolume() *SearchCallVolume
 	SearchCallEncGrp() *SearchCallEncGrp
 	GetLatestCMap() CMap
-	UpdateCMap(cmap CMap) error
+	UpdateCMap(cmap *CMap) error
 	GetOutdatedNoti() <-chan interface{}
 	GetUpdatedNoti(ver CMapVersion) <-chan interface{}
 }
@@ -128,7 +128,8 @@ func (s *Service) GetLatestCMapVersion() CMapVersion {
 }
 
 // UpdateCMap updates the new cmap manager with the given cmap.
-func (s *Service) UpdateCMap(cmap CMap) error {
+func (s *Service) UpdateCMap(cmap *CMap) error {
+	s.cMapManager.mergeCMap(cmap)
 	return nil
 }
 

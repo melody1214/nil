@@ -13,7 +13,6 @@ import (
 	"github.com/chanyoung/nil/app/mds/usecase/bucket"
 	"github.com/chanyoung/nil/app/mds/usecase/clustermap"
 	"github.com/chanyoung/nil/app/mds/usecase/consensus"
-	"github.com/chanyoung/nil/app/mds/usecase/membership"
 	"github.com/chanyoung/nil/app/mds/usecase/object"
 	"github.com/chanyoung/nil/app/mds/usecase/recovery"
 	"github.com/chanyoung/nil/pkg/cluster"
@@ -47,9 +46,9 @@ func Bootstrap(cfg config.Mds) error {
 		bucketStore     bucket.Repository
 		consensusStore  consensus.Repository
 		clustermapStore clustermap.Repository
-		membershipStore membership.Repository
-		objectStore     object.Repository
-		recoveryStore   recovery.Repository
+		// membershipStore membership.Repository
+		objectStore   object.Repository
+		recoveryStore recovery.Repository
 	)
 	if useMySQL := true; useMySQL {
 		store := mysql.New(&cfg)
@@ -58,7 +57,7 @@ func Bootstrap(cfg config.Mds) error {
 		bucketStore = mysql.NewBucketRepository(store)
 		consensusStore = mysql.NewConsensusRepository(store)
 		clustermapStore = mysql.NewClusterMapRepository(store)
-		membershipStore = mysql.NewMembershipRepository(store)
+		// membershipStore = mysql.NewMembershipRepository(store)
 		objectStore = mysql.NewObjectRepository(store)
 		recoveryStore = mysql.NewRecoveryRepository(store)
 	} else {
@@ -82,7 +81,7 @@ func Bootstrap(cfg config.Mds) error {
 	bucketHandlers := bucket.NewHandlers(bucketStore)
 	consensusHandlers := consensus.NewHandlers(&cfg, consensusStore)
 	clustermapHandlers := clustermap.NewHandlers(clusterService.MasterAPI(), clustermapStore)
-	membershipHandlers := membership.NewHandlers(&cfg, clusterService, membershipStore)
+	// membershipHandlers := membership.NewHandlers(&cfg, clusterService, membershipStore)
 	objectHandlers := object.NewHandlers(objectStore)
 	recoveryHandlers, err := recovery.NewHandlers(&cfg, clusterService.SlaveAPI(), recoveryStore)
 	if err != nil {
@@ -90,17 +89,13 @@ func Bootstrap(cfg config.Mds) error {
 	}
 
 	// Setup delivery service.
-	delivery, err := delivery.NewDeliveryService(
+	delivery, err := delivery.SetupDeliveryService(
 		&cfg, adminHandlers, authHandlers, bucketHandlers, consensusHandlers,
-		clustermapHandlers, membershipHandlers, objectHandlers, recoveryHandlers,
+		clustermapHandlers, clusterService, objectHandlers, recoveryHandlers,
 	)
 	if err != nil {
 		return err
 	}
-	if err := delivery.Run(); err != nil {
-		return err
-	}
-
 	ctxLogger.Info("bootstrap mds succeeded")
 
 	// Make channel for Ctrl-C or other terminate signal is received.

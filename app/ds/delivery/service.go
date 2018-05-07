@@ -10,6 +10,7 @@ import (
 	"github.com/chanyoung/nil/app/ds/usecase/admin"
 	"github.com/chanyoung/nil/app/ds/usecase/membership"
 	"github.com/chanyoung/nil/app/ds/usecase/object"
+	"github.com/chanyoung/nil/pkg/cluster"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -33,15 +34,21 @@ type Service struct {
 	adminSrv      *rpc.Server
 	adminHandlers admin.Handlers
 
+	cs                *cluster.Service
 	membershipHandler membership.Handlers
 }
 
-// NewDeliveryService creates a delivery service with necessary dependencies.
-func NewDeliveryService(cfg *config.Ds, ah admin.Handlers, oh object.Handlers, mh membership.Handlers) (*Service, error) {
+// SetupDeliveryService creates a delivery service with necessary dependencies.
+func SetupDeliveryService(cfg *config.Ds, ah admin.Handlers, oh object.Handlers, cs *cluster.Service) (*Service, error) {
 	if cfg == nil {
 		return nil, errors.New("invalid nil arguments")
 	}
 	logger = mlog.GetPackageLogger("app/ds/delivery")
+
+	s := &Service{
+		adminHandlers: ah,
+		cs:            cs,
+	}
 
 	// Resolve gateway address.
 	addr := cfg.ServerAddr + ":" + cfg.ServerPort
@@ -51,22 +58,22 @@ func NewDeliveryService(cfg *config.Ds, ah admin.Handlers, oh object.Handlers, m
 	}
 
 	// Create transport layers.
-	adminL := nilmux.NewLayer(adminTypeBytes(), rAddr, false)
-	objectL := nilmux.NewLayer(objectTypeBytes(), rAddr, true)
-	membershipL := nilmux.NewLayer(membershipTypeBytes(), rAddr, false)
+	s.adminL = nilmux.NewLayer(adminTypeBytes(), rAddr, false)
+	s.objectL = nilmux.NewLayer(objectTypeBytes(), rAddr, true)
+	s.membershipL = nilmux.NewLayer(membershipTypeBytes(), rAddr, false)
 
 	// Create a mux and register layers.
-	m := nilmux.NewNilMux(addr, &cfg.Security)
-	m.RegisterLayer(adminL)
-	m.RegisterLayer(objectL)
-	m.RegisterLayer(membershipL)
+	s.nilMux = nilmux.NewNilMux(addr, &cfg.Security)
+	s.nilMux.RegisterLayer(s.adminL)
+	s.nilMux.RegisterLayer(s.objectL)
+	s.nilMux.RegisterLayer(s.membershipL)
 
 	// Create a http handler.
-	h := makeHandler(oh)
+	s.httpHandler = makeHandler(oh)
 
 	// Create http server.
-	hsrv := &http.Server{
-		Handler:        h,
+	s.httpSrv = &http.Server{
+		Handler:        s.httpHandler,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
@@ -79,36 +86,79 @@ func NewDeliveryService(cfg *config.Ds, ah admin.Handlers, oh object.Handlers, m
 	// }
 
 	// Create admin server.
-	ads := rpc.NewServer()
-	if err := ads.RegisterName(nilrpc.DSRPCPrefix, ah); err != nil {
+	s.adminSrv = rpc.NewServer()
+	if err := s.adminSrv.RegisterName(nilrpc.DSRPCPrefix, s.adminHandlers); err != nil {
 		return nil, err
 	}
 
-	return &Service{
-		nilMux: m,
+	// Run the delivery server.
+	s.run()
 
-		adminL:  adminL,
-		objectL: objectL,
+	// Setup the membership server and run.
+	clusterConf := cluster.DefaultConfig()
+	clusterConf.Name = cluster.NodeName(cfg.ID)
+	clusterConf.Address = cluster.NodeAddress(cfg.ServerAddr + ":" + cfg.ServerPort)
+	clusterConf.Coordinator = cluster.NodeAddress(cfg.Swim.CoordinatorAddr)
+	if t, err := time.ParseDuration(cfg.Swim.Period); err == nil {
+		clusterConf.PingPeriod = t
+	}
+	if t, err := time.ParseDuration(cfg.Swim.Expire); err == nil {
+		clusterConf.PingExpire = t
+	}
+	clusterConf.Type = cluster.DS
+	if err := s.cs.StartMembershipServer(*clusterConf, nilmux.NewSwimTransportLayer(s.membershipL)); err != nil {
+		return nil, err
+	}
+	// Join the local cluster.
+	conn, err := nilrpc.Dial(clusterConf.Coordinator.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
 
-		httpHandler: h,
-		httpSrv:     hsrv,
+	req := &nilrpc.MCLJoinRequest{
+		Node: cluster.Node{
+			Name: clusterConf.Name,
+			Type: clusterConf.Type,
+			Stat: cluster.Alive,
+			Addr: clusterConf.Address,
+		},
+	}
+	res := &nilrpc.MCLJoinResponse{}
 
-		membershipHandler: mh,
+	cli := rpc.NewClient(conn)
+	if err := cli.Call(nilrpc.MdsClustermapJoin.String(), req, res); err != nil {
+		return nil, err
+	}
 
-		adminSrv:      ads,
-		adminHandlers: ah,
-	}, nil
+	return s, nil
+
+	// return &Service{
+	// 	nilMux: m,
+
+	// 	adminL:      adminL,
+	// 	objectL:     objectL,
+	// 	membershipL: membershipL,
+
+	// 	httpHandler: h,
+	// 	httpSrv:     hsrv,
+
+	// 	membershipHandler: mh,
+
+	// 	adminSrv:      ads,
+	// 	adminHandlers: ah,
+	// }, nil
 }
 
 // Run starts the gateway delivery service.
-func (s *Service) Run() {
+func (s *Service) run() {
 	ctxLogger := mlog.GetMethodLogger(logger, "Service.Run")
 	ctxLogger.Info("Start gateway delivery service ...")
 
 	go s.nilMux.ListenAndServeTLS()
 	go s.serveAdmin()
 	go s.httpSrv.Serve(s.objectL)
-	go s.membershipHandler.Run(s.membershipL)
+	// go s.membershipHandler.Run(s.membershipL)
 }
 
 // Stop cleans up the services and shut down the server.

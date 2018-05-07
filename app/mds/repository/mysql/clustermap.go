@@ -181,3 +181,15 @@ func (s *clustermapStore) GetNewClusterMapVer(txid repository.TxID) (cluster.CMa
 
 	return cluster.CMapVersion(ver), nil
 }
+
+func (s *clustermapStore) JoinNewNode(node cluster.Node) error {
+	q := fmt.Sprintf(
+		`
+		INSERT INTO node (node_name, node_type, node_status, node_address)
+		VALUES ('%s', '%s', '%s', '%s')
+		`, node.Name.String(), node.Type.String(), node.Stat.String(), node.Addr.String(),
+	)
+
+	_, err := s.Execute(repository.NotTx, q)
+	return err
+}
