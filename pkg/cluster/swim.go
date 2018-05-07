@@ -58,7 +58,7 @@ func (s *server) ping() {
 		logger.Warn(errors.Wrapf(err, "failed to send ping message to node %+v", fetched))
 
 		s.disseminate(fetched.ID, Suspect)
-		s.cMapManager.Outdated()
+		// s.cMapManager.Outdated()
 		// Wait for a minute and retry via ping request.
 		time.Sleep(1 * time.Minute)
 		s.pingRequest(fetched.ID)
@@ -129,7 +129,7 @@ func (s *server) pingRequest(dstID ID) {
 	}
 
 	s.disseminate(dstID, Faulty)
-	s.cMapManager.Outdated()
+	// s.cMapManager.Outdated()
 }
 
 // sendPing creates rpc client and send ping message by using it.
@@ -208,6 +208,8 @@ func (s *server) disseminate(id ID, stat NodeStatus) {
 		}
 
 		s.broadcast()
+		s.cMapManager.StateChanged()
+		return
 	}
 }
 

@@ -87,7 +87,7 @@ type MasterAPI interface {
 	SearchCallEncGrp() *SearchCallEncGrp
 	GetLatestCMap() CMap
 	UpdateCMap(cmap *CMap) error
-	GetOutdatedNoti() <-chan interface{}
+	GetStateChangedNoti() <-chan interface{}
 	GetUpdatedNoti(ver CMapVersion) <-chan interface{}
 }
 
@@ -147,10 +147,10 @@ func (s *Service) SearchCallEncGrp() *SearchCallEncGrp {
 	return s.cMapManager.SearchCallEncGrp()
 }
 
-// GetOutdatedNoti returns a channel which will send notification when
+// GetStateChangedNoti returns a channel which will send notification when
 // the cluster map is outdated.
-func (s *Service) GetOutdatedNoti() <-chan interface{} {
-	return s.cMapManager.GetOutdatedNoti()
+func (s *Service) GetStateChangedNoti() <-chan interface{} {
+	return s.cMapManager.GetStateChangedNoti()
 }
 
 // GetUpdatedNoti returns a channel which will send notification when

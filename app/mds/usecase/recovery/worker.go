@@ -97,15 +97,15 @@ func (w *worker) listen() fsm {
 
 // recover is the state for recovering the failure.
 func (w *worker) recover() fsm {
-	ctxLogger := mlog.GetMethodLogger(logger, "worker.recover")
+	// ctxLogger := mlog.GetMethodLogger(logger, "worker.recover")
 
-	// Updates membership.
-	w.updateMembership()
+	// // Updates membership.
+	// w.updateMembership()
 
-	// Get the new version of cluster map.
-	if err := w.updateClusterMap(); err != nil {
-		ctxLogger.Error(errors.Wrap(err, "failed to update cluster map"))
-	}
+	// // Get the new version of cluster map.
+	// if err := w.updateClusterMap(); err != nil {
+	// 	ctxLogger.Error(errors.Wrap(err, "failed to update cluster map"))
+	// }
 
 	return w.listen
 }

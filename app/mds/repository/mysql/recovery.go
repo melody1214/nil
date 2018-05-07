@@ -44,7 +44,7 @@ func (s *recoveryStore) FindAllVolumes(txid repository.TxID) ([]*recovery.Volume
 	for rows.Next() {
 		v := &recovery.Volume{}
 
-		if err = rows.Scan(&v.ID, &v.Stat, &v.NodeID, v.Chain, &v.MaxChain, &v.Speed); err != nil {
+		if err = rows.Scan(&v.ID, &v.Stat, &v.NodeID, &v.Chain, &v.MaxChain, &v.Speed); err != nil {
 			return nil, err
 		}
 

@@ -8,11 +8,11 @@ import (
 
 // cMapManager is the object for access multiple versions of cluster maps.
 type cMapManager struct {
-	latest               CMapVersion
-	cMaps                map[CMapVersion]*CMap
-	notiChannels         map[CMapTime](chan interface{})
-	outdatedNotiChannels map[CMapTime](chan interface{})
-	random               *rand.Rand
+	latest                   CMapVersion
+	cMaps                    map[CMapVersion]*CMap
+	notiChannels             map[CMapTime](chan interface{})
+	stateChangedNotiChannels map[CMapTime](chan interface{})
+	random                   *rand.Rand
 
 	mu sync.RWMutex
 }
@@ -43,10 +43,10 @@ func newCMapManager(coordinator NodeAddress) (*cMapManager, error) {
 	}
 
 	m := &cMapManager{
-		cMaps:                make(map[CMapVersion]*CMap),
-		notiChannels:         make(map[CMapTime](chan interface{})),
-		outdatedNotiChannels: make(map[CMapTime](chan interface{})),
-		random:               rand.New(rand.NewSource(time.Now().Unix())),
+		cMaps:                    make(map[CMapVersion]*CMap),
+		notiChannels:             make(map[CMapTime](chan interface{})),
+		stateChangedNotiChannels: make(map[CMapTime](chan interface{})),
+		random: rand.New(rand.NewSource(time.Now().Unix())),
 	}
 	m.cMaps[cm.Version] = cm
 	m.latest = cm.Version
@@ -130,9 +130,9 @@ func (m *cMapManager) GetUpdatedNoti(ver CMapVersion) <-chan interface{} {
 	return notiC
 }
 
-// GetOutdatedNoti returns a channel which will send notification when
-// the cluster map is outdated.
-func (m *cMapManager) GetOutdatedNoti() <-chan interface{} {
+// GetStateChangedNoti returns a channel which will send notification when
+// some cluster map member's state are changed.
+func (m *cMapManager) GetStateChangedNoti() <-chan interface{} {
 	// Make buffered channel is important because not to be blocked
 	// while in the send noti progress if the receiver had been timeout.
 	notiC := make(chan interface{}, 2)
@@ -141,18 +141,18 @@ func (m *cMapManager) GetOutdatedNoti() <-chan interface{} {
 		m.mu.Lock()
 		defer m.mu.Unlock()
 
-		m.outdatedNotiChannels[CMapNow()] = notiC
+		m.stateChangedNotiChannels[CMapNow()] = notiC
 	}()
 
 	return notiC
 }
 
-// Outdated marks the cluster map is outdated and send notifications to all observers.
-func (m *cMapManager) Outdated() {
-	for i, ch := range m.outdatedNotiChannels {
+// StateChanged means some states are changed and sends notifications to all observers.
+func (m *cMapManager) StateChanged() {
+	for i, ch := range m.stateChangedNotiChannels {
 		ch <- nil
 		close(ch)
-		delete(m.outdatedNotiChannels, i)
+		delete(m.stateChangedNotiChannels, i)
 	}
 }
 

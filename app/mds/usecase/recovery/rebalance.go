@@ -63,6 +63,7 @@ func (w *worker) rebalanceWithinSameVolumeSpeedGroup(vols []*Volume) error {
 }
 
 func (w *worker) rebalanceVolumeGroup(vols []*Volume) error {
+	doRebalance := false
 	for _, v := range vols {
 		if v.isUnbalanced() == false {
 			continue
@@ -71,6 +72,11 @@ func (w *worker) rebalanceVolumeGroup(vols []*Volume) error {
 		if err := w.doRebalance(v, vols); err != nil {
 			return err
 		}
+		doRebalance = true
+	}
+
+	if doRebalance == false {
+		return fmt.Errorf("there is no rebalanceable volume set")
 	}
 
 	return nil

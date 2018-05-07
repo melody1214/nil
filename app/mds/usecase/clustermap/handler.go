@@ -2,10 +2,12 @@ package clustermap
 
 import (
 	"fmt"
+	"net/rpc"
 	"time"
 
 	"github.com/chanyoung/nil/pkg/cluster"
 	"github.com/chanyoung/nil/pkg/nilrpc"
+	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -14,15 +16,17 @@ import (
 var logger *logrus.Entry
 
 type handlers struct {
+	cfg        *config.Mds
 	store      Repository
 	clusterAPI cluster.MasterAPI
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(clusterAPI cluster.MasterAPI, s Repository) Handlers {
+func NewHandlers(cfg *config.Mds, clusterAPI cluster.MasterAPI, s Repository) Handlers {
 	logger = mlog.GetPackageLogger("app/mds/usecase/clustermap")
 
 	return &handlers{
+		cfg:        cfg,
 		store:      s,
 		clusterAPI: clusterAPI,
 	}
@@ -63,6 +67,8 @@ func (h *handlers) UpdateClusterMap(req *nilrpc.MCLUpdateClusterMapRequest, res 
 		h.store.Rollback(txid)
 		return err
 	}
+
+	h.rebalance()
 	return nil
 }
 
@@ -82,6 +88,20 @@ func (h *handlers) Join(req *nilrpc.MCLJoinRequest, res *nilrpc.MCLJoinResponse)
 func (h *handlers) canJoin(node cluster.Node) bool {
 	// TODO: fill the checking rule.
 	return true
+}
+
+func (h *handlers) rebalance() error {
+	conn, err := nilrpc.Dial(h.cfg.ServerAddr+":"+h.cfg.ServerPort, nilrpc.RPCNil, time.Duration(2*time.Second))
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	req := &nilrpc.MRERecoveryRequest{Type: nilrpc.Rebalance}
+	res := &nilrpc.MRERecoveryResponse{}
+
+	cli := rpc.NewClient(conn)
+	return cli.Call(nilrpc.MdsRecoveryRecovery.String(), req, res)
 }
 
 // Handlers is the interface that provides clustermap domain's rpc handlers.

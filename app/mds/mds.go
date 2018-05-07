@@ -80,7 +80,7 @@ func Bootstrap(cfg config.Mds) error {
 	authHandlers := auth.NewHandlers(authStore)
 	bucketHandlers := bucket.NewHandlers(bucketStore)
 	consensusHandlers := consensus.NewHandlers(&cfg, consensusStore)
-	clustermapHandlers := clustermap.NewHandlers(clusterService.MasterAPI(), clustermapStore)
+	clustermapHandlers := clustermap.NewHandlers(&cfg, clusterService.MasterAPI(), clustermapStore)
 	// membershipHandlers := membership.NewHandlers(&cfg, clusterService, membershipStore)
 	objectHandlers := object.NewHandlers(objectStore)
 	recoveryHandlers, err := recovery.NewHandlers(&cfg, clusterService.SlaveAPI(), recoveryStore)
