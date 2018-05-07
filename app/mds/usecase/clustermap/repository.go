@@ -2,16 +2,16 @@ package clustermap
 
 import (
 	"github.com/chanyoung/nil/app/mds/repository"
-	"github.com/chanyoung/nil/pkg/cluster"
+	"github.com/chanyoung/nil/pkg/cmap"
 )
 
-// Repository provides access to cluster map database.
+// Repository provides access to cmap map database.
 type Repository interface {
-	FindAllNodes(txid repository.TxID) ([]cluster.Node, error)
-	FindAllVolumes(txid repository.TxID) (vols []cluster.Volume, err error)
-	FindAllEncGrps(txid repository.TxID) (EngGrps []cluster.EncodingGroup, err error)
-	GetNewClusterMapVer(txid repository.TxID) (cluster.CMapVersion, error)
-	JoinNewNode(node cluster.Node) error
+	FindAllNodes(txid repository.TxID) ([]cmap.Node, error)
+	FindAllVolumes(txid repository.TxID) (vols []cmap.Volume, err error)
+	FindAllEncGrps(txid repository.TxID) (EngGrps []cmap.EncodingGroup, err error)
+	GetNewClusterMapVer(txid repository.TxID) (cmap.Version, error)
+	JoinNewNode(node cmap.Node) error
 	Begin() (repository.TxID, error)
 	Rollback(repository.TxID) error
 	Commit(repository.TxID) error

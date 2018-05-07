@@ -7,7 +7,7 @@ import (
 
 	"github.com/chanyoung/nil/app/gw/usecase/auth"
 	"github.com/chanyoung/nil/pkg/client"
-	"github.com/chanyoung/nil/pkg/cluster"
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/s3"
 	"github.com/chanyoung/nil/pkg/util/mlog"
@@ -46,8 +46,8 @@ func (h *handlers) MakeBucketHandler(w http.ResponseWriter, r *http.Request) {
 func (h *handlers) makeBucket(accessKey, region, bucket string) error {
 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.makeBucket")
 
-	// 1. Lookup mds from cluster map.
-	mds, err := h.clusterAPI.SearchCallNode().Type(cluster.MDS).Status(cluster.Alive).Do()
+	// 1. Lookup mds from cmap.
+	mds, err := h.cmapAPI.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
 	if err != nil {
 		ctxLogger.Error(err)
 		return errInternal

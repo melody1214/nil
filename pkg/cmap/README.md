@@ -1,4 +1,4 @@
-# Cluster Management
+# CMAP
 
 All cluster members are manged by membership protocol and write their all information in cluster map (cmap).
 

@@ -5,7 +5,7 @@ import (
 	"net/rpc"
 	"time"
 
-	"github.com/chanyoung/nil/pkg/cluster"
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
@@ -16,31 +16,31 @@ import (
 var logger *logrus.Entry
 
 type handlers struct {
-	cfg        *config.Mds
-	store      Repository
-	clusterAPI cluster.MasterAPI
+	cfg     *config.Mds
+	store   Repository
+	cmapAPI cmap.MasterAPI
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cfg *config.Mds, clusterAPI cluster.MasterAPI, s Repository) Handlers {
-	logger = mlog.GetPackageLogger("app/mds/usecase/clustermap")
+func NewHandlers(cfg *config.Mds, cmapAPI cmap.MasterAPI, s Repository) Handlers {
+	logger = mlog.GetPackageLogger("app/mds/usecase/cmapmap")
 
 	return &handlers{
-		cfg:        cfg,
-		store:      s,
-		clusterAPI: clusterAPI,
+		cfg:     cfg,
+		store:   s,
+		cmapAPI: cmapAPI,
 	}
 }
 
-// GetClusterMap returns a current local cluster map.
+// GetClusterMap returns a current local cmap.
 func (h *handlers) GetClusterMap(req *nilrpc.MCLGetClusterMapRequest, res *nilrpc.MCLGetClusterMapResponse) error {
-	res.ClusterMap = h.clusterAPI.GetLatestCMap()
+	res.ClusterMap = h.cmapAPI.GetLatestCMap()
 	return nil
 }
 
-// GetUpdateNoti returns when the cluster map is updated or timeout.
+// GetUpdateNoti returns when the cmap is updated or timeout.
 func (h *handlers) GetUpdateNoti(req *nilrpc.MCLGetUpdateNotiRequest, res *nilrpc.MCLGetUpdateNotiResponse) error {
-	notiC := h.clusterAPI.GetUpdatedNoti(cluster.CMapVersion(req.Version))
+	notiC := h.cmapAPI.GetUpdatedNoti(cmap.Version(req.Version))
 
 	timeout := time.After(10 * time.Minute)
 	for {
@@ -75,7 +75,7 @@ func (h *handlers) UpdateClusterMap(req *nilrpc.MCLUpdateClusterMapRequest, res 
 // Join handles the join request from the other nodes.
 func (h *handlers) Join(req *nilrpc.MCLJoinRequest, res *nilrpc.MCLJoinResponse) error {
 	if h.canJoin(req.Node) == false {
-		return fmt.Errorf("can't join into the cluster")
+		return fmt.Errorf("can't join into the cmap")
 	}
 
 	if err := h.store.JoinNewNode(req.Node); err != nil {
@@ -85,7 +85,7 @@ func (h *handlers) Join(req *nilrpc.MCLJoinRequest, res *nilrpc.MCLJoinResponse)
 	return h.UpdateClusterMap(nil, nil)
 }
 
-func (h *handlers) canJoin(node cluster.Node) bool {
+func (h *handlers) canJoin(node cmap.Node) bool {
 	// TODO: fill the checking rule.
 	return true
 }

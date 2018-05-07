@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/chanyoung/nil/pkg/cluster"
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
@@ -19,10 +19,10 @@ type handlers struct {
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cfg *config.Mds, clusterAPI cluster.SlaveAPI, store Repository) (Handlers, error) {
+func NewHandlers(cfg *config.Mds, cmapAPI cmap.SlaveAPI, store Repository) (Handlers, error) {
 	logger = mlog.GetPackageLogger("app/mds/usecase/recovery")
 
-	worker, err := newWorker(cfg, clusterAPI, store)
+	worker, err := newWorker(cfg, cmapAPI, store)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create recovery worker")
 	}

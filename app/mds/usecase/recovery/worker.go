@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/chanyoung/nil/app/mds/repository"
-	"github.com/chanyoung/nil/pkg/cluster"
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/pkg/errors"
@@ -18,7 +18,7 @@ import (
 type worker struct {
 	cfg           *config.Mds
 	store         Repository
-	clusterAPI    cluster.SlaveAPI
+	cmapAPI       cmap.SlaveAPI
 	recoveryJobs  map[jobID]recoveryJob
 	rebalanceJobs map[jobID]rebalanceJob
 
@@ -30,14 +30,14 @@ type worker struct {
 
 // newWorker returns a new worker.
 // Note: recovery domain must have only one working worker.
-func newWorker(cfg *config.Mds, clusterAPI cluster.SlaveAPI, store Repository) (*worker, error) {
-	if cfg == nil || clusterAPI == nil || store == nil {
+func newWorker(cfg *config.Mds, cmapAPI cmap.SlaveAPI, store Repository) (*worker, error) {
+	if cfg == nil || cmapAPI == nil || store == nil {
 		return nil, fmt.Errorf("invalid arguments")
 	}
 
 	return &worker{
 		cfg:           cfg,
-		clusterAPI:    clusterAPI,
+		cmapAPI:       cmapAPI,
 		store:         store,
 		recoveryJobs:  make(map[jobID]recoveryJob),
 		rebalanceJobs: make(map[jobID]rebalanceJob),
@@ -163,7 +163,7 @@ func (w *worker) rebalance() fsm {
 	}
 
 	if err := w.updateClusterMap(); err != nil {
-		ctxLogger.Error(errors.Wrap(err, "failed to update cluster map"))
+		ctxLogger.Error(errors.Wrap(err, "failed to update cmap"))
 		return w.listen
 	}
 

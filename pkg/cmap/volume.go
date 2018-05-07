@@ -7,9 +7,9 @@ const (
 	// Low : 60 Mb/s < speed < 80 Mb/s
 	Low VolumeSpeed = "Low"
 	// Mid : 80 Mb/s < speed < 100 Mb/s
-	Mid = "Mid"
+	Mid VolumeSpeed = "Mid"
 	// High : 100 Mb/s < speed
-	High = "High"
+	High VolumeSpeed = "High"
 )
 
 func (s VolumeSpeed) String() string {
@@ -28,9 +28,9 @@ const (
 	// Prepared represents the volume is ready to run.
 	Prepared VolumeStatus = "Prepared"
 	// Active represents the volume is now running.
-	Active = "Active"
+	Active VolumeStatus = "Active"
 	// Failed represents the volume has some problems and stopped now.
-	Failed = "Failed"
+	Failed VolumeStatus = "Failed"
 )
 
 func (s VolumeStatus) String() string {
@@ -44,12 +44,11 @@ func (s VolumeStatus) String() string {
 
 // Volume is volumes which is attached in the ds.
 type Volume struct {
-	ID      ID
-	Size    uint64
-	Free    uint64
-	Used    uint64
-	Speed   VolumeSpeed
-	Status  VolumeStatus
-	Node    ID
-	EncGrps []ID
+	ID      ID           `xml:"id"`
+	Incr    Incarnation  `xml:"incarnation"`
+	Size    uint64       `xml:"size"`
+	Speed   VolumeSpeed  `xml:"speed"`
+	Stat    VolumeStatus `xml:"status"`
+	Node    ID           `xml:"node"`
+	EncGrps []ID         `xml:"encgrp"`
 }

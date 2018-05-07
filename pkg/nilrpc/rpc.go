@@ -5,7 +5,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/chanyoung/nil/pkg/cluster"
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/security"
 	"github.com/chanyoung/nil/pkg/swim"
 )
@@ -179,7 +179,7 @@ type GetLocalChainResponse struct {
 
 type GetAllChainRequest struct{}
 type GetAllChainResponse struct {
-	EncGrps []cluster.EncodingGroup
+	EncGrps []cmap.EncodingGroup
 }
 
 type Volume struct {

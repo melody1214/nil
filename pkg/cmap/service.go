@@ -1,4 +1,4 @@
-package cluster
+package cmap
 
 import "github.com/pkg/errors"
 import "github.com/sirupsen/logrus"
@@ -67,12 +67,12 @@ type SlaveAPI interface {
 	SearchCallNode() *SearchCallNode
 	SearchCallVolume() *SearchCallVolume
 	SearchCallEncGrp() *SearchCallEncGrp
-	GetLatestCMapVersion() CMapVersion
+	GetLatestCMapVersion() Version
 	UpdateNodeStatus(nID ID, stat NodeStatus) error
 	UpdateVolumeStatus(vID ID, stat VolumeStatus) error
 	UpdateEncodingGroupStatus(egID ID, stat EncodingGroupStatus) error
 	UpdateEncodingGroupUsed(egID ID, used uint64) error
-	GetUpdatedNoti(ver CMapVersion) <-chan interface{}
+	GetUpdatedNoti(ver Version) <-chan interface{}
 }
 
 // SlaveAPI returns a set of APIs that can be used by nodes in slave mode.
@@ -88,7 +88,7 @@ type MasterAPI interface {
 	GetLatestCMap() CMap
 	UpdateCMap(cmap *CMap) error
 	GetStateChangedNoti() <-chan interface{}
-	GetUpdatedNoti(ver CMapVersion) <-chan interface{}
+	GetUpdatedNoti(ver Version) <-chan interface{}
 }
 
 // MasterAPI returns a set of APIs that can be used by nodes in master mode.
@@ -122,7 +122,7 @@ func (s *Service) GetLatestCMap() CMap {
 }
 
 // GetLatestCMapVersion returns the latest version of cluster map.
-func (s *Service) GetLatestCMapVersion() CMapVersion {
+func (s *Service) GetLatestCMapVersion() Version {
 	return s.cMapManager.latest
 }
 
@@ -155,6 +155,6 @@ func (s *Service) GetStateChangedNoti() <-chan interface{} {
 
 // GetUpdatedNoti returns a channel which will send notification when
 // the higher version of cluster map is created.
-func (s *Service) GetUpdatedNoti(ver CMapVersion) <-chan interface{} {
+func (s *Service) GetUpdatedNoti(ver Version) <-chan interface{} {
 	return s.cMapManager.GetUpdatedNoti(ver)
 }

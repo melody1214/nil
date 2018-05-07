@@ -4,7 +4,6 @@ import (
 	"os"
 	"reflect"
 	"testing"
-	"time"
 )
 
 func TestGetLatestMapFile(t *testing.T) {
@@ -41,7 +40,7 @@ func TestGetLatestMapFile(t *testing.T) {
 func TestEncodeDecode(t *testing.T) {
 	testMap := CMap{
 		Version: 1,
-		Time:    time.Now().UTC().String(),
+		Time:    Now(),
 		Nodes: []Node{
 			{
 				Addr: "localhost:1000",

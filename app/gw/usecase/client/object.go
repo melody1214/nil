@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/chanyoung/nil/pkg/client"
-	"github.com/chanyoung/nil/pkg/cluster"
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/pkg/errors"
 )
@@ -61,21 +61,21 @@ func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 	proxy.ServeHTTP(w, r)
 }
 
-func (h *handlers) findRandomPlaceToWrite() (cluster.EncodingGroup, cluster.Node, error) {
-	eg, err := h.clusterAPI.SearchCallEncGrp().Random().Status(cluster.EGAlive).Do()
+func (h *handlers) findRandomPlaceToWrite() (cmap.EncodingGroup, cmap.Node, error) {
+	eg, err := h.cmapAPI.SearchCallEncGrp().Random().Status(cmap.EGAlive).Do()
 	if err != nil {
-		return cluster.EncodingGroup{}, cluster.Node{}, errors.Wrap(err, "failed to search writable encoding group")
+		return cmap.EncodingGroup{}, cmap.Node{}, errors.Wrap(err, "failed to search writable encoding group")
 	}
 
 	const primary = 0
-	vol, err := h.clusterAPI.SearchCallVolume().ID(eg.Vols[primary]).Status(cluster.Active).Do()
+	vol, err := h.cmapAPI.SearchCallVolume().ID(eg.Vols[primary]).Status(cmap.Active).Do()
 	if err != nil {
-		return cluster.EncodingGroup{}, cluster.Node{}, errors.Wrapf(err, "failed to search active volume %+v", eg.Vols[primary])
+		return cmap.EncodingGroup{}, cmap.Node{}, errors.Wrapf(err, "failed to search active volume %+v", eg.Vols[primary])
 	}
 
-	node, err := h.clusterAPI.SearchCallNode().ID(vol.Node).Status(cluster.Alive).Do()
+	node, err := h.cmapAPI.SearchCallNode().ID(vol.Node).Status(cmap.Alive).Do()
 	if err != nil {
-		return cluster.EncodingGroup{}, cluster.Node{}, errors.Wrapf(err, "failed to search alive node %+v", vol.Node)
+		return cmap.EncodingGroup{}, cmap.Node{}, errors.Wrapf(err, "failed to search alive node %+v", vol.Node)
 	}
 
 	return eg, node, nil
@@ -105,8 +105,8 @@ func (h *handlers) GetObjectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Test code
-	c := h.clusterAPI.SearchCallNode()
-	node, err := c.ID(cluster.ID(res.DsID)).Do()
+	c := h.cmapAPI.SearchCallNode()
+	node, err := c.ID(cmap.ID(res.DsID)).Do()
 	if err != nil {
 		ctxLogger.Error(err)
 		req.SendInternalError()

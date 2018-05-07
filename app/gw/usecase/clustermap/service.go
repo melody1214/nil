@@ -1,10 +1,10 @@
-package clustermap
+package cmapmap
 
 import (
 	"net/rpc"
 	"time"
 
-	"github.com/chanyoung/nil/pkg/cluster"
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/pkg/errors"
@@ -13,27 +13,27 @@ import (
 
 var logger *logrus.Entry
 
-// Service manages the cluster map.
+// Service manages the cmap.
 type Service struct {
-	clusterService *cluster.Service
+	cmapService *cmap.Service
 }
 
-// NewService returns a new instance of a cluster map manager.
-func NewService(clusterService *cluster.Service) *Service {
-	logger = mlog.GetPackageLogger("app/gw/usecase/clustermap")
+// NewService returns a new instance of a cmap map manager.
+func NewService(cmapService *cmap.Service) *Service {
+	logger = mlog.GetPackageLogger("app/gw/usecase/cmapmap")
 
 	return &Service{
-		clusterService: clusterService,
+		cmapService: cmapService,
 	}
 }
 
-// Run starts to update cluster map periodically.
+// Run starts to update cmap map periodically.
 func (s *Service) Run() {
-	go periodicUpdater(s.clusterService)
-	go realtimeUpdater(s.clusterService)
+	go periodicUpdater(s.cmapService)
+	go realtimeUpdater(s.cmapService)
 }
 
-func periodicUpdater(s *cluster.Service) {
+func periodicUpdater(s *cmap.Service) {
 	ctxLogger := mlog.GetFunctionLogger(logger, "periodicUpdater")
 
 	// Make ticker for routinely updating.
@@ -49,11 +49,11 @@ func periodicUpdater(s *cluster.Service) {
 	}
 }
 
-func realtimeUpdater(s *cluster.Service) {
+func realtimeUpdater(s *cmap.Service) {
 	ctxLogger := mlog.GetFunctionLogger(logger, "realtimeUpdater")
 
 	for {
-		mds, err := s.SearchCallNode().Type(cluster.MDS).Status(cluster.Alive).Do()
+		mds, err := s.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
 		if err != nil {
 			ctxLogger.Error(errors.Wrap(err, "failed to find alive mds"))
 			time.Sleep(10 * time.Second)
@@ -62,14 +62,14 @@ func realtimeUpdater(s *cluster.Service) {
 
 		if isUpdated(mds.Addr, s.GetLatestCMapVersion()) {
 			if err := updateClusterMap(s); err != nil {
-				ctxLogger.Error(errors.Wrap(err, "failed to update cluster map"))
+				ctxLogger.Error(errors.Wrap(err, "failed to update cmap"))
 				time.Sleep(10 * time.Second)
 			}
 		}
 	}
 }
 
-func isUpdated(mdsAddr cluster.NodeAddress, ver cluster.CMapVersion) bool {
+func isUpdated(mdsAddr cmap.NodeAddress, ver cmap.Version) bool {
 	ctxLogger := mlog.GetFunctionLogger(logger, "isUpdated")
 
 	conn, err := nilrpc.Dial(mdsAddr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
@@ -92,8 +92,8 @@ func isUpdated(mdsAddr cluster.NodeAddress, ver cluster.CMapVersion) bool {
 	return true
 }
 
-func updateClusterMap(s *cluster.Service) error {
-	mds, err := s.SearchCallNode().Type(cluster.MDS).Status(cluster.Alive).Do()
+func updateClusterMap(s *cmap.Service) error {
+	mds, err := s.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
 	if err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func updateClusterMap(s *cluster.Service) error {
 	return s.UpdateCMap(cm)
 }
 
-func getLatestMapFromMDS(mdsAddr string) (*cluster.CMap, error) {
+func getLatestMapFromMDS(mdsAddr string) (*cmap.CMap, error) {
 	conn, err := nilrpc.Dial(mdsAddr, nilrpc.RPCNil, time.Duration(2*time.Second))
 	if err != nil {
 		return nil, err

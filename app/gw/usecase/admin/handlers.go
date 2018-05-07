@@ -6,7 +6,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/chanyoung/nil/pkg/cluster"
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/security"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/pkg/errors"
@@ -16,15 +16,15 @@ import (
 var logger *logrus.Entry
 
 type handlers struct {
-	clusterAPI cluster.SlaveAPI
+	cmapAPI cmap.SlaveAPI
 }
 
 // NewHandlers creates an admin handlers with necessary dependencies.
-func NewHandlers(clusterAPI cluster.SlaveAPI) Handlers {
+func NewHandlers(cmapAPI cmap.SlaveAPI) Handlers {
 	logger = mlog.GetPackageLogger("app/gw/usecase/admin")
 
 	return &handlers{
-		clusterAPI: clusterAPI,
+		cmapAPI: cmapAPI,
 	}
 }
 
@@ -36,8 +36,8 @@ func (h *handlers) Proxying(conn net.Conn) {
 	dialer := &net.Dialer{Timeout: 2 * time.Second}
 	tlsConfig := security.DefaultTLSConfig()
 
-	// 2. Lookup mds from cluster map.
-	mds, err := h.clusterAPI.SearchCallNode().Type(cluster.MDS).Status(cluster.Alive).Do()
+	// 2. Lookup mds from cmap.
+	mds, err := h.cmapAPI.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
 	if err != nil {
 		ctxLogger.Error(errors.Wrap(err, "find alive mds failed"))
 		return

@@ -15,7 +15,7 @@ import (
 	"github.com/chanyoung/nil/app/mds/usecase/consensus"
 	"github.com/chanyoung/nil/app/mds/usecase/object"
 	"github.com/chanyoung/nil/app/mds/usecase/recovery"
-	"github.com/chanyoung/nil/pkg/cluster"
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/chanyoung/nil/pkg/util/uuid"
@@ -65,14 +65,14 @@ func Bootstrap(cfg config.Mds) error {
 	}
 
 	// Setup membership service.
-	// clusterCfg := cluster.DefaultConfig()
-	// clusterCfg.Name = cluster.NodeName(cfg.ID)
-	// clusterCfg.Address = cluster.NodeAddress(cfg.ServerAddr + ":" + cfg.ServerPort)
-	// clusterCfg.Coordinator = cluster.NodeAddress(cfg.ServerAddr + ":" + cfg.ServerPort)
-	// clusterCfg.Type = cluster.MDS
-	clusterService, err := cluster.NewService(cluster.NodeAddress(cfg.Swim.CoordinatorAddr), mlog.GetPackageLogger("pkg/cluster"))
+	// cmapCfg := cmap.DefaultConfig()
+	// cmapCfg.Name = cmap.NodeName(cfg.ID)
+	// cmapCfg.Address = cmap.NodeAddress(cfg.ServerAddr + ":" + cfg.ServerPort)
+	// cmapCfg.Coordinator = cmap.NodeAddress(cfg.ServerAddr + ":" + cfg.ServerPort)
+	// cmapCfg.Type = cmap.MDS
+	cmapService, err := cmap.NewService(cmap.NodeAddress(cfg.Swim.CoordinatorAddr), mlog.GetPackageLogger("pkg/cmap"))
 	if err != nil {
-		return errors.Wrap(err, "failed to create cluster service")
+		return errors.Wrap(err, "failed to create cmap service")
 	}
 
 	// Setup usecase handlers.
@@ -80,10 +80,10 @@ func Bootstrap(cfg config.Mds) error {
 	authHandlers := auth.NewHandlers(authStore)
 	bucketHandlers := bucket.NewHandlers(bucketStore)
 	consensusHandlers := consensus.NewHandlers(&cfg, consensusStore)
-	clustermapHandlers := clustermap.NewHandlers(&cfg, clusterService.MasterAPI(), clustermapStore)
-	// membershipHandlers := membership.NewHandlers(&cfg, clusterService, membershipStore)
+	clustermapHandlers := clustermap.NewHandlers(&cfg, cmapService.MasterAPI(), clustermapStore)
+	// membershipHandlers := membership.NewHandlers(&cfg, cmapService, membershipStore)
 	objectHandlers := object.NewHandlers(objectStore)
-	recoveryHandlers, err := recovery.NewHandlers(&cfg, clusterService.SlaveAPI(), recoveryStore)
+	recoveryHandlers, err := recovery.NewHandlers(&cfg, cmapService.SlaveAPI(), recoveryStore)
 	if err != nil {
 		return errors.Wrap(err, "failed to create recovery handler")
 	}
@@ -91,7 +91,7 @@ func Bootstrap(cfg config.Mds) error {
 	// Setup delivery service.
 	delivery, err := delivery.SetupDeliveryService(
 		&cfg, adminHandlers, authHandlers, bucketHandlers, consensusHandlers,
-		clustermapHandlers, clusterService, objectHandlers, recoveryHandlers,
+		clustermapHandlers, cmapService, objectHandlers, recoveryHandlers,
 	)
 	if err != nil {
 		return err

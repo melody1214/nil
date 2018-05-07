@@ -5,13 +5,13 @@ type EncodingGroupStatus string
 
 const (
 	// EGAlive : healthy node
-	EGAlive EncodingGroupStatus = "alive"
+	EGAlive EncodingGroupStatus = "Alive"
 	// EGSuspect : maybe faulty
-	EGSuspect = "suspect"
+	EGSuspect EncodingGroupStatus = "Suspect"
 	// EGFaulty : faulty
-	EGFaulty = "faulty"
+	EGFaulty EncodingGroupStatus = "Faulty"
 	// EGRdonly : readonly, maybe rebalancing or recovering.
-	EGRdonly = "rdonly"
+	EGRdonly EncodingGroupStatus = "Rdonly"
 )
 
 // String returns a string of the node status.
@@ -26,10 +26,11 @@ func (s EncodingGroupStatus) String() string {
 
 // EncodingGroup is the logical group for making local parity.
 type EncodingGroup struct {
-	ID     ID                  `xml:"id"`
-	Status EncodingGroupStatus `xml:"status"`
-	Size   int64               `xml:"size"`
-	Used   int64               `xml:"used"`
-	Free   int64               `xml:"free"`
-	Vols   []ID                `xml:"volume"`
+	ID   ID                  `xml:"id"`
+	Incr Incarnation         `xml:"incarnation"`
+	Stat EncodingGroupStatus `xml:"status"`
+	Size int64               `xml:"size"`
+	Used int64               `xml:"used"`
+	Free int64               `xml:"free"`
+	Vols []ID                `xml:"volume"`
 }

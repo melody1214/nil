@@ -8,7 +8,7 @@ import (
 
 	"github.com/chanyoung/nil/app/gw/usecase/auth"
 	"github.com/chanyoung/nil/pkg/client/request"
-	"github.com/chanyoung/nil/pkg/cluster"
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/pkg/errors"
@@ -20,22 +20,22 @@ var logger *logrus.Entry
 type handlers struct {
 	requestEventFactory *request.RequestEventFactory
 	authHandlers        auth.Handlers
-	clusterAPI          cluster.SlaveAPI
+	cmapAPI             cmap.SlaveAPI
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(clusterAPI cluster.SlaveAPI, f *request.RequestEventFactory, authHandlers auth.Handlers) Handlers {
+func NewHandlers(cmapAPI cmap.SlaveAPI, f *request.RequestEventFactory, authHandlers auth.Handlers) Handlers {
 	logger = mlog.GetPackageLogger("app/gw/usecase/client")
 
 	return &handlers{
 		requestEventFactory: f,
 		authHandlers:        authHandlers,
-		clusterAPI:          clusterAPI,
+		cmapAPI:             cmapAPI,
 	}
 }
 
 func (h *handlers) getLocalChain() (*nilrpc.GetLocalChainResponse, error) {
-	mds, err := h.clusterAPI.SearchCallNode().Type(cluster.MDS).Status(cluster.Alive).Do()
+	mds, err := h.cmapAPI.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
 	if err != nil {
 		return nil, errors.Wrap(err, "find alive mds failed")
 	}
@@ -58,7 +58,7 @@ func (h *handlers) getLocalChain() (*nilrpc.GetLocalChainResponse, error) {
 }
 
 func (h *handlers) getObjectLocation(oid, bucket string) (*nilrpc.ObjectGetResponse, error) {
-	mds, err := h.clusterAPI.SearchCallNode().Type(cluster.MDS).Status(cluster.Alive).Do()
+	mds, err := h.cmapAPI.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
 	if err != nil {
 		return nil, errors.Wrap(err, "find alive mds failed")
 	}

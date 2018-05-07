@@ -3,7 +3,7 @@ package membership
 import (
 	"time"
 
-	"github.com/chanyoung/nil/pkg/cluster"
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
@@ -13,24 +13,24 @@ import (
 var logger *logrus.Entry
 
 type handlers struct {
-	cfg            *config.Mds
-	clusterService *cluster.Service
-	store          Repository
+	cfg         *config.Mds
+	cmapService *cmap.Service
+	store       Repository
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cfg *config.Mds, clusterService *cluster.Service, s Repository) Handlers {
+func NewHandlers(cfg *config.Mds, cmapService *cmap.Service, s Repository) Handlers {
 	logger = mlog.GetPackageLogger("app/mds/usecase/membership")
 
 	return &handlers{
-		cfg:            cfg,
-		clusterService: clusterService,
-		store:          s,
+		cfg:         cfg,
+		cmapService: cmapService,
+		store:       s,
 	}
 }
 
 // func (h *handlers) GetMembershipList(req *nilrpc.GetMembershipListRequest, res *nilrpc.GetMembershipListResponse) error {
-// 	res.Nodes = h.clusterService.GetMap()
+// 	res.Nodes = h.cmapService.GetMap()
 // 	return nil
 // }
 
@@ -39,23 +39,23 @@ func (h *handlers) Setup(swimL *nilmux.Layer) (err error) {
 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.Create")
 
 	// Setup configuration.
-	clusterConf := cluster.DefaultConfig()
-	clusterConf.Name = cluster.NodeName(h.cfg.ID)
-	clusterConf.Address = cluster.NodeAddress(h.cfg.ServerAddr + ":" + h.cfg.ServerPort)
-	clusterConf.Coordinator = cluster.NodeAddress(h.cfg.Swim.CoordinatorAddr)
+	cmapConf := cmap.DefaultConfig()
+	cmapConf.Name = cmap.NodeName(h.cfg.ID)
+	cmapConf.Address = cmap.NodeAddress(h.cfg.ServerAddr + ":" + h.cfg.ServerPort)
+	cmapConf.Coordinator = cmap.NodeAddress(h.cfg.Swim.CoordinatorAddr)
 	if t, err := time.ParseDuration(h.cfg.Swim.Period); err != nil {
 		ctxLogger.Error(err)
 	} else {
-		clusterConf.PingPeriod = t
+		cmapConf.PingPeriod = t
 	}
 	if t, err := time.ParseDuration(h.cfg.Swim.Expire); err != nil {
 		ctxLogger.Error(err)
 	} else {
-		clusterConf.PingExpire = t
+		cmapConf.PingExpire = t
 	}
-	clusterConf.Type = cluster.MDS
+	cmapConf.Type = cmap.MDS
 
-	h.clusterService.StartMembershipServer(*clusterConf, nilmux.NewSwimTransportLayer(swimL))
+	h.cmapService.StartMembershipServer(*cmapConf, nilmux.NewSwimTransportLayer(swimL))
 	return nil
 }
 
@@ -64,7 +64,7 @@ func (h *handlers) Setup(swimL *nilmux.Layer) (err error) {
 // 	sc := make(chan swim.PingError, 1)
 // 	go h.swimSrv.Serve(sc)
 
-// 	cmapUpdatedNotiC := h.clusterAPI.GetUpdatedNoti(cluster.Version(0))
+// 	cmapUpdatedNotiC := h.cmapAPI.GetUpdatedNoti(cmap.Version(0))
 // 	for {
 // 		select {
 // 		case err := <-sc:
@@ -77,7 +77,7 @@ func (h *handlers) Setup(swimL *nilmux.Layer) (err error) {
 // 		case <-cmapUpdatedNotiC:
 // 			// TODO: redundant mechanism with the above swim error channel?
 // 			h.rebalance()
-// 			latest := h.clusterAPI.LatestVersion()
+// 			latest := h.cmapAPI.LatestVersion()
 // 			h.swimSrv.SetCustomHeader("cmap_ver", strconv.FormatInt(latest.Int64(), 10))
 // 			cmapUpdatedNotiC = h.cMap.GetUpdatedNoti(latest)
 // 		}

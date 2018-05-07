@@ -12,7 +12,7 @@ import (
 	"github.com/chanyoung/nil/app/ds/repository"
 	"github.com/chanyoung/nil/pkg/client"
 	cr "github.com/chanyoung/nil/pkg/client/request"
-	"github.com/chanyoung/nil/pkg/cluster"
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
@@ -27,11 +27,11 @@ type handlers struct {
 	chunkPool           *chunkPool
 	store               Repository
 	endec               *endec
-	clusterAPI          cluster.SlaveAPI
+	cmapAPI             cmap.SlaveAPI
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cfg *config.Ds, clusterAPI cluster.SlaveAPI, f *cr.RequestEventFactory, s Repository) (Handlers, error) {
+func NewHandlers(cfg *config.Ds, cmapAPI cmap.SlaveAPI, f *cr.RequestEventFactory, s Repository) (Handlers, error) {
 	logger = mlog.GetPackageLogger("app/ds/usecase/object")
 
 	shards, err := strconv.ParseInt(cfg.LocalParityShards, 10, 64)
@@ -45,7 +45,7 @@ func NewHandlers(cfg *config.Ds, clusterAPI cluster.SlaveAPI, f *cr.RequestEvent
 
 	pool := newChunkPool(shards, chunkSize, s.GetChunkHeaderSize(), s.GetObjectHeaderSize(), chunkSize-1024)
 
-	ed, err := newEndec(clusterAPI, pool, s)
+	ed, err := newEndec(cmapAPI, pool, s)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func NewHandlers(cfg *config.Ds, clusterAPI cluster.SlaveAPI, f *cr.RequestEvent
 		chunkPool:           pool,
 		endec:               ed,
 		store:               s,
-		clusterAPI:          clusterAPI,
+		cmapAPI:             cmapAPI,
 	}, nil
 }
 
@@ -165,17 +165,17 @@ func (h *handlers) writeToRemoteFollower(req client.RequestEvent, size int64, ci
 		return errors.Wrap(err, "failed to convert encoding group id")
 	}
 
-	encGrp, err := h.clusterAPI.SearchCallEncGrp().ID(cluster.ID(encGrpID)).Do()
+	encGrp, err := h.cmapAPI.SearchCallEncGrp().ID(cmap.ID(encGrpID)).Do()
 	if err != nil {
 		return errors.Wrapf(err, "failed to find such encoding group: %d", encGrpID)
 	}
 
-	vol, err := h.clusterAPI.SearchCallVolume().ID(encGrp.Vols[c.shard]).Do()
+	vol, err := h.cmapAPI.SearchCallVolume().ID(encGrp.Vols[c.shard]).Do()
 	if err != nil {
 		return errors.Wrapf(err, "failed to find such volume: %d", encGrp.Vols[c.shard])
 	}
 
-	node, err := h.clusterAPI.SearchCallNode().ID(vol.Node).Do()
+	node, err := h.cmapAPI.SearchCallNode().ID(vol.Node).Do()
 	if err != nil {
 		return errors.Wrapf(err, "failed to find such node: %d", vol.Node)
 	}
@@ -280,14 +280,14 @@ func (h *handlers) writeCopy(req client.RequestEvent) {
 		return
 	}
 
-	mds, err := h.clusterAPI.SearchCallNode().Type(cluster.MDS).Status(cluster.Alive).Do()
+	mds, err := h.cmapAPI.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
 	if err != nil {
 		// Rollback writed data.
 		storeReq.Op = repository.Delete
 		h.store.Push(storeReq)
 		storeReq.Wait()
 
-		ctxLogger.Error(errors.Wrap(err, "failed to get alive mds from cluster map"))
+		ctxLogger.Error(errors.Wrap(err, "failed to get alive mds from cmap map"))
 		req.SendInternalError()
 		return
 	}

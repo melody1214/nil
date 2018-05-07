@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/chanyoung/nil/app/ds/repository"
-	"github.com/chanyoung/nil/pkg/cluster"
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
@@ -17,19 +17,19 @@ import (
 var logger *logrus.Entry
 
 type handlers struct {
-	cfg        *config.Ds
-	store      Repository
-	clusterAPI cluster.SlaveAPI
+	cfg     *config.Ds
+	store   Repository
+	cmapAPI cmap.SlaveAPI
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cfg *config.Ds, clusterAPI cluster.SlaveAPI, s Repository) Handlers {
+func NewHandlers(cfg *config.Ds, cmapAPI cmap.SlaveAPI, s Repository) Handlers {
 	logger = mlog.GetPackageLogger("app/ds/usecase/admin")
 
 	return &handlers{
-		cfg:        cfg,
-		store:      s,
-		clusterAPI: clusterAPI,
+		cfg:     cfg,
+		store:   s,
+		cmapAPI: cmapAPI,
 	}
 }
 
@@ -42,7 +42,7 @@ func (h *handlers) AddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVolume
 		return err
 	}
 
-	mds, err := h.clusterAPI.SearchCallNode().Type(cluster.MDS).Status(cluster.Alive).Do()
+	mds, err := h.cmapAPI.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
 	if err != nil {
 		ctxLogger.Error(err)
 		return errors.Wrap(err, "failed to register volume")

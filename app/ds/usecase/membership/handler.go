@@ -1,38 +1,27 @@
 package membership
 
-import (
-	"time"
+// var logger *logrus.Entry
 
-	"github.com/chanyoung/nil/pkg/cluster"
-	"github.com/chanyoung/nil/pkg/nilmux"
-	"github.com/chanyoung/nil/pkg/swim"
-	"github.com/chanyoung/nil/pkg/util/config"
-	"github.com/chanyoung/nil/pkg/util/mlog"
-	"github.com/sirupsen/logrus"
-)
+// type handlers struct {
+// 	cfg *config.Ds
 
-var logger *logrus.Entry
+// 	swimSrv    *swim.Server
+// 	swimTransL *nilmux.SwimTransportLayer
 
-type handlers struct {
-	cfg *config.Ds
+// 	needCMapUpdate chan interface{}
+// 	clusterService *cmap.Service
+// }
 
-	swimSrv    *swim.Server
-	swimTransL *nilmux.SwimTransportLayer
+// // NewHandlers creates a client handlers with necessary dependencies.
+// func NewHandlers(cfg *config.Ds, clusterService *cmap.Service) Handlers {
+// 	logger = mlog.GetPackageLogger("app/ds/usecase/membership")
 
-	needCMapUpdate chan interface{}
-	clusterService *cluster.Service
-}
-
-// NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cfg *config.Ds, clusterService *cluster.Service) Handlers {
-	logger = mlog.GetPackageLogger("app/ds/usecase/membership")
-
-	return &handlers{
-		cfg:            cfg,
-		needCMapUpdate: make(chan interface{}, 1),
-		clusterService: clusterService,
-	}
-}
+// 	return &handlers{
+// 		cfg:            cfg,
+// 		needCMapUpdate: make(chan interface{}, 1),
+// 		clusterService: clusterService,
+// 	}
+// }
 
 // // Create makes swim server.
 // func (h *handlers) Create(swimL *nilmux.Layer) (err error) {
@@ -107,33 +96,33 @@ func NewHandlers(cfg *config.Ds, clusterService *cluster.Service) Handlers {
 // 	}
 // }
 
-func (h *handlers) Run(swimL *nilmux.Layer) (err error) {
-	ctxLogger := mlog.GetMethodLogger(logger, "handlers.Run")
+// func (h *handlers) Run(swimL *nilmux.Layer) (err error) {
+// 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.Run")
 
-	// Setup configuration.
-	clusterConf := cluster.DefaultConfig()
-	clusterConf.Name = cluster.NodeName(h.cfg.ID)
-	clusterConf.Address = cluster.NodeAddress(h.cfg.ServerAddr + ":" + h.cfg.ServerPort)
-	clusterConf.Coordinator = cluster.NodeAddress(h.cfg.Swim.CoordinatorAddr)
-	if t, err := time.ParseDuration(h.cfg.Swim.Period); err != nil {
-		ctxLogger.Error(err)
-	} else {
-		clusterConf.PingPeriod = t
-	}
-	if t, err := time.ParseDuration(h.cfg.Swim.Expire); err != nil {
-		ctxLogger.Error(err)
-	} else {
-		clusterConf.PingExpire = t
-	}
-	clusterConf.Type = cluster.DS
+// 	// Setup configuration.
+// 	clusterConf := cluster.DefaultConfig()
+// 	clusterConf.Name = cluster.NodeName(h.cfg.ID)
+// 	clusterConf.Address = cluster.NodeAddress(h.cfg.ServerAddr + ":" + h.cfg.ServerPort)
+// 	clusterConf.Coordinator = cluster.NodeAddress(h.cfg.Swim.CoordinatorAddr)
+// 	if t, err := time.ParseDuration(h.cfg.Swim.Period); err != nil {
+// 		ctxLogger.Error(err)
+// 	} else {
+// 		clusterConf.PingPeriod = t
+// 	}
+// 	if t, err := time.ParseDuration(h.cfg.Swim.Expire); err != nil {
+// 		ctxLogger.Error(err)
+// 	} else {
+// 		clusterConf.PingExpire = t
+// 	}
+// 	clusterConf.Type = cluster.DS
 
-	h.clusterService.StartMembershipServer(*clusterConf, nilmux.NewSwimTransportLayer(swimL))
-	return nil
-}
+// 	h.clusterService.StartMembershipServer(*clusterConf, nilmux.NewSwimTransportLayer(swimL))
+// 	return nil
+// }
 
-// Handlers is the interface that provides client http handlers.
-type Handlers interface {
-	// Create(swimL *nilmux.Layer) error
-	// Run()
-	Run(swimL *nilmux.Layer) error
-}
+// // Handlers is the interface that provides client http handlers.
+// type Handlers interface {
+// 	// Create(swimL *nilmux.Layer) error
+// 	// Run()
+// 	Run(swimL *nilmux.Layer) error
+// }

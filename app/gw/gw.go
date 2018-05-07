@@ -12,7 +12,7 @@ import (
 	"github.com/chanyoung/nil/app/gw/usecase/client"
 	"github.com/chanyoung/nil/app/gw/usecase/clustermap"
 	"github.com/chanyoung/nil/pkg/client/request"
-	"github.com/chanyoung/nil/pkg/cluster"
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/chanyoung/nil/pkg/util/uuid"
@@ -42,24 +42,24 @@ func Bootstrap(cfg config.Gw) error {
 	// Setup request event factory.
 	requestEventFactory := request.NewRequestEventFactory()
 
-	// // Setup cluster map.
-	// clusterMap, err := cmap.NewController(cfg.FirstMds)
+	// // Setup cmap map.
+	// cmapMap, err := cmap.NewController(cfg.FirstMds)
 	// if err != nil {
-	// 	return errors.Wrap(err, "failed to init cluster map")
+	// 	return errors.Wrap(err, "failed to init cmap map")
 	// }
-	clusterService, err := cluster.NewService(cluster.NodeAddress(cfg.FirstMds), mlog.GetPackageLogger("pkg/cluster"))
+	cmapService, err := cmap.NewService(cmap.NodeAddress(cfg.FirstMds), mlog.GetPackageLogger("pkg/cmap"))
 	if err != nil {
-		return errors.Wrap(err, "failed to create cluster service")
+		return errors.Wrap(err, "failed to create cmap service")
 	}
 
 	// Setup each usecase handlers.
-	authHandlers := auth.NewHandlers(clusterService.SlaveAPI(), authCache)
-	adminHandlers := admin.NewHandlers(clusterService.SlaveAPI())
-	clientHandlers := client.NewHandlers(clusterService.SlaveAPI(), requestEventFactory, authHandlers)
-	clustermapService := clustermap.NewService(clusterService)
+	authHandlers := auth.NewHandlers(cmapService.SlaveAPI(), authCache)
+	adminHandlers := admin.NewHandlers(cmapService.SlaveAPI())
+	clientHandlers := client.NewHandlers(cmapService.SlaveAPI(), requestEventFactory, authHandlers)
+	cmapmapService := cmapmap.NewService(cmapService)
 
-	// Starts to update cluster map.
-	clustermapService.Run()
+	// Starts to update cmap map.
+	cmapmapService.Run()
 
 	// Setup delivery service.
 	delivery, err := delivery.NewDeliveryService(&cfg, adminHandlers, clientHandlers)

@@ -5,7 +5,7 @@ import (
 
 	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/app/mds/usecase/admin"
-	"github.com/chanyoung/nil/pkg/cluster"
+	"github.com/chanyoung/nil/pkg/cmap"
 )
 
 type adminStore struct {
@@ -19,7 +19,7 @@ func NewAdminRepository(s *Store) admin.Repository {
 	}
 }
 
-func (s *adminStore) GetAllEncodingGroups(txid repository.TxID) ([]cluster.EncodingGroup, error) {
+func (s *adminStore) GetAllEncodingGroups(txid repository.TxID) ([]cmap.EncodingGroup, error) {
 	q := fmt.Sprintf(
 		`
 		SELECT
@@ -35,10 +35,10 @@ func (s *adminStore) GetAllEncodingGroups(txid repository.TxID) ([]cluster.Encod
 	}
 	defer rows.Close()
 
-	egs := make([]cluster.EncodingGroup, 0)
+	egs := make([]cmap.EncodingGroup, 0)
 	for rows.Next() {
-		eg := cluster.EncodingGroup{
-			Vols: make([]cluster.ID, 0),
+		eg := cmap.EncodingGroup{
+			Vols: make([]cmap.ID, 0),
 		}
 
 		if err := rows.Scan(&eg.ID); err != nil {
@@ -64,7 +64,7 @@ func (s *adminStore) GetAllEncodingGroups(txid repository.TxID) ([]cluster.Encod
 		}
 
 		for vrows.Next() {
-			var volID cluster.ID
+			var volID cmap.ID
 			var volRole int
 			if err := vrows.Scan(&volID, &volRole); err != nil {
 				return nil, err

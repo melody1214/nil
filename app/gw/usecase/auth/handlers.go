@@ -4,7 +4,7 @@ import (
 	"net/rpc"
 	"time"
 
-	"github.com/chanyoung/nil/pkg/cluster"
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/pkg/errors"
@@ -19,17 +19,17 @@ type Handlers interface {
 }
 
 type handlers struct {
-	cache      Repository
-	clusterAPI cluster.SlaveAPI
+	cache   Repository
+	cmapAPI cmap.SlaveAPI
 }
 
 // NewHandlers creates an authentication handlers with necessary dependencies.
-func NewHandlers(clusterAPI cluster.SlaveAPI, repo Repository) Handlers {
+func NewHandlers(cmapAPI cmap.SlaveAPI, repo Repository) Handlers {
 	logger = mlog.GetPackageLogger("app/gw/usecase/auth")
 
 	return &handlers{
-		cache:      repo,
-		clusterAPI: clusterAPI,
+		cache:   repo,
+		cmapAPI: cmapAPI,
 	}
 }
 
@@ -55,8 +55,8 @@ func (h *handlers) GetSecretKey(accessKey string) (secretKey string, err error) 
 func (h *handlers) getSecretKeyFromRemote(accessKey string) (secretKey string, err error) {
 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.getSecretKeyFromRemote")
 
-	// 1. Lookup mds from cluster map.
-	mds, err := h.clusterAPI.SearchCallNode().Type(cluster.MDS).Status(cluster.Alive).Do()
+	// 1. Lookup mds from cmap.
+	mds, err := h.cmapAPI.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
 	if err != nil {
 		ctxLogger.Error(errors.Wrap(err, "failed to find alive mds"))
 		return "", ErrInternal

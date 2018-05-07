@@ -1,4 +1,4 @@
-package cluster
+package cmap
 
 import (
 	"math/rand"
@@ -8,10 +8,10 @@ import (
 
 // cMapManager is the object for access multiple versions of cluster maps.
 type cMapManager struct {
-	latest                   CMapVersion
-	cMaps                    map[CMapVersion]*CMap
-	notiChannels             map[CMapTime](chan interface{})
-	stateChangedNotiChannels map[CMapTime](chan interface{})
+	latest                   Version
+	cMaps                    map[Version]*CMap
+	notiChannels             map[Time](chan interface{})
+	stateChangedNotiChannels map[Time](chan interface{})
 	random                   *rand.Rand
 
 	mu sync.RWMutex
@@ -22,8 +22,8 @@ type cMapManager struct {
 func newCMapManager(coordinator NodeAddress) (*cMapManager, error) {
 	// Create an empty map.
 	cm := &CMap{
-		Version: CMapVersion(0),
-		Time:    CMapNow(),
+		Version: Version(0),
+		Time:    Now(),
 		Nodes:   make([]Node, 1),
 		Vols:    make([]Volume, 0),
 		EncGrps: make([]EncodingGroup, 0),
@@ -43,9 +43,9 @@ func newCMapManager(coordinator NodeAddress) (*cMapManager, error) {
 	}
 
 	m := &cMapManager{
-		cMaps:                    make(map[CMapVersion]*CMap),
-		notiChannels:             make(map[CMapTime](chan interface{})),
-		stateChangedNotiChannels: make(map[CMapTime](chan interface{})),
+		cMaps:                    make(map[Version]*CMap),
+		notiChannels:             make(map[Time](chan interface{})),
+		stateChangedNotiChannels: make(map[Time](chan interface{})),
 		random: rand.New(rand.NewSource(time.Now().Unix())),
 	}
 	m.cMaps[cm.Version] = cm
@@ -55,7 +55,7 @@ func newCMapManager(coordinator NodeAddress) (*cMapManager, error) {
 }
 
 // LatestVersion returns the latest version number in cluster maps.
-func (m *cMapManager) LatestVersion() CMapVersion {
+func (m *cMapManager) LatestVersion() Version {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -140,7 +140,7 @@ func (m *cMapManager) update(cm *CMap) error {
 
 // GetUpdatedNoti returns a channel which will send notification when
 // the higher version of cluster map is created.
-func (m *cMapManager) GetUpdatedNoti(ver CMapVersion) <-chan interface{} {
+func (m *cMapManager) GetUpdatedNoti(ver Version) <-chan interface{} {
 	// Make buffered channel is important because not to be blocked
 	// while in the send noti progress if the receiver had been timeout.
 	notiC := make(chan interface{}, 2)
@@ -151,7 +151,7 @@ func (m *cMapManager) GetUpdatedNoti(ver CMapVersion) <-chan interface{} {
 
 		// Add notification channel.
 		if m.latest <= ver {
-			m.notiChannels[CMapNow()] = notiC
+			m.notiChannels[Now()] = notiC
 			return
 		}
 
@@ -176,7 +176,7 @@ func (m *cMapManager) GetStateChangedNoti() <-chan interface{} {
 		m.mu.Lock()
 		defer m.mu.Unlock()
 
-		m.stateChangedNotiChannels[CMapNow()] = notiC
+		m.stateChangedNotiChannels[Now()] = notiC
 	}()
 
 	return notiC

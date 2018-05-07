@@ -7,26 +7,26 @@ import (
 	"time"
 
 	"github.com/chanyoung/nil/app/ds/repository"
-	"github.com/chanyoung/nil/pkg/cluster"
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/pkg/errors"
 )
 
 type endec struct {
-	chunkPool  *chunkPool
-	store      Repository
-	clusterAPI cluster.SlaveAPI
+	chunkPool *chunkPool
+	store     Repository
+	cmapAPI   cmap.SlaveAPI
 }
 
-func newEndec(clusterAPI cluster.SlaveAPI, p *chunkPool, s Repository) (*endec, error) {
-	if clusterAPI == nil || p == nil || s == nil {
+func newEndec(cmapAPI cmap.SlaveAPI, p *chunkPool, s Repository) (*endec, error) {
+	if cmapAPI == nil || p == nil || s == nil {
 		return nil, fmt.Errorf("invalid arguments")
 	}
 
 	return &endec{
-		chunkPool:  p,
-		store:      s,
-		clusterAPI: clusterAPI,
+		chunkPool: p,
+		store:     s,
+		cmapAPI:   cmapAPI,
 	}, nil
 }
 
@@ -84,13 +84,13 @@ func (e *endec) genLocalParity(c chunk) error {
 		return errors.Wrap(err, "failed to convert encoding group id to cmap id")
 	}
 
-	cmapVer := e.clusterAPI.GetLatestCMapVersion()
-	eg, err := e.clusterAPI.SearchCallEncGrp().ID(cluster.ID(egID)).Do()
+	cmapVer := e.cmapAPI.GetLatestCMapVersion()
+	eg, err := e.cmapAPI.SearchCallEncGrp().ID(cmap.ID(egID)).Do()
 	if err != nil {
 		return errors.Wrap(err, "failed to find encoding group")
 	}
 
-	if eg.Stat != cluster.EGAlive {
+	if eg.Stat != cmap.EGAlive {
 		return fmt.Errorf("give up to generate local parity because target encoding group is not alive")
 	}
 
@@ -99,7 +99,7 @@ func (e *endec) genLocalParity(c chunk) error {
 
 	timeoutC := time.After(5 * time.Minute)
 	encodingC := e._genLocalParity(c, stopC)
-	cmapChangedC := e.clusterAPI.GetUpdatedNoti(cmapVer)
+	cmapChangedC := e.cmapAPI.GetUpdatedNoti(cmapVer)
 	for {
 		select {
 		case err = <-encodingC:
@@ -107,14 +107,14 @@ func (e *endec) genLocalParity(c chunk) error {
 				return errors.Wrap(err, "error occured in calculating local parity")
 			}
 		case <-cmapChangedC:
-			cmapVer = e.clusterAPI.GetLatestCMapVersion()
-			newEg, err := e.clusterAPI.SearchCallEncGrp().ID(cluster.ID(egID)).Do()
+			cmapVer = e.cmapAPI.GetLatestCMapVersion()
+			newEg, err := e.cmapAPI.SearchCallEncGrp().ID(cmap.ID(egID)).Do()
 			if err != nil {
 				stopC <- nil
 				return errors.Wrap(err, "failed to find encoding group")
 			}
 
-			if newEg.Stat != cluster.EGAlive {
+			if newEg.Stat != cmap.EGAlive {
 				stopC <- nil
 				return fmt.Errorf("encoding group status has changed to not alive while in encoding")
 			}

@@ -1,4 +1,4 @@
-package cluster
+package cmap
 
 type rpcHandler interface {
 	Ping(req *PingMessage, res *Ack) error

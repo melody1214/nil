@@ -14,7 +14,7 @@ import (
 	"github.com/chanyoung/nil/app/ds/usecase/object"
 	"github.com/chanyoung/nil/app/ds/usecase/recovery"
 	"github.com/chanyoung/nil/pkg/client/request"
-	"github.com/chanyoung/nil/pkg/cluster"
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/chanyoung/nil/pkg/util/uuid"
@@ -64,30 +64,30 @@ func Bootstrap(cfg config.Ds) error {
 	// Setup request event factory.
 	requestEventFactory := request.NewRequestEventFactory()
 
-	// Setup cluster map.
-	// clusterMap, err := cmap.NewController(cfg.Swim.CoordinatorAddr)
+	// Setup cmap map.
+	// cmapMap, err := cmap.NewController(cfg.Swim.CoordinatorAddr)
 	// if err != nil {
-	// 	return errors.Wrap(err, "failed to init cluster map")
+	// 	return errors.Wrap(err, "failed to init cmap map")
 	// }
-	clusterService, err := cluster.NewService(cluster.NodeAddress(cfg.Swim.CoordinatorAddr), mlog.GetPackageLogger("pkg/cluster"))
+	cmapService, err := cmap.NewService(cmap.NodeAddress(cfg.Swim.CoordinatorAddr), mlog.GetPackageLogger("pkg/cmap"))
 	if err != nil {
-		return errors.Wrap(err, "failed to create cluster service")
+		return errors.Wrap(err, "failed to create cmap service")
 	}
 
 	// Setup each usecase handlers.
-	adminHandlers := admin.NewHandlers(&cfg, clusterService.SlaveAPI(), adminStore)
-	objectHandlers, err := object.NewHandlers(&cfg, clusterService.SlaveAPI(), requestEventFactory, objectStore)
+	adminHandlers := admin.NewHandlers(&cfg, cmapService.SlaveAPI(), adminStore)
+	objectHandlers, err := object.NewHandlers(&cfg, cmapService.SlaveAPI(), requestEventFactory, objectStore)
 	if err != nil {
 		return errors.Wrap(err, "failed to setup object handler")
 	}
-	// membershipHandlers := membership.NewHandlers(&cfg, clusterService)
-	// clustermapService := clustermap.NewService(clusterService.SlaveAPI())
+	// membershipHandlers := membership.NewHandlers(&cfg, cmapService)
+	// cmapmapService := cmapmap.NewService(cmapService.SlaveAPI())
 
-	// // Starts to update cluster map.
-	// clustermapService.Run()
+	// // Starts to update cmap map.
+	// cmapmapService.Run()
 
 	// Setup delivery service.
-	delivery, err := delivery.SetupDeliveryService(&cfg, adminHandlers, objectHandlers, clusterService)
+	delivery, err := delivery.SetupDeliveryService(&cfg, adminHandlers, objectHandlers, cmapService)
 	if err != nil {
 		return errors.Wrap(err, "failed to setup delivery")
 	}

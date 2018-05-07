@@ -12,7 +12,7 @@ import (
 	"github.com/chanyoung/nil/app/mds/usecase/consensus"
 	"github.com/chanyoung/nil/app/mds/usecase/object"
 	"github.com/chanyoung/nil/app/mds/usecase/recovery"
-	"github.com/chanyoung/nil/pkg/cluster"
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -31,7 +31,7 @@ type Service struct {
 	buh bucket.Handlers
 	clh clustermap.Handlers
 	coh consensus.Handlers
-	cls *cluster.Service
+	cls *cmap.Service
 	obh object.Handlers
 	reh recovery.Handlers
 
@@ -44,7 +44,7 @@ type Service struct {
 }
 
 // SetupDeliveryService bootstraps a delivery service with necessary dependencies.
-func SetupDeliveryService(cfg *config.Mds, adh admin.Handlers, auh auth.Handlers, buh bucket.Handlers, coh consensus.Handlers, clh clustermap.Handlers, cls *cluster.Service, obh object.Handlers, reh recovery.Handlers) (*Service, error) {
+func SetupDeliveryService(cfg *config.Mds, adh admin.Handlers, auh auth.Handlers, buh bucket.Handlers, coh consensus.Handlers, clh clustermap.Handlers, cls *cmap.Service, obh object.Handlers, reh recovery.Handlers) (*Service, error) {
 	if cfg == nil {
 		return nil, errors.New("invalid argument")
 	}
@@ -115,33 +115,33 @@ func SetupDeliveryService(cfg *config.Mds, adh admin.Handlers, auh auth.Handlers
 	}
 
 	// Setup the membership server and run.
-	clusterConf := cluster.DefaultConfig()
-	clusterConf.Name = cluster.NodeName(cfg.ID)
-	clusterConf.Address = cluster.NodeAddress(cfg.ServerAddr + ":" + cfg.ServerPort)
-	clusterConf.Coordinator = cluster.NodeAddress(cfg.Swim.CoordinatorAddr)
+	cmapConf := cmap.DefaultConfig()
+	cmapConf.Name = cmap.NodeName(cfg.ID)
+	cmapConf.Address = cmap.NodeAddress(cfg.ServerAddr + ":" + cfg.ServerPort)
+	cmapConf.Coordinator = cmap.NodeAddress(cfg.Swim.CoordinatorAddr)
 	if t, err := time.ParseDuration(cfg.Swim.Period); err == nil {
-		clusterConf.PingPeriod = t
+		cmapConf.PingPeriod = t
 	}
 	if t, err := time.ParseDuration(cfg.Swim.Expire); err == nil {
-		clusterConf.PingExpire = t
+		cmapConf.PingExpire = t
 	}
-	clusterConf.Type = cluster.MDS
-	if err := s.cls.StartMembershipServer(*clusterConf, nilmux.NewSwimTransportLayer(s.membershipLayer)); err != nil {
+	cmapConf.Type = cmap.MDS
+	if err := s.cls.StartMembershipServer(*cmapConf, nilmux.NewSwimTransportLayer(s.membershipLayer)); err != nil {
 		return nil, err
 	}
-	// Join the local cluster.
-	conn, err := nilrpc.Dial(clusterConf.Coordinator.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
+	// Join the local cmap.
+	conn, err := nilrpc.Dial(cmapConf.Coordinator.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 
 	req := &nilrpc.MCLJoinRequest{
-		Node: cluster.Node{
-			Name: clusterConf.Name,
-			Type: clusterConf.Type,
-			Stat: cluster.Alive,
-			Addr: clusterConf.Address,
+		Node: cmap.Node{
+			Name: cmapConf.Name,
+			Type: cmapConf.Type,
+			Stat: cmap.Alive,
+			Addr: cmapConf.Address,
 		},
 	}
 	res := &nilrpc.MCLJoinResponse{}

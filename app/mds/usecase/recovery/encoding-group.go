@@ -1,13 +1,13 @@
 package recovery
 
 import (
-	"github.com/chanyoung/nil/pkg/cluster"
+	"github.com/chanyoung/nil/pkg/cmap"
 )
 
 type EncodingGroup struct {
-	cluster.EncodingGroup
-	firstVol  cluster.ID
-	secondVol cluster.ID
-	thirdVol  cluster.ID
-	parityVol cluster.ID
+	cmap.EncodingGroup
+	firstVol  cmap.ID
+	secondVol cmap.ID
+	thirdVol  cmap.ID
+	parityVol cmap.ID
 }

@@ -1,4 +1,4 @@
-package cluster
+package cmap
 
 import (
 	"reflect"
@@ -7,7 +7,7 @@ import (
 
 func TestMergeCMap(t *testing.T) {
 	srcMap := CMap{
-		Version: CMapVersion(30),
+		Version: Version(30),
 		Nodes: []Node{
 			Node{
 				ID:   ID(0),
@@ -148,7 +148,7 @@ func TestMergeCMap(t *testing.T) {
 		},
 	}
 	dstMap := CMap{
-		Version: CMapVersion(31),
+		Version: Version(31),
 		Nodes: []Node{
 			Node{
 				ID:   ID(0),
@@ -348,8 +348,8 @@ func TestMergeCMap(t *testing.T) {
 
 func TestCopyCMap(t *testing.T) {
 	origin := CMap{
-		Version: CMapVersion(0),
-		Time:    CMapNow(),
+		Version: Version(0),
+		Time:    Now(),
 		Nodes: []Node{
 			Node{
 				ID:   ID(0),

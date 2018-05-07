@@ -1,11 +1,11 @@
 package recovery
 
-import "github.com/chanyoung/nil/pkg/cluster"
+import "github.com/chanyoung/nil/pkg/cmap"
 
 // Volume is an entity that represents a specific volume attached to ds.
 // It has some attributes for rebalancing.
 type Volume struct {
-	cluster.Volume
+	cmap.Volume
 	NodeID   int
 	Chain    int
 	MaxChain int

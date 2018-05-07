@@ -1,7 +1,7 @@
 package clustermap
 
 import (
-	"github.com/chanyoung/nil/pkg/cluster"
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/sirupsen/logrus"
 )
@@ -10,11 +10,11 @@ var logger *logrus.Entry
 
 // Service manages the cluster map.
 type Service struct {
-	clusterAPI cluster.SlaveAPI
+	clusterAPI cmap.SlaveAPI
 }
 
 // NewService returns a new instance of a cluster map manager.
-func NewService(clusterAPI cluster.SlaveAPI) *Service {
+func NewService(clusterAPI cmap.SlaveAPI) *Service {
 	logger = mlog.GetPackageLogger("app/ds/usecase/clustermap")
 
 	return &Service{
