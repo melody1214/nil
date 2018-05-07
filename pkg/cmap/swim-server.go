@@ -1,9 +1,11 @@
 package cmap
 
 import (
+	"fmt"
 	"net"
 	"net/rpc"
 	"runtime"
+	"sync/atomic"
 	"time"
 )
 
@@ -19,9 +21,8 @@ type server struct {
 	rpcSrv     *rpc.Server
 	rpcHandler rpcHandler
 
-	// c       chan PingError
-	// stop    chan chan error
-	// stopped uint32
+	stop    chan chan error
+	stopped uint32
 }
 
 // newServer creates swim server object.
@@ -31,8 +32,8 @@ func newServer(cfg Config, cMapManager *cMapManager, trans Transport) (*server, 
 		cMapManager: cMapManager,
 		trans:       trans,
 		rpcSrv:      rpc.NewServer(),
-		// stop:        make(chan chan error, 1),
-		// stopped:     uint32(1),
+		stop:        make(chan chan error, 1),
+		stopped:     uint32(1),
 	}
 
 	s.rpcHandler = s
@@ -52,17 +53,14 @@ func (s *server) run() {
 	ticker := time.NewTicker(s.cfg.PingPeriod)
 	for {
 		select {
-		// case exit := <-s.stop:
-		// 	// Leaving from the membership.
-		// 	// Send good-bye to all members.
-		// 	s.leave()
-		// 	exit <- nil
-		// 	return
+		case exit := <-s.stop:
+			// Leaving from the membership.
+			// Send good-bye to all members.
+			s.leave()
+			exit <- nil
+			return
 		case <-ticker.C:
-			s.ping()
-			// case pe := <-pec:
-			// 	go s.handleErr(pe, pec)
-			// 	s.c <- pe
+			go s.ping()
 		}
 	}
 }
@@ -76,6 +74,28 @@ func (s *server) listenAndServe() {
 		}
 		go s.rpcSrv.ServeConn(conn)
 	}
+}
+
+// Halt will stop the swim server and cleaning up.
+func (s *server) halt() error {
+	if s.isStopped() {
+		return fmt.Errorf("server is already stopped")
+	}
+
+	exit := make(chan error)
+	s.stop <- exit
+
+	atomic.SwapUint32(&s.stopped, uint32(1))
+
+	return <-exit
+}
+
+func (s *server) canStart() bool {
+	return atomic.SwapUint32(&s.stopped, uint32(0)) == 1
+}
+
+func (s *server) isStopped() bool {
+	return atomic.LoadUint32(&s.stopped) == 1
 }
 
 // Transport is swim network transport abstraction layer.

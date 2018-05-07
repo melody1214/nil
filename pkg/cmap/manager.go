@@ -292,12 +292,30 @@ func mergeCMap(src, dst *CMap) {
 				continue
 			}
 
-			if sn.Incr <= dn.Incr {
-				break
+			merge := false
+			switch sn.Stat {
+			case Alive:
+				if dn.Stat == Alive && dn.Incr < sn.Incr {
+					merge = true
+				}
+				if dn.Stat == Suspect && dn.Incr < sn.Incr {
+					merge = true
+				}
+			case Suspect:
+				if dn.Stat == Alive && dn.Incr <= sn.Incr {
+					merge = true
+				}
+				if dn.Stat == Suspect && dn.Incr < sn.Incr {
+					merge = true
+				}
+			case Faulty:
+				merge = true
 			}
 
-			dst.Nodes[i].Stat = sn.Stat
-			dst.Nodes[i].Incr = sn.Incr
+			if merge {
+				dst.Nodes[i].Stat = sn.Stat
+				dst.Nodes[i].Incr = sn.Incr
+			}
 		}
 	}
 
@@ -308,7 +326,11 @@ func mergeCMap(src, dst *CMap) {
 				continue
 			}
 
-			if sv.Incr <= dv.Incr {
+			if sv.Incr < dv.Incr {
+				break
+			}
+
+			if sv.Incr == dv.Incr && dv.Stat == Failed {
 				break
 			}
 
@@ -325,7 +347,11 @@ func mergeCMap(src, dst *CMap) {
 				continue
 			}
 
-			if se.Incr <= de.Incr {
+			if se.Incr < de.Incr {
+				break
+			}
+
+			if se.Incr == de.Incr && de.Stat == EGFaulty {
 				break
 			}
 
