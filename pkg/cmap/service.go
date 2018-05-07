@@ -40,10 +40,6 @@ type Service struct {
 func NewService(coordinator NodeAddress, log *logrus.Entry) (*Service, error) {
 	logger = log
 
-	// s := &Service{
-	// 	cfg: cfg,
-	// }
-
 	cm, err := newCMapManager(coordinator)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create cmap manager")

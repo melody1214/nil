@@ -7,7 +7,6 @@ import (
 
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/security"
-	"github.com/chanyoung/nil/pkg/swim"
 )
 
 // Prefixes for domains.
@@ -189,11 +188,6 @@ type Volume struct {
 type GetAllVolumeRequest struct{}
 type GetAllVolumeResponse struct {
 	Volumes []Volume
-}
-
-type GetMembershipListRequest struct{}
-type GetMembershipListResponse struct {
-	Nodes []swim.Member
 }
 
 type ObjectPutRequest struct {
