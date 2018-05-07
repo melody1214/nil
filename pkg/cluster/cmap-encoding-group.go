@@ -7,11 +7,11 @@ const (
 	// EGAlive : healthy node
 	EGAlive EncodingGroupStatus = "Alive"
 	// EGSuspect : maybe faulty
-	EGSuspect = "Suspect"
+	EGSuspect EncodingGroupStatus = "Suspect"
 	// EGFaulty : faulty
-	EGFaulty = "Faulty"
+	EGFaulty EncodingGroupStatus = "Faulty"
 	// EGRdonly : readonly, maybe rebalancing or recovering.
-	EGRdonly = "Rdonly"
+	EGRdonly EncodingGroupStatus = "Rdonly"
 )
 
 // String returns a string of the node status.

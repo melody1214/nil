@@ -67,12 +67,47 @@ func (m *cMapManager) LatestCMap() CMap {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	return *m.latestCMap()
+	cm := m.latestCMap()
+	return copyCMap(cm)
 }
 
 func (m *cMapManager) latestCMap() *CMap {
 	cm := m.cMaps[m.latest]
 	return cm
+}
+
+// copyCMap do deep copy the given cmap.
+func copyCMap(cm *CMap) CMap {
+	copiedMap := CMap{
+		Version: cm.Version,
+		Time:    cm.Time,
+	}
+
+	// Copy nodes.
+	copiedMap.Nodes = make([]Node, len(cm.Nodes))
+	copy(copiedMap.Nodes, cm.Nodes)
+	for i, n := range cm.Nodes {
+		copiedMap.Nodes[i].Vols = make([]ID, len(n.Vols))
+		copy(copiedMap.Nodes[i].Vols, n.Vols)
+	}
+
+	// Copy volumes.
+	copiedMap.Vols = make([]Volume, len(cm.Vols))
+	copy(copiedMap.Vols, cm.Vols)
+	for i, v := range cm.Vols {
+		copiedMap.Vols[i].EncGrps = make([]ID, len(v.EncGrps))
+		copy(copiedMap.Vols[i].EncGrps, v.EncGrps)
+	}
+
+	// Copy encoding groups.
+	copiedMap.EncGrps = make([]EncodingGroup, len(cm.EncGrps))
+	copy(copiedMap.EncGrps, cm.EncGrps)
+	for i, eg := range cm.EncGrps {
+		copiedMap.EncGrps[i].Vols = make([]ID, len(eg.Vols))
+		copy(copiedMap.EncGrps[i].Vols, eg.Vols)
+	}
+
+	return copiedMap
 }
 
 // Update updates the latest cluster map.

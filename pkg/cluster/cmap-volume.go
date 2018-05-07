@@ -7,9 +7,9 @@ const (
 	// Low : 60 Mb/s < speed < 80 Mb/s
 	Low VolumeSpeed = "Low"
 	// Mid : 80 Mb/s < speed < 100 Mb/s
-	Mid = "Mid"
+	Mid VolumeSpeed = "Mid"
 	// High : 100 Mb/s < speed
-	High = "High"
+	High VolumeSpeed = "High"
 )
 
 func (s VolumeSpeed) String() string {
@@ -17,7 +17,7 @@ func (s VolumeSpeed) String() string {
 	case Low, Mid, High:
 		return string(s)
 	default:
-		return "Unknown"
+		return unknown
 	}
 }
 
@@ -28,9 +28,9 @@ const (
 	// Prepared represents the volume is ready to run.
 	Prepared VolumeStatus = "Prepared"
 	// Active represents the volume is now running.
-	Active = "Active"
+	Active VolumeStatus = "Active"
 	// Failed represents the volume has some problems and stopped now.
-	Failed = "Failed"
+	Failed VolumeStatus = "Failed"
 )
 
 func (s VolumeStatus) String() string {
@@ -38,7 +38,7 @@ func (s VolumeStatus) String() string {
 	case Prepared, Active, Failed:
 		return string(s)
 	default:
-		return "Unknown"
+		return unknown
 	}
 }
 

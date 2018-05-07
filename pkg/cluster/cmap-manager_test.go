@@ -345,3 +345,57 @@ func TestMergeCMap(t *testing.T) {
 		}
 	}
 }
+
+func TestCopyCMap(t *testing.T) {
+	origin := CMap{
+		Version: CMapVersion(0),
+		Time:    CMapNow(),
+		Nodes: []Node{
+			Node{
+				ID:   ID(0),
+				Type: MDS,
+				Addr: NodeAddress("localhost:1000"),
+				Stat: Alive,
+				Incr: Incarnation(20),
+				Vols: []ID{
+					ID(0), ID(1), ID(2),
+				},
+			},
+		},
+		Vols: []Volume{
+			Volume{
+				ID:    ID(0),
+				Speed: Low,
+				Stat:  Active,
+				EncGrps: []ID{
+					ID(0), ID(1), ID(2),
+				},
+			},
+		},
+		EncGrps: []EncodingGroup{
+			EncodingGroup{
+				ID:   ID(0),
+				Stat: EGAlive,
+				Incr: Incarnation(10),
+				Size: 100,
+				Vols: []ID{
+					ID(0), ID(1), ID(2),
+				},
+			},
+		},
+	}
+	copied := copyCMap(&origin)
+
+	// Check copied correctly.
+	if reflect.DeepEqual(origin, copied) == false {
+		t.Fatalf("copied map copied differently\norigin: %v\ncopied: %v", origin, copied)
+	}
+
+	// Change slice values for testing deep copy.
+	origin.Nodes[0].Vols[0] = ID(99)
+	origin.Vols[0].EncGrps[0] = ID(99)
+	origin.EncGrps[0].Vols[0] = ID(99)
+	if reflect.DeepEqual(origin, copied) {
+		t.Fatalf("slices are not deep copied.\norigin: %v\ncopied: %v", origin, copied)
+	}
+}
