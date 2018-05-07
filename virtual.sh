@@ -352,22 +352,22 @@ function main() {
         done < $PENDINGCMD
     fi
 
-    # # Create users.
-    # sleep 3
-    # createusers
+    # Create users.
+    sleep 3
+    createusers
 
-    # # Create buckets.
-    # sleep 3
-    # createbuckets
+    # Create buckets.
+    sleep 3
+    createbuckets
 
-    # # Put objects.
-    # sleep 3
-    # putobjects
+    # Put objects.
+    sleep 3
+    putobjects
 
-    # # Test local recovery
-    # if [ $TESTLOCALRECOVERY = true ]; then
-    #     testlocalrecovery
-    # fi
+    # Test local recovery
+    if [ $TESTLOCALRECOVERY = true ]; then
+        testlocalrecovery
+    fi
 }
 
 # Run as root.

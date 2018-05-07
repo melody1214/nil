@@ -33,20 +33,16 @@ func newEndec(clusterAPI cluster.SlaveAPI, p *chunkPool, s Repository) (*endec, 
 func (e *endec) Run() {
 	ctxLogger := mlog.GetMethodLogger(logger, "endec.Run")
 
-	updateMapNoti := time.NewTicker(5 * time.Second)
-
+	checkEncodingJobTimer := time.NewTicker(5 * time.Second)
 	for {
 		select {
-		// case <-e.pushCh:
-		// 	e.doAll()
-		case <-updateMapNoti.C:
+		case <-checkEncodingJobTimer.C:
 			go func() {
 				err := e.checkRoutine()
 				if err != nil {
 					ctxLogger.Error(err)
 				}
 			}()
-			// 	e.updateGroup()
 		}
 	}
 }
