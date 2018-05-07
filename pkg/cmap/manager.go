@@ -330,7 +330,7 @@ func mergeCMap(src, dst *CMap) {
 				break
 			}
 
-			if sv.Incr == dv.Incr && dv.Stat == Failed {
+			if sv.Incr == dv.Incr && sv.Stat == Prepared {
 				break
 			}
 

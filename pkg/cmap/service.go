@@ -1,7 +1,11 @@
 package cmap
 
-import "github.com/pkg/errors"
-import "github.com/sirupsen/logrus"
+import (
+	"fmt"
+
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+)
 
 var logger *logrus.Entry
 
@@ -27,7 +31,7 @@ var logger *logrus.Entry
 // remove, update node functions and all of this kind of changes will increment
 // the version number of the cluster map. (for MDS functions)
 type Service struct {
-	// cfg         Config
+	cfg         Config
 	cMapManager *cMapManager
 	server      *server
 }
@@ -52,6 +56,7 @@ func NewService(coordinator NodeAddress, log *logrus.Entry) (*Service, error) {
 
 // StartMembershipServer starts membership server to gossip.
 func (s *Service) StartMembershipServer(cfg Config, trans Transport) error {
+	s.cfg = cfg
 	swimSrv, err := newServer(cfg, s.cMapManager, trans)
 	if err != nil {
 		return errors.Wrap(err, "failed to make new swim server")
@@ -69,7 +74,7 @@ type SlaveAPI interface {
 	SearchCallEncGrp() *SearchCallEncGrp
 	GetLatestCMapVersion() Version
 	UpdateNodeStatus(nID ID, stat NodeStatus) error
-	UpdateVolumeStatus(vID ID, stat VolumeStatus) error
+	UpdateVolume(volume Volume) error
 	UpdateEncodingGroupStatus(egID ID, stat EncodingGroupStatus) error
 	UpdateEncodingGroupUsed(egID ID, used uint64) error
 	GetUpdatedNoti(ver Version) <-chan interface{}
@@ -101,8 +106,30 @@ func (s *Service) UpdateNodeStatus(nID ID, stat NodeStatus) error {
 	return nil
 }
 
-// UpdateVolumeStatus updates the volume status of the given volume ID.
-func (s *Service) UpdateVolumeStatus(vID ID, stat VolumeStatus) error {
+// UpdateVolume updates the volume status of the given volume ID.
+func (s *Service) UpdateVolume(volume Volume) error {
+	node, err := s.cMapManager.SearchCallNode().ID(volume.Node).Do()
+	if err != nil {
+		return fmt.Errorf("no such node: %v", err)
+	}
+	if node.Name != s.cfg.Name {
+		return fmt.Errorf("only can update volumes which this node has")
+	}
+
+	s.cMapManager.mu.Lock()
+	defer s.cMapManager.mu.Unlock()
+
+	cm := s.cMapManager.latestCMap()
+	for i, v := range cm.Vols {
+		if v.ID != volume.ID {
+			continue
+		}
+
+		cm.Vols[i].Stat = volume.Stat
+		cm.Vols[i].Size = volume.Size
+		cm.Vols[i].Incr = cm.Vols[i].Incr + 1
+	}
+
 	return nil
 }
 

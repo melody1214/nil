@@ -96,6 +96,26 @@ func (h *handlers) AddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVolume
 		return err
 	}
 
+	go func() {
+		for {
+			ver := h.cmapAPI.GetLatestCMapVersion()
+			id, _ := strconv.ParseInt(lv.Name, 10, 64)
+			v, err := h.cmapAPI.SearchCallVolume().ID(cmap.ID(id)).Do()
+			if err != nil {
+				ctxLogger.Error(errors.Wrap(err, "failed to search volume, wait cmap to be updated"))
+				notiC := h.cmapAPI.GetUpdatedNoti(ver)
+				<-notiC
+				continue
+			}
+			v.Size = lv.Size
+			v.Stat = cmap.Active
+			if err = h.cmapAPI.UpdateVolume(v); err != nil {
+				ctxLogger.Error(errors.Wrap(err, "failed to update volume"))
+			}
+			break
+		}
+	}()
+
 	ctxLogger.Infof("add volume %s succeeded", lv.Name)
 	return nil
 }
