@@ -26,7 +26,7 @@ type service struct {
 
 // NewService creates a client service with necessary dependencies.
 func NewService(cfg *config.Mds, cmapAPI cmap.MasterAPI, s Repository) Service {
-	logger = mlog.GetPackageLogger("app/mds/usecase/cmapmap")
+	logger = mlog.GetPackageLogger("app/mds/usecase/cluster")
 
 	return &service{
 		cfg:     cfg,
