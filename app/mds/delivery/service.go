@@ -8,7 +8,7 @@ import (
 	"github.com/chanyoung/nil/app/mds/usecase/admin"
 	"github.com/chanyoung/nil/app/mds/usecase/auth"
 	"github.com/chanyoung/nil/app/mds/usecase/bucket"
-	"github.com/chanyoung/nil/app/mds/usecase/clustermap"
+	"github.com/chanyoung/nil/app/mds/usecase/cluster"
 	"github.com/chanyoung/nil/app/mds/usecase/consensus"
 	"github.com/chanyoung/nil/app/mds/usecase/object"
 	"github.com/chanyoung/nil/app/mds/usecase/recovery"
@@ -29,9 +29,9 @@ type Service struct {
 	adh admin.Handlers
 	auh auth.Handlers
 	buh bucket.Handlers
-	clh clustermap.Handlers
+	cls cluster.Service
 	coh consensus.Handlers
-	cls *cmap.Service
+	cms *cmap.Service
 	obh object.Handlers
 	reh recovery.Handlers
 
@@ -44,7 +44,7 @@ type Service struct {
 }
 
 // SetupDeliveryService bootstraps a delivery service with necessary dependencies.
-func SetupDeliveryService(cfg *config.Mds, adh admin.Handlers, auh auth.Handlers, buh bucket.Handlers, coh consensus.Handlers, clh clustermap.Handlers, cls *cmap.Service, obh object.Handlers, reh recovery.Handlers) (*Service, error) {
+func SetupDeliveryService(cfg *config.Mds, adh admin.Handlers, auh auth.Handlers, buh bucket.Handlers, coh consensus.Handlers, cls cluster.Service, cms *cmap.Service, obh object.Handlers, reh recovery.Handlers) (*Service, error) {
 	if cfg == nil {
 		return nil, errors.New("invalid argument")
 	}
@@ -56,9 +56,9 @@ func SetupDeliveryService(cfg *config.Mds, adh admin.Handlers, auh auth.Handlers
 		adh: adh,
 		auh: auh,
 		buh: buh,
-		clh: clh,
-		coh: coh,
 		cls: cls,
+		coh: coh,
+		cms: cms,
 		obh: obh,
 		reh: reh,
 	}
@@ -96,7 +96,7 @@ func SetupDeliveryService(cfg *config.Mds, adh admin.Handlers, auh auth.Handlers
 	if err := s.nilRPCSrv.RegisterName(nilrpc.MdsBucketPrefix, s.buh); err != nil {
 		return nil, err
 	}
-	if err := s.nilRPCSrv.RegisterName(nilrpc.MdsClustermapPrefix, s.clh); err != nil {
+	if err := s.nilRPCSrv.RegisterName(nilrpc.MdsClustermapPrefix, s.cls); err != nil {
 		return nil, err
 	}
 	// if err := rpcSrv.RegisterName(nilrpc.MdsMembershipPrefix, meh); err != nil {
@@ -126,7 +126,7 @@ func SetupDeliveryService(cfg *config.Mds, adh admin.Handlers, auh auth.Handlers
 		cmapConf.PingExpire = t
 	}
 	cmapConf.Type = cmap.MDS
-	if err := s.cls.StartMembershipServer(*cmapConf, nilmux.NewSwimTransportLayer(s.membershipLayer)); err != nil {
+	if err := s.cms.StartMembershipServer(*cmapConf, nilmux.NewSwimTransportLayer(s.membershipLayer)); err != nil {
 		return nil, err
 	}
 	// Join the local cmap.

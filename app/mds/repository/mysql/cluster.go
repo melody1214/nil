@@ -5,22 +5,22 @@ import (
 	"fmt"
 
 	"github.com/chanyoung/nil/app/mds/repository"
-	"github.com/chanyoung/nil/app/mds/usecase/clustermap"
+	"github.com/chanyoung/nil/app/mds/usecase/cluster"
 	"github.com/chanyoung/nil/pkg/cmap"
 )
 
-type clustermapStore struct {
+type clusterStore struct {
 	*Store
 }
 
-// NewClusterMapRepository returns a new instance of a mysql cluster map repository.
-func NewClusterMapRepository(s *Store) clustermap.Repository {
-	return &clustermapStore{
+// NewClusterRepository returns a new instance of a mysql cluster map repository.
+func NewClusterRepository(s *Store) cluster.Repository {
+	return &clusterStore{
 		Store: s,
 	}
 }
 
-func (s *clustermapStore) FindAllNodes(txid repository.TxID) (nodes []cmap.Node, err error) {
+func (s *clusterStore) FindAllNodes(txid repository.TxID) (nodes []cmap.Node, err error) {
 	q := fmt.Sprintf(
 		`
 		SELECT
@@ -55,7 +55,7 @@ func (s *clustermapStore) FindAllNodes(txid repository.TxID) (nodes []cmap.Node,
 	return
 }
 
-func (s *clustermapStore) FindAllVolumes(txid repository.TxID) (vols []cmap.Volume, err error) {
+func (s *clusterStore) FindAllVolumes(txid repository.TxID) (vols []cmap.Volume, err error) {
 	q := fmt.Sprintf(
 		`
 		SELECT
@@ -90,7 +90,7 @@ func (s *clustermapStore) FindAllVolumes(txid repository.TxID) (vols []cmap.Volu
 	return
 }
 
-func (s *clustermapStore) FindAllEncGrps(txid repository.TxID) (egs []cmap.EncodingGroup, err error) {
+func (s *clusterStore) FindAllEncGrps(txid repository.TxID) (egs []cmap.EncodingGroup, err error) {
 	q := fmt.Sprintf(
 		`
 		SELECT
@@ -126,7 +126,7 @@ func (s *clustermapStore) FindAllEncGrps(txid repository.TxID) (egs []cmap.Encod
 	return
 }
 
-func (s *clustermapStore) FindAllEncGrpVols(txid repository.TxID, id cmap.ID) (vols []cmap.ID, err error) {
+func (s *clusterStore) FindAllEncGrpVols(txid repository.TxID, id cmap.ID) (vols []cmap.ID, err error) {
 	q := fmt.Sprintf(
 		`
 		SELECT
@@ -161,7 +161,7 @@ func (s *clustermapStore) FindAllEncGrpVols(txid repository.TxID, id cmap.ID) (v
 	return
 }
 
-func (s *clustermapStore) GetNewClusterMapVer(txid repository.TxID) (cmap.Version, error) {
+func (s *clusterStore) GetNewClusterMapVer(txid repository.TxID) (cmap.Version, error) {
 	q := fmt.Sprintf(
 		`
 		INSERT INTO cmap (cmap_id)
@@ -182,7 +182,7 @@ func (s *clustermapStore) GetNewClusterMapVer(txid repository.TxID) (cmap.Versio
 	return cmap.Version(ver), nil
 }
 
-func (s *clustermapStore) JoinNewNode(node cmap.Node) error {
+func (s *clusterStore) JoinNewNode(node cmap.Node) error {
 	q := fmt.Sprintf(
 		`
 		INSERT INTO node (node_name, node_type, node_status, node_address)

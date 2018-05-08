@@ -11,7 +11,7 @@ import (
 	"github.com/chanyoung/nil/app/mds/usecase/admin"
 	"github.com/chanyoung/nil/app/mds/usecase/auth"
 	"github.com/chanyoung/nil/app/mds/usecase/bucket"
-	"github.com/chanyoung/nil/app/mds/usecase/clustermap"
+	"github.com/chanyoung/nil/app/mds/usecase/cluster"
 	"github.com/chanyoung/nil/app/mds/usecase/consensus"
 	"github.com/chanyoung/nil/app/mds/usecase/object"
 	"github.com/chanyoung/nil/app/mds/usecase/recovery"
@@ -41,14 +41,13 @@ func Bootstrap(cfg config.Mds) error {
 
 	// Setup repositories.
 	var (
-		adminStore      admin.Repository
-		authStore       auth.Repository
-		bucketStore     bucket.Repository
-		consensusStore  consensus.Repository
-		clustermapStore clustermap.Repository
-		// membershipStore membership.Repository
-		objectStore   object.Repository
-		recoveryStore recovery.Repository
+		adminStore     admin.Repository
+		authStore      auth.Repository
+		bucketStore    bucket.Repository
+		consensusStore consensus.Repository
+		clusterStore   cluster.Repository
+		objectStore    object.Repository
+		recoveryStore  recovery.Repository
 	)
 	if useMySQL := true; useMySQL {
 		store := mysql.New(&cfg)
@@ -56,21 +55,21 @@ func Bootstrap(cfg config.Mds) error {
 		authStore = mysql.NewAuthRepository(store)
 		bucketStore = mysql.NewBucketRepository(store)
 		consensusStore = mysql.NewConsensusRepository(store)
-		clustermapStore = mysql.NewClusterMapRepository(store)
-		// membershipStore = mysql.NewMembershipRepository(store)
+		clusterStore = mysql.NewClusterRepository(store)
 		objectStore = mysql.NewObjectRepository(store)
 		recoveryStore = mysql.NewRecoveryRepository(store)
 	} else {
 		return fmt.Errorf("not supported store type")
 	}
 
-	// Setup membership service.
-	// cmapCfg := cmap.DefaultConfig()
-	// cmapCfg.Name = cmap.NodeName(cfg.ID)
-	// cmapCfg.Address = cmap.NodeAddress(cfg.ServerAddr + ":" + cfg.ServerPort)
-	// cmapCfg.Coordinator = cmap.NodeAddress(cfg.ServerAddr + ":" + cfg.ServerPort)
-	// cmapCfg.Type = cmap.MDS
-	cmapService, err := cmap.NewService(cmap.NodeAddress(cfg.Swim.CoordinatorAddr), mlog.GetPackageLogger("pkg/cmap"))
+	// Setup cluster map service.
+	// This service is maintained by cluster domain, however the all domains
+	// require this service necessarily. So create service in bootstrap code
+	// and inject the service to all domains.
+	cmapService, err := cmap.NewService(
+		cmap.NodeAddress(cfg.Swim.CoordinatorAddr),
+		mlog.GetPackageLogger("pkg/cmap"),
+	)
 	if err != nil {
 		return errors.Wrap(err, "failed to create cmap service")
 	}
@@ -80,8 +79,7 @@ func Bootstrap(cfg config.Mds) error {
 	authHandlers := auth.NewHandlers(authStore)
 	bucketHandlers := bucket.NewHandlers(bucketStore)
 	consensusHandlers := consensus.NewHandlers(&cfg, consensusStore)
-	clustermapHandlers := clustermap.NewHandlers(&cfg, cmapService.MasterAPI(), clustermapStore)
-	// membershipHandlers := membership.NewHandlers(&cfg, cmapService, membershipStore)
+	clusterService := cluster.NewService(&cfg, cmapService.MasterAPI(), clusterStore)
 	objectHandlers := object.NewHandlers(objectStore)
 	recoveryHandlers, err := recovery.NewHandlers(&cfg, cmapService.SlaveAPI(), recoveryStore)
 	if err != nil {
@@ -91,7 +89,7 @@ func Bootstrap(cfg config.Mds) error {
 	// Setup delivery service.
 	delivery, err := delivery.SetupDeliveryService(
 		&cfg, adminHandlers, authHandlers, bucketHandlers, consensusHandlers,
-		clustermapHandlers, cmapService, objectHandlers, recoveryHandlers,
+		clusterService, cmapService, objectHandlers, recoveryHandlers,
 	)
 	if err != nil {
 		return err

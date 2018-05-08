@@ -1,4 +1,4 @@
-package clustermap
+package cluster
 
 import (
 	"github.com/chanyoung/nil/app/mds/repository"

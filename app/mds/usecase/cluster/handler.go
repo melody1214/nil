@@ -1,4 +1,4 @@
-package clustermap
+package cluster
 
 import (
 	"fmt"
@@ -15,17 +15,17 @@ import (
 
 var logger *logrus.Entry
 
-type handlers struct {
+type service struct {
 	cfg     *config.Mds
 	store   Repository
 	cmapAPI cmap.MasterAPI
 }
 
-// NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cfg *config.Mds, cmapAPI cmap.MasterAPI, s Repository) Handlers {
+// NewService creates a client service with necessary dependencies.
+func NewService(cfg *config.Mds, cmapAPI cmap.MasterAPI, s Repository) Service {
 	logger = mlog.GetPackageLogger("app/mds/usecase/cmapmap")
 
-	return &handlers{
+	return &service{
 		cfg:     cfg,
 		store:   s,
 		cmapAPI: cmapAPI,
@@ -33,14 +33,14 @@ func NewHandlers(cfg *config.Mds, cmapAPI cmap.MasterAPI, s Repository) Handlers
 }
 
 // GetClusterMap returns a current local cmap.
-func (h *handlers) GetClusterMap(req *nilrpc.MCLGetClusterMapRequest, res *nilrpc.MCLGetClusterMapResponse) error {
-	res.ClusterMap = h.cmapAPI.GetLatestCMap()
+func (s *service) GetClusterMap(req *nilrpc.MCLGetClusterMapRequest, res *nilrpc.MCLGetClusterMapResponse) error {
+	res.ClusterMap = s.cmapAPI.GetLatestCMap()
 	return nil
 }
 
 // GetUpdateNoti returns when the cmap is updated or timeout.
-func (h *handlers) GetUpdateNoti(req *nilrpc.MCLGetUpdateNotiRequest, res *nilrpc.MCLGetUpdateNotiResponse) error {
-	notiC := h.cmapAPI.GetUpdatedNoti(cmap.Version(req.Version))
+func (s *service) GetUpdateNoti(req *nilrpc.MCLGetUpdateNotiRequest, res *nilrpc.MCLGetUpdateNotiResponse) error {
+	notiC := s.cmapAPI.GetUpdatedNoti(cmap.Version(req.Version))
 
 	timeout := time.After(10 * time.Minute)
 	for {
@@ -53,45 +53,45 @@ func (h *handlers) GetUpdateNoti(req *nilrpc.MCLGetUpdateNotiRequest, res *nilrp
 	}
 }
 
-func (h *handlers) UpdateClusterMap(req *nilrpc.MCLUpdateClusterMapRequest, res *nilrpc.MCLUpdateClusterMapResponse) error {
-	txid, err := h.store.Begin()
+func (s *service) UpdateClusterMap(req *nilrpc.MCLUpdateClusterMapRequest, res *nilrpc.MCLUpdateClusterMapResponse) error {
+	txid, err := s.store.Begin()
 	if err != nil {
 		return errors.Wrap(err, "failed to start transaction")
 	}
 
-	if err = h.updateClusterMap(txid); err != nil {
-		h.store.Rollback(txid)
+	if err = s.updateClusterMap(txid); err != nil {
+		s.store.Rollback(txid)
 		return err
 	}
-	if err = h.store.Commit(txid); err != nil {
-		h.store.Rollback(txid)
+	if err = s.store.Commit(txid); err != nil {
+		s.store.Rollback(txid)
 		return err
 	}
 
-	h.rebalance()
+	s.rebalance()
 	return nil
 }
 
 // Join handles the join request from the other nodes.
-func (h *handlers) Join(req *nilrpc.MCLJoinRequest, res *nilrpc.MCLJoinResponse) error {
-	if h.canJoin(req.Node) == false {
+func (s *service) Join(req *nilrpc.MCLJoinRequest, res *nilrpc.MCLJoinResponse) error {
+	if s.canJoin(req.Node) == false {
 		return fmt.Errorf("can't join into the cmap")
 	}
 
-	if err := h.store.JoinNewNode(req.Node); err != nil {
+	if err := s.store.JoinNewNode(req.Node); err != nil {
 		return errors.Wrap(err, "failed to add new node into the database")
 	}
 
-	return h.UpdateClusterMap(nil, nil)
+	return s.UpdateClusterMap(nil, nil)
 }
 
-func (h *handlers) canJoin(node cmap.Node) bool {
+func (s *service) canJoin(node cmap.Node) bool {
 	// TODO: fill the checking rule.
 	return true
 }
 
-func (h *handlers) rebalance() error {
-	conn, err := nilrpc.Dial(h.cfg.ServerAddr+":"+h.cfg.ServerPort, nilrpc.RPCNil, time.Duration(2*time.Second))
+func (s *service) rebalance() error {
+	conn, err := nilrpc.Dial(s.cfg.ServerAddr+":"+s.cfg.ServerPort, nilrpc.RPCNil, time.Duration(2*time.Second))
 	if err != nil {
 		return err
 	}
@@ -104,8 +104,8 @@ func (h *handlers) rebalance() error {
 	return cli.Call(nilrpc.MdsRecoveryRecovery.String(), req, res)
 }
 
-// Handlers is the interface that provides clustermap domain's rpc handlers.
-type Handlers interface {
+// Service is the interface that provides clustermap domain's rpc handlers.
+type Service interface {
 	GetClusterMap(req *nilrpc.MCLGetClusterMapRequest, res *nilrpc.MCLGetClusterMapResponse) error
 	GetUpdateNoti(req *nilrpc.MCLGetUpdateNotiRequest, res *nilrpc.MCLGetUpdateNotiResponse) error
 	UpdateClusterMap(req *nilrpc.MCLUpdateClusterMapRequest, res *nilrpc.MCLUpdateClusterMapResponse) error
