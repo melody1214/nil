@@ -115,7 +115,7 @@ func SetupDeliveryService(cfg *config.Ds, ah admin.Handlers, oh object.Handlers,
 	}
 	defer conn.Close()
 
-	req := &nilrpc.MCLJoinRequest{
+	req := &nilrpc.MCLLocalJoinRequest{
 		Node: cmap.Node{
 			Name: cmapConf.Name,
 			Type: cmapConf.Type,
@@ -123,10 +123,10 @@ func SetupDeliveryService(cfg *config.Ds, ah admin.Handlers, oh object.Handlers,
 			Addr: cmapConf.Address,
 		},
 	}
-	res := &nilrpc.MCLJoinResponse{}
+	res := &nilrpc.MCLLocalJoinResponse{}
 
 	cli := rpc.NewClient(conn)
-	if err := cli.Call(nilrpc.MdsClustermapJoin.String(), req, res); err != nil {
+	if err := cli.Call(nilrpc.MdsClusterLocalJoin.String(), req, res); err != nil {
 		return nil, err
 	}
 

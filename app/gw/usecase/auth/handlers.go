@@ -70,12 +70,12 @@ func (h *handlers) getSecretKeyFromRemote(accessKey string) (secretKey string, e
 	}
 	defer conn.Close()
 
-	req := &nilrpc.MAUGetCredentialRequest{AccessKey: accessKey}
-	res := &nilrpc.MAUGetCredentialResponse{}
+	req := &nilrpc.MUSGetCredentialRequest{AccessKey: accessKey}
+	res := &nilrpc.MUSGetCredentialResponse{}
 
 	// 3. Request the secret key.
 	cli := rpc.NewClient(conn)
-	if err := cli.Call(nilrpc.MdsAuthGetCredential.String(), req, res); err != nil {
+	if err := cli.Call(nilrpc.MdsUserGetCredential.String(), req, res); err != nil {
 		ctxLogger.Error(errors.Wrap(err, "failed to call mds rpc client"))
 		return "", ErrInternal
 	}

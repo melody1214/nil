@@ -182,7 +182,7 @@ func (s *clusterStore) GetNewClusterMapVer(txid repository.TxID) (cmap.Version, 
 	return cmap.Version(ver), nil
 }
 
-func (s *clusterStore) JoinNewNode(node cmap.Node) error {
+func (s *clusterStore) LocalJoin(node cmap.Node) error {
 	q := fmt.Sprintf(
 		`
 		INSERT INTO node (node_name, node_type, node_status, node_address)
@@ -192,4 +192,8 @@ func (s *clusterStore) JoinNewNode(node cmap.Node) error {
 
 	_, err := s.Execute(repository.NotTx, q)
 	return err
+}
+
+func (s *clusterStore) GlobalJoin(raftAddr, nodeID string) error {
+	return s.Store.Join(nodeID, raftAddr)
 }

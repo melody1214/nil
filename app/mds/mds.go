@@ -8,13 +8,10 @@ import (
 
 	"github.com/chanyoung/nil/app/mds/delivery"
 	"github.com/chanyoung/nil/app/mds/repository/mysql"
-	"github.com/chanyoung/nil/app/mds/usecase/admin"
-	"github.com/chanyoung/nil/app/mds/usecase/auth"
-	"github.com/chanyoung/nil/app/mds/usecase/bucket"
 	"github.com/chanyoung/nil/app/mds/usecase/cluster"
-	"github.com/chanyoung/nil/app/mds/usecase/consensus"
 	"github.com/chanyoung/nil/app/mds/usecase/object"
 	"github.com/chanyoung/nil/app/mds/usecase/recovery"
+	"github.com/chanyoung/nil/app/mds/usecase/user"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
@@ -41,20 +38,14 @@ func Bootstrap(cfg config.Mds) error {
 
 	// Setup repositories.
 	var (
-		adminStore     admin.Repository
-		authStore      auth.Repository
-		bucketStore    bucket.Repository
-		consensusStore consensus.Repository
-		clusterStore   cluster.Repository
-		objectStore    object.Repository
-		recoveryStore  recovery.Repository
+		userStore     user.Repository
+		clusterStore  cluster.Repository
+		objectStore   object.Repository
+		recoveryStore recovery.Repository
 	)
 	if useMySQL := true; useMySQL {
 		store := mysql.New(&cfg)
-		adminStore = mysql.NewAdminRepository(store)
-		authStore = mysql.NewAuthRepository(store)
-		bucketStore = mysql.NewBucketRepository(store)
-		consensusStore = mysql.NewConsensusRepository(store)
+		userStore = mysql.NewUserRepository(store)
 		clusterStore = mysql.NewClusterRepository(store)
 		objectStore = mysql.NewObjectRepository(store)
 		recoveryStore = mysql.NewRecoveryRepository(store)
@@ -75,10 +66,7 @@ func Bootstrap(cfg config.Mds) error {
 	}
 
 	// Setup usecase handlers.
-	adminHandlers := admin.NewHandlers(&cfg, adminStore)
-	authHandlers := auth.NewHandlers(authStore)
-	bucketHandlers := bucket.NewHandlers(bucketStore)
-	consensusHandlers := consensus.NewHandlers(&cfg, consensusStore)
+	userService := user.NewService(&cfg, userStore)
 	clusterService := cluster.NewService(&cfg, cmapService.MasterAPI(), clusterStore)
 	objectHandlers := object.NewHandlers(objectStore)
 	recoveryHandlers, err := recovery.NewHandlers(&cfg, cmapService.SlaveAPI(), recoveryStore)
@@ -88,7 +76,7 @@ func Bootstrap(cfg config.Mds) error {
 
 	// Setup delivery service.
 	delivery, err := delivery.SetupDeliveryService(
-		&cfg, adminHandlers, authHandlers, bucketHandlers, consensusHandlers,
+		&cfg, userService,
 		clusterService, cmapService, objectHandlers, recoveryHandlers,
 	)
 	if err != nil {

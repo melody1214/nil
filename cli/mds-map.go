@@ -35,7 +35,7 @@ func mdsMapRun(cmd *cobra.Command, args []string) {
 	res := &nilrpc.MCLGetClusterMapResponse{}
 
 	cli := rpc.NewClient(conn)
-	if err := cli.Call(nilrpc.MdsClustermapGetClusterMap.String(), req, res); err != nil {
+	if err := cli.Call(nilrpc.MdsClusterGetClusterMap.String(), req, res); err != nil {
 		log.Fatal(err)
 	}
 

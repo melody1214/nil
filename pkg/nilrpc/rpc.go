@@ -10,13 +10,10 @@ import (
 
 // Prefixes for domains.
 const (
-	MdsAdminPrefix      = "MDS_ADMIN"
-	MdsAuthPrefix       = "MDS_AUTH"
-	MdsBucketPrefix     = "MDS_BUCKET"
-	MdsClusterPrefix    = "MDS_CLUSTER"
-	MdsMembershipPrefix = "MDS_MEMBERSHIP"
-	MdsObjectPrefix     = "MDS_OBJECT"
-	MdsRecoveryPrefix   = "MDS_RECOVERY"
+	MdsUserPrefix     = "MDS_USER"
+	MdsClusterPrefix  = "MDS_CLUSTER"
+	MdsObjectPrefix   = "MDS_OBJECT"
+	MdsRecoveryPrefix = "MDS_RECOVERY"
 
 	DSRPCPrefix = "DS"
 )
@@ -25,25 +22,18 @@ const (
 type MethodName int
 
 const (
-	// MDS admin domain methods.
-	MdsAdminJoin MethodName = iota
-	MdsAdminAddUser
-	MdsAdminRegisterVolume
-
-	// MDS auth domain methods.
-	MdsAuthGetCredential
-
-	// MDS bucket domain methods.
-	MdsBucketMakeBucket
+	// MDS user domain methods.
+	MdsUserAddUser MethodName = iota
+	MdsUserMakeBucket
+	MdsUserGetCredential
 
 	// MDS clustermap domain methods.
-	MdsClustermapGetClusterMap
-	MdsClustermapGetUpdateNoti
-	MdsClustermapUpdateClusterMap
-	MdsClustermapJoin
-
-	// MDS membership domain methods.
-	MdsMembershipGetMembershipList
+	MdsClusterGetClusterMap
+	MdsClusterGetUpdateNoti
+	MdsClusterUpdateClusterMap
+	MdsClusterLocalJoin
+	MdsClusterGlobalJoin
+	MdsClusterRegisterVolume
 
 	// MDS object domain methods.
 	MdsObjectPut
@@ -58,30 +48,25 @@ const (
 
 func (m MethodName) String() string {
 	switch m {
-	case MdsAdminJoin:
-		return MdsAdminPrefix + "." + "Join"
-	case MdsAdminAddUser:
-		return MdsAdminPrefix + "." + "AddUser"
-	case MdsAdminRegisterVolume:
-		return MdsAdminPrefix + "." + "RegisterVolume"
+	case MdsUserAddUser:
+		return MdsUserPrefix + "." + "AddUser"
+	case MdsUserMakeBucket:
+		return MdsUserPrefix + "." + "MakeBucket"
+	case MdsUserGetCredential:
+		return MdsUserPrefix + "." + "GetCredential"
 
-	case MdsAuthGetCredential:
-		return MdsAuthPrefix + "." + "GetCredential"
-
-	case MdsBucketMakeBucket:
-		return MdsBucketPrefix + "." + "MakeBucket"
-
-	case MdsClustermapGetClusterMap:
+	case MdsClusterGetClusterMap:
 		return MdsClusterPrefix + "." + "GetClusterMap"
-	case MdsClustermapGetUpdateNoti:
+	case MdsClusterGetUpdateNoti:
 		return MdsClusterPrefix + "." + "GetUpdateNoti"
-	case MdsClustermapUpdateClusterMap:
+	case MdsClusterUpdateClusterMap:
 		return MdsClusterPrefix + "." + "UpdateClusterMap"
-	case MdsClustermapJoin:
-		return MdsClusterPrefix + "." + "Join"
-
-	case MdsMembershipGetMembershipList:
-		return MdsMembershipPrefix + "." + "GetMembershipList"
+	case MdsClusterLocalJoin:
+		return MdsClusterPrefix + "." + "LocalJoin"
+	case MdsClusterGlobalJoin:
+		return MdsClusterPrefix + "." + "GlobalJoin"
+	case MdsClusterRegisterVolume:
+		return MdsClusterPrefix + "." + "RegisterVolume"
 
 	case MdsObjectPut:
 		return MdsObjectPrefix + "." + "Put"
@@ -109,6 +94,7 @@ const (
 	// RPCSwim used when swim membership connection.
 	RPCSwim = 0x03
 )
+
 // Dial dials with the given rpc type connection to the address.
 func Dial(addr string, rpcType RPCType, timeout time.Duration) (net.Conn, error) {
 	dialer := &net.Dialer{Timeout: timeout}

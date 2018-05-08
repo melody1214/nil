@@ -15,7 +15,7 @@ import (
 var logger *logrus.Entry
 
 type handlers struct {
-	worker *worker
+	worker *recoveryWorker
 }
 
 // NewHandlers creates a client handlers with necessary dependencies.

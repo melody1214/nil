@@ -1,25 +1,26 @@
 package mysql
 
 import (
+	"database/sql"
 	"fmt"
 
 	"github.com/chanyoung/nil/app/mds/repository"
-	"github.com/chanyoung/nil/app/mds/usecase/bucket"
+	"github.com/chanyoung/nil/app/mds/usecase/user"
 	"github.com/go-sql-driver/mysql"
 )
 
-type bucketStore struct {
+type userStore struct {
 	*Store
 }
 
-// NewBucketRepository returns a new instance of a mysql bucket repository.
-func NewBucketRepository(s *Store) bucket.Repository {
-	return &bucketStore{
+// NewUserRepository returns a new instance of a mysql user repository.
+func NewUserRepository(s *Store) user.Repository {
+	return &userStore{
 		Store: s,
 	}
 }
 
-func (s *bucketStore) MakeBucket(bucketName, accessKey, region string) (err error) {
+func (s *userStore) MakeBucket(bucketName, accessKey, region string) (err error) {
 	q := fmt.Sprintf(
 		`
 		INSERT INTO bucket (bk_name, bk_user, bk_region)
@@ -48,4 +49,23 @@ func (s *bucketStore) MakeBucket(bucketName, accessKey, region string) (err erro
 	default:
 		return err
 	}
+}
+
+func (s *userStore) FindSecretKey(accessKey string) (secretKey string, err error) {
+	q := fmt.Sprintf(
+		`
+		SELECT
+			user_secret_key
+		FROM
+			user
+		WHERE
+			user_access_key = '%s'
+		`, accessKey,
+	)
+
+	err = s.QueryRow(repository.NotTx, q).Scan(&secretKey)
+	if err == sql.ErrNoRows {
+		err = repository.ErrNotExist
+	}
+	return
 }

@@ -7,8 +7,6 @@ import (
 	"time"
 
 	"github.com/chanyoung/nil/app/mds/repository"
-	"github.com/chanyoung/nil/app/mds/usecase/consensus"
-	"github.com/chanyoung/nil/app/mds/usecase/membership"
 	"github.com/chanyoung/nil/app/mds/usecase/object"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -180,16 +178,6 @@ func (s *Store) Rollback(txid repository.TxID) error {
 // Auto remove the transaction only when the transaction has been succeeded.
 func (s *Store) Commit(txid repository.TxID) error {
 	return s.db.commit(txid)
-}
-
-// NewConsensusRepository returns a new instance of a mysql cluster map repository.
-func NewConsensusRepository(s *Store) consensus.Repository {
-	return s
-}
-
-// NewMembershipRepository returns a new instance of a mysql membership repository.
-func NewMembershipRepository(s *Store) membership.Repository {
-	return s
 }
 
 // NewObjectRepository returns a new instance of a mysql object repository.

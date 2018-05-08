@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (w *worker) needRebalance(vols []*Volume) bool {
+func (w *recoveryWorker) needRebalance(vols []*Volume) bool {
 	for _, v := range vols {
 		if v.isUnbalanced() {
 			return true
@@ -33,7 +33,7 @@ func isVolumeUnbalanced(chain, maxChain int) bool {
 	return (chain*100)/maxChain < 70
 }
 
-func (w *worker) rebalanceWithinSameVolumeSpeedGroup(vols []*Volume) error {
+func (w *recoveryWorker) rebalanceWithinSameVolumeSpeedGroup(vols []*Volume) error {
 	ctxLogger := mlog.GetMethodLogger(logger, "worker.rebalance")
 
 	rebalanced := false
@@ -62,7 +62,7 @@ func (w *worker) rebalanceWithinSameVolumeSpeedGroup(vols []*Volume) error {
 	return nil
 }
 
-func (w *worker) rebalanceVolumeGroup(vols []*Volume) error {
+func (w *recoveryWorker) rebalanceVolumeGroup(vols []*Volume) error {
 	doRebalance := false
 	for _, v := range vols {
 		if v.isUnbalanced() == false {
@@ -82,7 +82,7 @@ func (w *worker) rebalanceVolumeGroup(vols []*Volume) error {
 	return nil
 }
 
-func (w *worker) doRebalance(target *Volume, group []*Volume) error {
+func (w *recoveryWorker) doRebalance(target *Volume, group []*Volume) error {
 	perm := rand.Perm(len(group))
 	shuffledGroup := make([]*Volume, len(group))
 	for i, v := range perm {
@@ -103,7 +103,7 @@ func (w *worker) doRebalance(target *Volume, group []*Volume) error {
 	return w.newEncodingGroup(target, shuffledGroup, shards)
 }
 
-func (w *worker) pickOneNewEncodingGroupVolume(picked []*Volume, candidates []*Volume) (*Volume, error) {
+func (w *recoveryWorker) pickOneNewEncodingGroupVolume(picked []*Volume, candidates []*Volume) (*Volume, error) {
 	if cap(picked) == len(picked) {
 		return nil, fmt.Errorf("selected encoding group is full")
 	}
@@ -136,7 +136,7 @@ func isPicked(target *Volume, picked []*Volume) bool {
 	return false
 }
 
-func (w *worker) newEncodingGroup(primary *Volume, vols []*Volume, shards int) error {
+func (w *recoveryWorker) newEncodingGroup(primary *Volume, vols []*Volume, shards int) error {
 	ctxLogger := mlog.GetMethodLogger(logger, "worker.newEncodingGroup")
 
 	// Pick volumes from candidates.
@@ -152,15 +152,9 @@ func (w *worker) newEncodingGroup(primary *Volume, vols []*Volume, shards int) e
 	}
 
 	// Make encoding group.
-	eg := EncodingGroup{
-		EncodingGroup: cmap.EncodingGroup{
-			Stat: cmap.EGAlive,
-			Vols: make([]cmap.ID, shards+1),
-		},
-		parityVol: picked[0].ID,
-		firstVol:  picked[1].ID,
-		secondVol: picked[2].ID,
-		thirdVol:  picked[3].ID,
+	eg := cmap.EncodingGroup{
+		Stat: cmap.EGAlive,
+		Vols: make([]cmap.ID, shards+1),
 	}
 	for i, p := range picked {
 		eg.Vols[i] = p.ID

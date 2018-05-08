@@ -5,6 +5,7 @@ import (
 
 	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/app/mds/usecase/recovery"
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/pkg/errors"
 )
 
@@ -54,7 +55,7 @@ func (s *recoveryStore) FindAllVolumes(txid repository.TxID) ([]*recovery.Volume
 	return vols, nil
 }
 
-func (s recoveryStore) MakeNewEncodingGroup(txid repository.TxID, encGrp *recovery.EncodingGroup) error {
+func (s recoveryStore) MakeNewEncodingGroup(txid repository.TxID, encGrp *cmap.EncodingGroup) error {
 	// Make new encoding group.
 	q := fmt.Sprintf(
 		`

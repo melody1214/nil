@@ -30,11 +30,38 @@ type MCLUpdateClusterMapRequest struct{}
 // MCLUpdateClusterMapResponse includes the result of update cluster map.
 type MCLUpdateClusterMapResponse struct{}
 
-// MCLJoinRequest requests to join the local IDC cluster.
-type MCLJoinRequest struct {
+// MCLLocalJoinRequest requests to join the local IDC cluster.
+type MCLLocalJoinRequest struct {
 	Node cmap.Node
 }
 
-// MCLJoinResponse reponse the result of join request.
-type MCLJoinResponse struct {
+// MCLLocalJoinResponse reponse the result of join request.
+type MCLLocalJoinResponse struct {
+}
+
+// MCLGlobalJoinRequest includes an information for joining a new node into the raft clsuter.
+// RaftAddr: address of the requested node.
+// NodeID: ID of the requested node.
+type MCLGlobalJoinRequest struct {
+	RaftAddr string
+	NodeID   string
+}
+
+// MCLGlobalJoinResponse is a NilRPC response message to join an existing cluster.
+type MCLGlobalJoinResponse struct{}
+
+// MCLRegisterVolumeRequest contains a new volume information.
+type MCLRegisterVolumeRequest struct {
+	ID     string
+	Ds     string
+	Size   uint64
+	Free   uint64
+	Used   uint64
+	Speed  string
+	Status string
+}
+
+// MCLRegisterVolumeResponse contains a registered volume id and the results.
+type MCLRegisterVolumeResponse struct {
+	ID string
 }

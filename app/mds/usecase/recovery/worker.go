@@ -13,9 +13,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-// worker works for recovering all kinds of failure in the cluster.
+// recoveryWorker works for recovering all kinds of failure in the cluster.
 // worker struct has all required references and channels for handling its job.
-type worker struct {
+type recoveryWorker struct {
 	cfg           *config.Mds
 	store         Repository
 	cmapAPI       cmap.SlaveAPI
@@ -30,12 +30,12 @@ type worker struct {
 
 // newWorker returns a new worker.
 // Note: recovery domain must have only one working worker.
-func newWorker(cfg *config.Mds, cmapAPI cmap.SlaveAPI, store Repository) (*worker, error) {
+func newWorker(cfg *config.Mds, cmapAPI cmap.SlaveAPI, store Repository) (*recoveryWorker, error) {
 	if cfg == nil || cmapAPI == nil || store == nil {
 		return nil, fmt.Errorf("invalid arguments")
 	}
 
-	return &worker{
+	return &recoveryWorker{
 		cfg:           cfg,
 		cmapAPI:       cmapAPI,
 		store:         store,
@@ -58,7 +58,7 @@ type fsm func() (next fsm)
 
 // run is the engine of dispatched worker.
 // Manage the state transitioning until meet the state nil.
-func (w *worker) run() {
+func (w *recoveryWorker) run() {
 	startState := w.init
 	for state := startState; state != nil; {
 		state = state()
@@ -67,7 +67,7 @@ func (w *worker) run() {
 
 // init is the state for initiating the recovery worker.
 // Checks if another worker is already running.
-func (w *worker) init() fsm {
+func (w *recoveryWorker) init() fsm {
 	// Do not go to the workerStop state.
 	// workerStop is a cleanup state for worked worker.
 	if w.canRun() == false {
@@ -79,12 +79,12 @@ func (w *worker) init() fsm {
 
 // canRun swap stopped variable to running state(1) atomically.
 // If worker is already running, then return false.
-func (w *worker) canRun() bool {
+func (w *recoveryWorker) canRun() bool {
 	return atomic.SwapUint32(&w.stopped, uint32(0)) == 1
 }
 
 // listen is the state for listening notifications from the outside.
-func (w *worker) listen() fsm {
+func (w *recoveryWorker) listen() fsm {
 	select {
 	case <-w.recoveryCh:
 		return w.recover
@@ -96,7 +96,7 @@ func (w *worker) listen() fsm {
 }
 
 // recover is the state for recovering the failure.
-func (w *worker) recover() fsm {
+func (w *recoveryWorker) recover() fsm {
 	// ctxLogger := mlog.GetMethodLogger(logger, "worker.recover")
 
 	// // Updates membership.
@@ -110,24 +110,24 @@ func (w *worker) recover() fsm {
 	return w.listen
 }
 
-func (w *worker) checkRunningRecoveryJobs() fsm {
+func (w *recoveryWorker) checkRunningRecoveryJobs() fsm {
 	if len(w.recoveryJobs) == 0 {
 		return w.makeRecoveryJobs
 	}
 	return w.fixAffectedRecoveryJobs
 }
 
-func (w *worker) fixAffectedRecoveryJobs() fsm {
+func (w *recoveryWorker) fixAffectedRecoveryJobs() fsm {
 	// TODO: implement.
 	return w.makeRecoveryJobs
 }
 
-func (w *worker) makeRecoveryJobs() fsm {
+func (w *recoveryWorker) makeRecoveryJobs() fsm {
 	// TODO: implement.
 	return w.checkPendingRecoveryCh
 }
 
-func (w *worker) checkPendingRecoveryCh() fsm {
+func (w *recoveryWorker) checkPendingRecoveryCh() fsm {
 	select {
 	case <-w.recoveryCh:
 		return w.checkRunningRecoveryJobs
@@ -136,13 +136,13 @@ func (w *worker) checkPendingRecoveryCh() fsm {
 	}
 }
 
-func (w *worker) dispatchRecoveryJobs() fsm {
+func (w *recoveryWorker) dispatchRecoveryJobs() fsm {
 	// TODO: implement.
 	return w.listen
 }
 
 // rebalance is the state for rebalancing the cluster.
-func (w *worker) rebalance() fsm {
+func (w *recoveryWorker) rebalance() fsm {
 	ctxLogger := mlog.GetMethodLogger(logger, "worker.rebalance")
 
 	vols, err := w.store.FindAllVolumes(repository.NotTx)
@@ -170,24 +170,24 @@ func (w *worker) rebalance() fsm {
 	return w.listen
 }
 
-func (w *worker) checkRunningRebalanceJobs() fsm {
+func (w *recoveryWorker) checkRunningRebalanceJobs() fsm {
 	if len(w.rebalanceJobs) == 0 {
 		return w.makeRebalanceJobs
 	}
 	return w.cancelAffectedRebalanceJobs
 }
 
-func (w *worker) cancelAffectedRebalanceJobs() fsm {
+func (w *recoveryWorker) cancelAffectedRebalanceJobs() fsm {
 	// TODO: implement.
 	return w.makeRebalanceJobs
 }
 
-func (w *worker) makeRebalanceJobs() fsm {
+func (w *recoveryWorker) makeRebalanceJobs() fsm {
 	// TODO: implement.
 	return w.checkPendingRebalanceCh
 }
 
-func (w *worker) checkPendingRebalanceCh() fsm {
+func (w *recoveryWorker) checkPendingRebalanceCh() fsm {
 	select {
 	case <-w.rebalanceCh:
 		return w.checkRunningRebalanceJobs
@@ -196,13 +196,13 @@ func (w *worker) checkPendingRebalanceCh() fsm {
 	}
 }
 
-func (w *worker) dispatchRebalanceJobs() fsm {
+func (w *recoveryWorker) dispatchRebalanceJobs() fsm {
 	// TODO: implement.
 	return w.listen
 }
 
 // stop is the state for cleanup and stop the worker.
-func (w *worker) stop() fsm {
+func (w *recoveryWorker) stop() fsm {
 	atomic.SwapUint32(&w.stopped, uint32(1))
 	return nil
 }

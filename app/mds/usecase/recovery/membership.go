@@ -107,7 +107,7 @@ import (
 // 	}
 // }
 
-func (w *worker) updateClusterMap() error {
+func (w *recoveryWorker) updateClusterMap() error {
 	conn, err := nilrpc.Dial(w.cfg.ServerAddr+":"+w.cfg.ServerPort, nilrpc.RPCNil, time.Duration(2*time.Second))
 	if err != nil {
 		log.Fatal(err)
@@ -120,5 +120,5 @@ func (w *worker) updateClusterMap() error {
 	cli := rpc.NewClient(conn)
 	defer cli.Close()
 
-	return cli.Call(nilrpc.MdsClustermapUpdateClusterMap.String(), req, res)
+	return cli.Call(nilrpc.MdsClusterUpdateClusterMap.String(), req, res)
 }

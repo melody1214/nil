@@ -83,7 +83,7 @@ func isUpdated(mdsAddr cmap.NodeAddress, ver cmap.Version) bool {
 	res := &nilrpc.MCLGetUpdateNotiResponse{}
 
 	cli := rpc.NewClient(conn)
-	if err := cli.Call(nilrpc.MdsClustermapGetUpdateNoti.String(), req, res); err != nil {
+	if err := cli.Call(nilrpc.MdsClusterGetUpdateNoti.String(), req, res); err != nil {
 		ctxLogger.Error(errors.Wrap(err, "failed to talk with mds"))
 		return false
 	}
@@ -117,7 +117,7 @@ func getLatestMapFromMDS(mdsAddr string) (*cmap.CMap, error) {
 	res := &nilrpc.MCLGetClusterMapResponse{}
 
 	cli := rpc.NewClient(conn)
-	if err := cli.Call(nilrpc.MdsClustermapGetClusterMap.String(), req, res); err != nil {
+	if err := cli.Call(nilrpc.MdsClusterGetClusterMap.String(), req, res); err != nil {
 		return nil, err
 	}
 
