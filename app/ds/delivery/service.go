@@ -30,7 +30,7 @@ type Service struct {
 	httpHandler http.Handler
 	httpSrv     *http.Server
 
-	adminSrv *rpc.Server
+	rpcSrv *rpc.Server
 
 	cls cluster.Service
 	obh object.Handlers
@@ -80,9 +80,9 @@ func SetupDeliveryService(cfg *config.Ds, cls cluster.Service, obh object.Handle
 		ErrorLog:       log.New(logger.Writer(), "http server", log.Lshortfile),
 	}
 
-	// Create admin server.
-	s.adminSrv = rpc.NewServer()
-	if err := s.adminSrv.RegisterName(nilrpc.DSRPCPrefix, s.cls); err != nil {
+	// Create rpc server.
+	s.rpcSrv = rpc.NewServer()
+	if err := s.rpcSrv.RegisterName(nilrpc.DsClusterPrefix, s.cls); err != nil {
 		return nil, err
 	}
 
@@ -135,7 +135,7 @@ func (s *Service) run() {
 	ctxLogger.Info("Start gateway delivery service ...")
 
 	go s.nilMux.ListenAndServeTLS()
-	go s.serveAdmin()
+	go s.serveRPC()
 	go s.httpSrv.Serve(s.httpL)
 }
 
@@ -153,7 +153,7 @@ func (s *Service) Stop() error {
 	return s.httpSrv.Close()
 }
 
-func (s *Service) serveAdmin() {
+func (s *Service) serveRPC() {
 	ctxLogger := mlog.GetMethodLogger(logger, "Service.serveAdmin")
 
 	for {
@@ -162,6 +162,6 @@ func (s *Service) serveAdmin() {
 			ctxLogger.Error(errors.Wrap(err, "accept connection from admin layer failed"))
 			return
 		}
-		go s.adminSrv.ServeConn(conn)
+		go s.rpcSrv.ServeConn(conn)
 	}
 }

@@ -68,11 +68,11 @@ type SlaveAPI interface {
 	SearchCallNode() *SearchCallNode
 	SearchCallVolume() *SearchCallVolume
 	SearchCallEncGrp() *SearchCallEncGrp
-	GetLatestCMapVersion() Version
 	UpdateNodeStatus(nID ID, stat NodeStatus) error
 	UpdateVolume(volume Volume) error
 	UpdateEncodingGroupStatus(egID ID, stat EncodingGroupStatus) error
 	UpdateEncodingGroupUsed(egID ID, used uint64) error
+	GetLatestCMapVersion() Version
 	GetUpdatedNoti(ver Version) <-chan interface{}
 }
 
@@ -89,6 +89,7 @@ type MasterAPI interface {
 	GetLatestCMap() CMap
 	UpdateCMap(cmap *CMap) error
 	GetStateChangedNoti() <-chan interface{}
+	GetLatestCMapVersion() Version
 	GetUpdatedNoti(ver Version) <-chan interface{}
 }
 

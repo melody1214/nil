@@ -35,7 +35,7 @@ func NewService(cfg *config.Ds, cmapAPI cmap.SlaveAPI, s Repository) Service {
 }
 
 // AddVolume adds a new volume with the given device path.
-func (s *service) AddVolume(req *nilrpc.DADAddVolumeRequest, res *nilrpc.DADAddVolumeResponse) error {
+func (s *service) AddVolume(req *nilrpc.DCLAddVolumeRequest, res *nilrpc.DCLAddVolumeResponse) error {
 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.AddVolume")
 
 	lv, err := repository.NewVol(req.DevicePath)
@@ -123,5 +123,5 @@ func (s *service) AddVolume(req *nilrpc.DADAddVolumeRequest, res *nilrpc.DADAddV
 
 // Service is the interface that provides rpc handlers.
 type Service interface {
-	AddVolume(req *nilrpc.DADAddVolumeRequest, res *nilrpc.DADAddVolumeResponse) error
+	AddVolume(req *nilrpc.DCLAddVolumeRequest, res *nilrpc.DCLAddVolumeResponse) error
 }

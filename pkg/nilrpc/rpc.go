@@ -15,7 +15,7 @@ const (
 	MdsObjectPrefix   = "MDS_OBJECT"
 	MdsRecoveryPrefix = "MDS_RECOVERY"
 
-	DSRPCPrefix = "DS"
+	DsClusterPrefix = "DS_CLUSTER"
 )
 
 // MethodName indicates what procedure will be called.
@@ -27,7 +27,7 @@ const (
 	MdsUserMakeBucket
 	MdsUserGetCredential
 
-	// MDS clustermap domain methods.
+	// MDS cluster domain methods.
 	MdsClusterGetClusterMap
 	MdsClusterGetUpdateNoti
 	MdsClusterUpdateClusterMap
@@ -42,8 +42,8 @@ const (
 	// MDS recovery domain methods
 	MdsRecoveryRecovery
 
-	// DS methods.
-	AddVolume
+	// DS cluster domain methods.
+	DsClusterAddVolume
 )
 
 func (m MethodName) String() string {
@@ -76,8 +76,8 @@ func (m MethodName) String() string {
 	case MdsRecoveryRecovery:
 		return MdsRecoveryPrefix + "." + "Recovery"
 
-	case AddVolume:
-		return DSRPCPrefix + "." + "AddVolume"
+	case DsClusterAddVolume:
+		return DsClusterPrefix + "." + "AddVolume"
 	default:
 		return "unknown"
 	}

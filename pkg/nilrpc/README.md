@@ -6,14 +6,11 @@ This is a list of domain handlers and method prefixes.
 
 | Domain         | Method prefix  | Acronym | Description                                                                 |
 | -------------- | -------------- | ------- | --------------------------------------------------------------------------- |
-| MDS admin      | MDS_ADMIN      | MAD     | The mds admin handler is the collection of routines for handling admin related requests. |
-| MDS auth       | MDS_AUTH       | MAU     | The mds auth handler is the collection of routines for handling authentication related requests. |
-| MDS bucket     | MDS_BUCKET     | MBU     | The mds bucket handler is the collection of routines for handling bucket related requests. |
-| MDS clustermap | MDS_CLUSTERMAP | MCL     | The mds clustermap handler is the collection of routines for handling cluster map related requests. |
-| MDS membership | MDS_MEMBERSHIP | MME     | The mds membership handler is the collection of routines for handling membership related reqeusts. |
+| MDS cluster    | MDS_CLUSTER    | MCL     | The mds cluster handler is the collection of routines for handling cluster management related requests. |
+| MDS user       | MDS_USER       | MUE     | The mds user handler is the collection of routines for handling user related requests. |
 | MDS object     | MDS_OBJECT     | MOB     | The mds object handler is the collection of routines for handling object related requests. |
-| MDS recovery   | MDS_RECOVERY   | MRE     | The mds recovery handler is the collection of routines for handling recovery related requests. |
-| DS             | DS             | D       | The ds handler is the collection of routines for handling ds requests. |
+| MDS encoding   | MDS_ENCODING   | MEN     | The mds encoding handler is the collection of routines for handling global encoding requests. |
+| DS cluster     | DS_CLUSTER     | DCL     | The ds cluster handler is the collection of routines for handling cluster management related requests. |
 
 ## Methods
 
@@ -24,9 +21,9 @@ Use predefined method prefixes and write clear verb and noun by camel case style
 ### Examples 
 
 * Get cluster map from the MDS
-  * MDS_CLUSTERMAP.GetClusterMap
+  * MDS_CLUSTER.GetClusterMap
 * Do rebalance from the MDS
-  * MDS_RECOVERY.DoRebalance
+  * MDS_CLUSTER.DoRebalance
 
 ## Requests
 
@@ -38,5 +35,5 @@ Use predefined acronym of method prefixes and write clear verb and noun by camel
 
 * MCLGetClusterMapRequest
 * MCLGetClusterMapResponse
-* MREDoRebalanceRequest
-* MREDoRebalanceResponse
+* DCLAddVolumeRequest
+* DCLAddVolumeResponse
