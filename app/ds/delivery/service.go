@@ -7,7 +7,7 @@ import (
 	"net/rpc"
 	"time"
 
-	"github.com/chanyoung/nil/app/ds/usecase/admin"
+	"github.com/chanyoung/nil/app/ds/usecase/cluster"
 	"github.com/chanyoung/nil/app/ds/usecase/object"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilmux"
@@ -23,30 +23,31 @@ var logger *logrus.Entry
 type Service struct {
 	nilMux *nilmux.NilMux
 
-	adminL      *nilmux.Layer
-	objectL     *nilmux.Layer
+	rpcL        *nilmux.Layer
+	httpL       *nilmux.Layer
 	membershipL *nilmux.Layer
 
 	httpHandler http.Handler
 	httpSrv     *http.Server
 
-	adminSrv      *rpc.Server
-	adminHandlers admin.Handlers
+	adminSrv *rpc.Server
 
-	cs *cmap.Service
-	// membershipHandler membership.Handlers
+	cls cluster.Service
+	obh object.Handlers
+	cms *cmap.Service
 }
 
 // SetupDeliveryService creates a delivery service with necessary dependencies.
-func SetupDeliveryService(cfg *config.Ds, ah admin.Handlers, oh object.Handlers, cs *cmap.Service) (*Service, error) {
+func SetupDeliveryService(cfg *config.Ds, cls cluster.Service, obh object.Handlers, cms *cmap.Service) (*Service, error) {
 	if cfg == nil {
 		return nil, errors.New("invalid nil arguments")
 	}
 	logger = mlog.GetPackageLogger("app/ds/delivery")
 
 	s := &Service{
-		adminHandlers: ah,
-		cs:            cs,
+		cls: cls,
+		obh: obh,
+		cms: cms,
 	}
 
 	// Resolve gateway address.
@@ -57,18 +58,18 @@ func SetupDeliveryService(cfg *config.Ds, ah admin.Handlers, oh object.Handlers,
 	}
 
 	// Create transport layers.
-	s.adminL = nilmux.NewLayer(adminTypeBytes(), rAddr, false)
-	s.objectL = nilmux.NewLayer(objectTypeBytes(), rAddr, true)
+	s.rpcL = nilmux.NewLayer(rpcTypeBytes(), rAddr, false)
+	s.httpL = nilmux.NewLayer(httpTypeBytes(), rAddr, true)
 	s.membershipL = nilmux.NewLayer(membershipTypeBytes(), rAddr, false)
 
 	// Create a mux and register layers.
 	s.nilMux = nilmux.NewNilMux(addr, &cfg.Security)
-	s.nilMux.RegisterLayer(s.adminL)
-	s.nilMux.RegisterLayer(s.objectL)
+	s.nilMux.RegisterLayer(s.rpcL)
+	s.nilMux.RegisterLayer(s.httpL)
 	s.nilMux.RegisterLayer(s.membershipL)
 
 	// Create a http handler.
-	s.httpHandler = makeHandler(oh)
+	s.httpHandler = makeHandler(obh)
 
 	// Create http server.
 	s.httpSrv = &http.Server{
@@ -79,14 +80,9 @@ func SetupDeliveryService(cfg *config.Ds, ah admin.Handlers, oh object.Handlers,
 		ErrorLog:       log.New(logger.Writer(), "http server", log.Lshortfile),
 	}
 
-	// // Create swim server.
-	// if err := mh.Create(membershipL); err != nil {
-	// 	return nil, err
-	// }
-
 	// Create admin server.
 	s.adminSrv = rpc.NewServer()
-	if err := s.adminSrv.RegisterName(nilrpc.DSRPCPrefix, s.adminHandlers); err != nil {
+	if err := s.adminSrv.RegisterName(nilrpc.DSRPCPrefix, s.cls); err != nil {
 		return nil, err
 	}
 
@@ -105,7 +101,7 @@ func SetupDeliveryService(cfg *config.Ds, ah admin.Handlers, oh object.Handlers,
 		cmapConf.PingExpire = t
 	}
 	cmapConf.Type = cmap.DS
-	if err := s.cs.StartMembershipServer(*cmapConf, nilmux.NewSwimTransportLayer(s.membershipL)); err != nil {
+	if err := s.cms.StartMembershipServer(*cmapConf, nilmux.NewSwimTransportLayer(s.membershipL)); err != nil {
 		return nil, err
 	}
 	// Join the local cmap.
@@ -131,22 +127,6 @@ func SetupDeliveryService(cfg *config.Ds, ah admin.Handlers, oh object.Handlers,
 	}
 
 	return s, nil
-
-	// return &Service{
-	// 	nilMux: m,
-
-	// 	adminL:      adminL,
-	// 	objectL:     objectL,
-	// 	membershipL: membershipL,
-
-	// 	httpHandler: h,
-	// 	httpSrv:     hsrv,
-
-	// 	membershipHandler: mh,
-
-	// 	adminSrv:      ads,
-	// 	adminHandlers: ah,
-	// }, nil
 }
 
 // Run starts the gateway delivery service.
@@ -156,8 +136,7 @@ func (s *Service) run() {
 
 	go s.nilMux.ListenAndServeTLS()
 	go s.serveAdmin()
-	go s.httpSrv.Serve(s.objectL)
-	// go s.membershipHandler.Run(s.membershipL)
+	go s.httpSrv.Serve(s.httpL)
 }
 
 // Stop cleans up the services and shut down the server.
@@ -178,7 +157,7 @@ func (s *Service) serveAdmin() {
 	ctxLogger := mlog.GetMethodLogger(logger, "Service.serveAdmin")
 
 	for {
-		conn, err := s.adminL.Accept()
+		conn, err := s.rpcL.Accept()
 		if err != nil {
 			ctxLogger.Error(errors.Wrap(err, "accept connection from admin layer failed"))
 			return

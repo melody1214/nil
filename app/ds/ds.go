@@ -10,9 +10,8 @@ import (
 	"github.com/chanyoung/nil/app/ds/repository"
 	"github.com/chanyoung/nil/app/ds/repository/lvstore"
 	"github.com/chanyoung/nil/app/ds/repository/partstore"
-	"github.com/chanyoung/nil/app/ds/usecase/admin"
+	"github.com/chanyoung/nil/app/ds/usecase/cluster"
 	"github.com/chanyoung/nil/app/ds/usecase/object"
-	"github.com/chanyoung/nil/app/ds/usecase/recovery"
 	"github.com/chanyoung/nil/pkg/client/request"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -40,54 +39,44 @@ func Bootstrap(cfg config.Ds) error {
 
 	// Setup repository.
 	var (
-		store         repository.Service
-		adminStore    admin.Repository
-		objectStore   object.Repository
-		recoveryStore recovery.Repository
+		store        repository.Service
+		clusterStore cluster.Repository
+		objectStore  object.Repository
 	)
 	if cfg.Store == "lv" {
 		store = lvstore.NewService(cfg.WorkDir)
-		adminStore = lvstore.NewAdminRepository(store)
+		clusterStore = lvstore.NewClusterRepository(store)
 		objectStore = lvstore.NewObjectRepository(store)
-		recoveryStore = lvstore.NewRecoveryRepository(store)
 	} else if cfg.Store == "part" {
 		store = partstore.NewService(cfg.WorkDir)
-		adminStore = partstore.NewAdminRepository(store)
+		clusterStore = partstore.NewClusterRepository(store)
 		objectStore = partstore.NewObjectRepository(store)
-		recoveryStore = partstore.NewRecoveryRepository(store)
 	} else {
 		return fmt.Errorf("not supported store type: %s", cfg.Store)
 	}
-	_ = recoveryStore
 	go store.Run()
 
 	// Setup request event factory.
 	requestEventFactory := request.NewRequestEventFactory()
 
-	// Setup cmap map.
-	// cmapMap, err := cmap.NewController(cfg.Swim.CoordinatorAddr)
-	// if err != nil {
-	// 	return errors.Wrap(err, "failed to init cmap map")
-	// }
+	// Setup cluster map service.
+	// This service is maintained by cluster domain, however the all domains
+	// require this service necessarily. So create service in bootstrap code
+	// and inject the service to all domains.
 	cmapService, err := cmap.NewService(cmap.NodeAddress(cfg.Swim.CoordinatorAddr), mlog.GetPackageLogger("pkg/cmap"))
 	if err != nil {
 		return errors.Wrap(err, "failed to create cmap service")
 	}
 
 	// Setup each usecase handlers.
-	adminHandlers := admin.NewHandlers(&cfg, cmapService.SlaveAPI(), adminStore)
+	clusterService := cluster.NewService(&cfg, cmapService.SlaveAPI(), clusterStore)
 	objectHandlers, err := object.NewHandlers(&cfg, cmapService.SlaveAPI(), requestEventFactory, objectStore)
 	if err != nil {
 		return errors.Wrap(err, "failed to setup object handler")
 	}
-	// membershipHandlers := membership.NewHandlers(&cfg, cmapService)
-	// cmapmapService := cmapmap.NewService(cmapService.SlaveAPI())
-
-	// // Starts to update cmap map.
-	// cmapmapService.Run()
 
 	// Setup delivery service.
-	delivery, err := delivery.SetupDeliveryService(&cfg, adminHandlers, objectHandlers, cmapService)
+	delivery, err := delivery.SetupDeliveryService(&cfg, clusterService, objectHandlers, cmapService)
 	if err != nil {
 		return errors.Wrap(err, "failed to setup delivery")
 	}

@@ -7,9 +7,8 @@ import (
 	"time"
 
 	"github.com/chanyoung/nil/app/ds/repository"
-	"github.com/chanyoung/nil/app/ds/usecase/admin"
+	"github.com/chanyoung/nil/app/ds/usecase/cluster"
 	"github.com/chanyoung/nil/app/ds/usecase/object"
-	"github.com/chanyoung/nil/app/ds/usecase/recovery"
 )
 
 // service is the backend store service.
@@ -451,17 +450,12 @@ func (s *service) delete(r *repository.Request) {
 	return
 }
 
-// NewAdminRepository returns a new part store inteface in a view of admin domain.
-func NewAdminRepository(store repository.Service) admin.Repository {
+// NewClusterRepository returns a new part store inteface in a view of cluster domain.
+func NewClusterRepository(store repository.Service) cluster.Repository {
 	return store
 }
 
 // NewObjectRepository returns a new part store inteface in a view of object domain.
 func NewObjectRepository(store repository.Service) object.Repository {
-	return store
-}
-
-// NewRecoveryRepository returns a new part store inteface in a view of recovery domain.
-func NewRecoveryRepository(store repository.Service) recovery.Repository {
 	return store
 }

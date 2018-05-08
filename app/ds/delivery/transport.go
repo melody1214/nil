@@ -31,8 +31,8 @@ func makeHandler(oh object.Handlers) http.Handler {
 	return r
 }
 
-// objectTypeBytes returns type bytes which is used to multiplexing.
-func objectTypeBytes() []byte {
+// httpTypeBytes returns type bytes which is used to multiplexing.
+func httpTypeBytes() []byte {
 	return []byte{
 		0x44, // 'D' of DELETE
 		0x47, // 'G' of GET
@@ -40,8 +40,8 @@ func objectTypeBytes() []byte {
 	}
 }
 
-// adminTypeBytes returns rpc type bytes which is used to multiplexing.
-func adminTypeBytes() []byte {
+// rpcTypeBytes returns rpc type bytes which is used to multiplexing.
+func rpcTypeBytes() []byte {
 	return []byte{
 		0x02, // rpcNil
 	}

@@ -1,4 +1,4 @@
-package admin
+package cluster
 
 import (
 	"net/rpc"
@@ -16,25 +16,26 @@ import (
 
 var logger *logrus.Entry
 
-type handlers struct {
+// service manages the cluster map.
+type service struct {
 	cfg     *config.Ds
-	store   Repository
 	cmapAPI cmap.SlaveAPI
+	store   Repository
 }
 
-// NewHandlers creates a client handlers with necessary dependencies.
-func NewHandlers(cfg *config.Ds, cmapAPI cmap.SlaveAPI, s Repository) Handlers {
-	logger = mlog.GetPackageLogger("app/ds/usecase/admin")
+// NewService returns a new instance of a cluster map manager.
+func NewService(cfg *config.Ds, cmapAPI cmap.SlaveAPI, s Repository) Service {
+	logger = mlog.GetPackageLogger("app/ds/usecase/clustermap")
 
-	return &handlers{
+	return &service{
 		cfg:     cfg,
-		store:   s,
 		cmapAPI: cmapAPI,
+		store:   s,
 	}
 }
 
 // AddVolume adds a new volume with the given device path.
-func (h *handlers) AddVolume(req *nilrpc.DADAddVolumeRequest, res *nilrpc.DADAddVolumeResponse) error {
+func (s *service) AddVolume(req *nilrpc.DADAddVolumeRequest, res *nilrpc.DADAddVolumeResponse) error {
 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.AddVolume")
 
 	lv, err := repository.NewVol(req.DevicePath)
@@ -42,7 +43,7 @@ func (h *handlers) AddVolume(req *nilrpc.DADAddVolumeRequest, res *nilrpc.DADAdd
 		return err
 	}
 
-	mds, err := h.cmapAPI.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
+	mds, err := s.cmapAPI.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
 	if err != nil {
 		ctxLogger.Error(err)
 		return errors.Wrap(err, "failed to register volume")
@@ -55,7 +56,7 @@ func (h *handlers) AddVolume(req *nilrpc.DADAddVolumeRequest, res *nilrpc.DADAdd
 	defer conn.Close()
 
 	registerReq := &nilrpc.MCLRegisterVolumeRequest{
-		Ds:     h.cfg.ID,
+		Ds:     s.cfg.ID,
 		Size:   lv.Size,
 		Free:   lv.Free,
 		Used:   lv.Used,
@@ -71,7 +72,7 @@ func (h *handlers) AddVolume(req *nilrpc.DADAddVolumeRequest, res *nilrpc.DADAdd
 
 	lv.Name = registerRes.ID
 	lv.MntPoint = "vol-" + lv.Name
-	if chunkSize, err := strconv.ParseInt(h.cfg.ChunkSize, 10, 64); err != nil {
+	if chunkSize, err := strconv.ParseInt(s.cfg.ChunkSize, 10, 64); err != nil {
 		// Default 10MB.
 		// TODO: make default config of volume.
 		lv.ChunkSize = 10000000
@@ -80,7 +81,7 @@ func (h *handlers) AddVolume(req *nilrpc.DADAddVolumeRequest, res *nilrpc.DADAdd
 	}
 
 	// 2) Add lv to the store service.
-	if err := h.store.AddVolume(lv); err != nil {
+	if err := s.store.AddVolume(lv); err != nil {
 		// TODO: remove added volume in the mds.
 		return err
 	}
@@ -98,18 +99,18 @@ func (h *handlers) AddVolume(req *nilrpc.DADAddVolumeRequest, res *nilrpc.DADAdd
 
 	go func() {
 		for {
-			ver := h.cmapAPI.GetLatestCMapVersion()
+			ver := s.cmapAPI.GetLatestCMapVersion()
 			id, _ := strconv.ParseInt(lv.Name, 10, 64)
-			v, err := h.cmapAPI.SearchCallVolume().ID(cmap.ID(id)).Do()
+			v, err := s.cmapAPI.SearchCallVolume().ID(cmap.ID(id)).Do()
 			if err != nil {
 				ctxLogger.Error(errors.Wrap(err, "failed to search volume, wait cmap to be updated"))
-				notiC := h.cmapAPI.GetUpdatedNoti(ver)
+				notiC := s.cmapAPI.GetUpdatedNoti(ver)
 				<-notiC
 				continue
 			}
 			v.Size = lv.Size
 			v.Stat = cmap.Active
-			if err = h.cmapAPI.UpdateVolume(v); err != nil {
+			if err = s.cmapAPI.UpdateVolume(v); err != nil {
 				ctxLogger.Error(errors.Wrap(err, "failed to update volume"))
 			}
 			break
@@ -120,7 +121,7 @@ func (h *handlers) AddVolume(req *nilrpc.DADAddVolumeRequest, res *nilrpc.DADAdd
 	return nil
 }
 
-// Handlers is the interface that provides client http handlers.
-type Handlers interface {
+// Service is the interface that provides rpc handlers.
+type Service interface {
 	AddVolume(req *nilrpc.DADAddVolumeRequest, res *nilrpc.DADAddVolumeResponse) error
 }
