@@ -36,10 +36,10 @@ func dsVolumeAddRun(cmd *cobra.Command, args []string) {
 	}
 	defer conn.Close()
 
-	req := &nilrpc.AddVolumeRequest{
+	req := &nilrpc.DADAddVolumeRequest{
 		DevicePath: devPath,
 	}
-	res := &nilrpc.AddVolumeResponse{}
+	res := &nilrpc.DADAddVolumeResponse{}
 
 	cli := rpc.NewClient(conn)
 	if err := cli.Call(nilrpc.AddVolume.String(), req, res); err != nil {

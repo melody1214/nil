@@ -53,12 +53,12 @@ func join(joinAddr, raftAddr, nodeID string) error {
 	}
 	defer conn.Close()
 
-	req := &nilrpc.JoinRequest{
+	req := &nilrpc.MADJoinRequest{
 		RaftAddr: raftAddr,
 		NodeID:   nodeID,
 	}
 
-	res := &nilrpc.JoinResponse{}
+	res := &nilrpc.MADJoinResponse{}
 
 	cli := rpc.NewClient(conn)
 	return cli.Call(nilrpc.MdsAdminJoin.String(), req, res)

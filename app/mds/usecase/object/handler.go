@@ -24,7 +24,7 @@ func NewHandlers(s Repository) Handlers {
 	}
 }
 
-func (h *handlers) Put(req *nilrpc.ObjectPutRequest, res *nilrpc.ObjectPutResponse) error {
+func (h *handlers) Put(req *nilrpc.MOBObjectPutRequest, res *nilrpc.MOBObjectPutResponse) error {
 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.Put")
 
 	q := fmt.Sprintf(
@@ -57,7 +57,7 @@ func (h *handlers) Put(req *nilrpc.ObjectPutRequest, res *nilrpc.ObjectPutRespon
 	return nil
 }
 
-func (h *handlers) Get(req *nilrpc.ObjectGetRequest, res *nilrpc.ObjectGetResponse) error {
+func (h *handlers) Get(req *nilrpc.MOBObjectGetRequest, res *nilrpc.MOBObjectGetResponse) error {
 	q := fmt.Sprintf(
 		`
 		SELECT
@@ -105,6 +105,6 @@ func (h *handlers) Get(req *nilrpc.ObjectGetRequest, res *nilrpc.ObjectGetRespon
 
 // Handlers is the interface that provides object domain's rpc handlers.
 type Handlers interface {
-	Put(req *nilrpc.ObjectPutRequest, res *nilrpc.ObjectPutResponse) error
-	Get(req *nilrpc.ObjectGetRequest, res *nilrpc.ObjectGetResponse) error
+	Put(req *nilrpc.MOBObjectPutRequest, res *nilrpc.MOBObjectPutResponse) error
+	Get(req *nilrpc.MOBObjectGetRequest, res *nilrpc.MOBObjectGetResponse) error
 }

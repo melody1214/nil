@@ -34,7 +34,7 @@ func NewHandlers(cmapAPI cmap.SlaveAPI, f *request.RequestEventFactory, authHand
 	}
 }
 
-func (h *handlers) getLocalChain() (*nilrpc.GetLocalChainResponse, error) {
+func (h *handlers) getObjectLocation(oid, bucket string) (*nilrpc.MOBObjectGetResponse, error) {
 	mds, err := h.cmapAPI.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
 	if err != nil {
 		return nil, errors.Wrap(err, "find alive mds failed")
@@ -46,34 +46,11 @@ func (h *handlers) getLocalChain() (*nilrpc.GetLocalChainResponse, error) {
 	}
 	defer conn.Close()
 
-	req := &nilrpc.GetLocalChainRequest{}
-	res := &nilrpc.GetLocalChainResponse{}
-
-	cli := rpc.NewClient(conn)
-	if err := cli.Call(nilrpc.MdsAdminGetLocalChain.String(), req, res); err != nil {
-		return nil, errors.Wrap(err, "mds rpc client calling failed")
-	}
-
-	return res, nil
-}
-
-func (h *handlers) getObjectLocation(oid, bucket string) (*nilrpc.ObjectGetResponse, error) {
-	mds, err := h.cmapAPI.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
-	if err != nil {
-		return nil, errors.Wrap(err, "find alive mds failed")
-	}
-
-	conn, err := nilrpc.Dial(mds.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
-	if err != nil {
-		return nil, errors.Wrap(err, "dial to mds failed")
-	}
-	defer conn.Close()
-
-	req := &nilrpc.ObjectGetRequest{
+	req := &nilrpc.MOBObjectGetRequest{
 		Name:   bucket + "." + strings.Replace(oid, "/", ".", -1),
 		Bucket: bucket,
 	}
-	res := &nilrpc.ObjectGetResponse{}
+	res := &nilrpc.MOBObjectGetResponse{}
 
 	cli := rpc.NewClient(conn)
 	if err := cli.Call(nilrpc.MdsObjectGet.String(), req, res); err != nil {

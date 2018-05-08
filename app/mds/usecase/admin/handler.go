@@ -12,7 +12,6 @@ import (
 	"github.com/chanyoung/nil/pkg/security"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -36,130 +35,15 @@ func NewHandlers(cfg *config.Mds, s Repository) Handlers {
 // TODO: CQRS
 
 // Join joins the mds node into the cluster.
-func (h *handlers) Join(req *nilrpc.JoinRequest, res *nilrpc.JoinResponse) error {
+func (h *handlers) Join(req *nilrpc.MADJoinRequest, res *nilrpc.MADJoinResponse) error {
 	if req.RaftAddr == "" || req.NodeID == "" {
 		return fmt.Errorf("not enough arguments: %+v", req)
 	}
 	return h.store.Join(req.NodeID, req.RaftAddr)
 }
 
-// GetLocalChain : Test code. Will be removed soon.
-func (h *handlers) GetLocalChain(req *nilrpc.GetLocalChainRequest, res *nilrpc.GetLocalChainResponse) error {
-	q := fmt.Sprintf(
-		`
-		SELECT
-	        egv_encoding_group, egv_volume
-		FROM
-	        encoding_group_volume
-		WHERE
-			egv_role = '0'
-	    ORDER BY rand() limit 1;
-		`,
-	)
-
-	row := h.store.QueryRow(repository.NotTx, q)
-	if row == nil {
-		return fmt.Errorf("mysql not connected yet")
-	}
-
-	err := row.Scan(&res.LocalChainID, &res.ParityVolumeID)
-	if err != nil {
-		return err
-	}
-
-	q = fmt.Sprintf(
-		`
-		SELECT
-			vl_node
-		FROM
-			volume
- 		WHERE
-			vl_id = '%d'
-		`, res.ParityVolumeID,
-	)
-
-	row = h.store.QueryRow(repository.NotTx, q)
-	if row == nil {
-		return fmt.Errorf("mysql not connected yet")
-	}
-
-	return row.Scan(&res.ParityNodeID)
-}
-
-func (h *handlers) GetAllChain(req *nilrpc.GetAllChainRequest, res *nilrpc.GetAllChainResponse) error {
-	txid, err := h.store.Begin()
-	if err != nil {
-		return errors.Wrap(err, "failed to start transaction")
-	}
-
-	res.EncGrps, err = h.store.GetAllEncodingGroups(txid)
-	if err != nil {
-		h.store.Rollback(txid)
-		return errors.Wrap(err, "failed to get all encoding groups")
-	}
-	if err = h.store.Commit(txid); err != nil {
-		h.store.Rollback(txid)
-		return err
-	}
-
-	return nil
-}
-
-func (h *handlers) GetAllVolume(req *nilrpc.GetAllVolumeRequest, res *nilrpc.GetAllVolumeResponse) error {
-	q := fmt.Sprintf(
-		`
-		SELECT
-			vl_id, vl_node
-		FROM
-			volume
-		`,
-	)
-
-	rows, err := h.store.Query(repository.NotTx, q)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		v := nilrpc.Volume{}
-
-		if err := rows.Scan(&v.ID, &v.NodeID); err != nil {
-			return err
-		}
-
-		res.Volumes = append(res.Volumes, v)
-	}
-
-	return nil
-}
-
-func (h *handlers) GetClusterConfig(req *nilrpc.GetClusterConfigRequest, res *nilrpc.GetClusterConfigResponse) error {
-	q := fmt.Sprintf(
-		`
-		SELECT
-			cl_local_parity_shards
-		FROM
-			cluster
-		ORDER BY cl_id DESC
-		`,
-	)
-
-	row := h.store.QueryRow(repository.NotTx, q)
-	if row == nil {
-		return fmt.Errorf("mysql not connected yet")
-	}
-
-	err := row.Scan(&res.LocalParityShards)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // AddUser adds a new user with the given name.
-func (h *handlers) AddUser(req *nilrpc.AddUserRequest, res *nilrpc.AddUserResponse) error {
+func (h *handlers) AddUser(req *nilrpc.MADAddUserRequest, res *nilrpc.MADAddUserResponse) error {
 	ak := security.NewAPIKey()
 
 	q := fmt.Sprintf(
@@ -183,7 +67,7 @@ func (h *handlers) AddUser(req *nilrpc.AddUserRequest, res *nilrpc.AddUserRespon
 }
 
 // RegisterVolume receives a new volume information from ds and register it to the database.
-func (h *handlers) RegisterVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.RegisterVolumeResponse) error {
+func (h *handlers) RegisterVolume(req *nilrpc.MADRegisterVolumeRequest, res *nilrpc.MADRegisterVolumeResponse) error {
 	// If the id field of request is empty, then the ds
 	// tries to get an id of volume.
 	if req.ID == "" {
@@ -192,7 +76,7 @@ func (h *handlers) RegisterVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc
 	return h.updateVolume(req, res)
 }
 
-func (h *handlers) updateVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.RegisterVolumeResponse) error {
+func (h *handlers) updateVolume(req *nilrpc.MADRegisterVolumeRequest, res *nilrpc.MADRegisterVolumeResponse) error {
 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.updateVolume")
 
 	q := fmt.Sprintf(
@@ -212,7 +96,7 @@ func (h *handlers) updateVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.R
 	return h.updateClusterMap()
 }
 
-func (h *handlers) insertNewVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.RegisterVolumeResponse) error {
+func (h *handlers) insertNewVolume(req *nilrpc.MADRegisterVolumeRequest, res *nilrpc.MADRegisterVolumeResponse) error {
 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.insertNewVolume")
 
 	q := fmt.Sprintf(
@@ -265,11 +149,7 @@ func calcMaxChain(volumeSize uint64) int {
 
 // Handlers is the interface that provides admin domain's rpc handlers.
 type Handlers interface {
-	Join(req *nilrpc.JoinRequest, res *nilrpc.JoinResponse) error
-	AddUser(req *nilrpc.AddUserRequest, res *nilrpc.AddUserResponse) error
-	GetLocalChain(req *nilrpc.GetLocalChainRequest, res *nilrpc.GetLocalChainResponse) error
-	GetAllChain(req *nilrpc.GetAllChainRequest, res *nilrpc.GetAllChainResponse) error
-	GetAllVolume(req *nilrpc.GetAllVolumeRequest, res *nilrpc.GetAllVolumeResponse) error
-	GetClusterConfig(req *nilrpc.GetClusterConfigRequest, res *nilrpc.GetClusterConfigResponse) error
-	RegisterVolume(req *nilrpc.RegisterVolumeRequest, res *nilrpc.RegisterVolumeResponse) error
+	Join(req *nilrpc.MADJoinRequest, res *nilrpc.MADJoinResponse) error
+	AddUser(req *nilrpc.MADAddUserRequest, res *nilrpc.MADAddUserResponse) error
+	RegisterVolume(req *nilrpc.MADRegisterVolumeRequest, res *nilrpc.MADRegisterVolumeResponse) error
 }

@@ -36,8 +36,8 @@ func mdsUserAddRun(cmd *cobra.Command, args []string) {
 	}
 	defer conn.Close()
 
-	req := &nilrpc.AddUserRequest{Name: name}
-	res := &nilrpc.AddUserResponse{}
+	req := &nilrpc.MADAddUserRequest{Name: name}
+	res := &nilrpc.MADAddUserResponse{}
 
 	cli := rpc.NewClient(conn)
 	if err := cli.Call(nilrpc.MdsAdminAddUser.String(), req, res); err != nil {

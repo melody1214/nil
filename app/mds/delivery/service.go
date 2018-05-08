@@ -96,7 +96,7 @@ func SetupDeliveryService(cfg *config.Mds, adh admin.Handlers, auh auth.Handlers
 	if err := s.nilRPCSrv.RegisterName(nilrpc.MdsBucketPrefix, s.buh); err != nil {
 		return nil, err
 	}
-	if err := s.nilRPCSrv.RegisterName(nilrpc.MdsClustermapPrefix, s.cls); err != nil {
+	if err := s.nilRPCSrv.RegisterName(nilrpc.MdsClusterPrefix, s.cls); err != nil {
 		return nil, err
 	}
 	// if err := rpcSrv.RegisterName(nilrpc.MdsMembershipPrefix, meh); err != nil {

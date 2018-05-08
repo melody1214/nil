@@ -34,7 +34,7 @@ func NewHandlers(cfg *config.Ds, cmapAPI cmap.SlaveAPI, s Repository) Handlers {
 }
 
 // AddVolume adds a new volume with the given device path.
-func (h *handlers) AddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVolumeResponse) error {
+func (h *handlers) AddVolume(req *nilrpc.DADAddVolumeRequest, res *nilrpc.DADAddVolumeResponse) error {
 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.AddVolume")
 
 	lv, err := repository.NewVol(req.DevicePath)
@@ -54,7 +54,7 @@ func (h *handlers) AddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVolume
 	}
 	defer conn.Close()
 
-	registerReq := &nilrpc.RegisterVolumeRequest{
+	registerReq := &nilrpc.MADRegisterVolumeRequest{
 		Ds:     h.cfg.ID,
 		Size:   lv.Size,
 		Free:   lv.Free,
@@ -62,7 +62,7 @@ func (h *handlers) AddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVolume
 		Speed:  lv.Speed.String(),
 		Status: lv.Status.String(),
 	}
-	registerRes := &nilrpc.RegisterVolumeResponse{}
+	registerRes := &nilrpc.MADRegisterVolumeResponse{}
 
 	cli := rpc.NewClient(conn)
 	if err := cli.Call(nilrpc.MdsAdminRegisterVolume.String(), registerReq, registerRes); err != nil {
@@ -122,5 +122,5 @@ func (h *handlers) AddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVolume
 
 // Handlers is the interface that provides client http handlers.
 type Handlers interface {
-	AddVolume(req *nilrpc.AddVolumeRequest, res *nilrpc.AddVolumeResponse) error
+	AddVolume(req *nilrpc.DADAddVolumeRequest, res *nilrpc.DADAddVolumeResponse) error
 }

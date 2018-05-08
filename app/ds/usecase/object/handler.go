@@ -305,13 +305,13 @@ func (h *handlers) writeCopy(req client.RequestEvent) {
 	}
 	defer conn.Close()
 
-	metaReq := &nilrpc.ObjectPutRequest{
+	metaReq := &nilrpc.MOBObjectPutRequest{
 		Name:          storeReq.Oid,
 		Bucket:        strings.Split(strings.Trim(req.Request().URL.Path, "/"), "/")[0],
 		EncodingGroup: storeReq.LocGid,
 		Volume:        storeReq.Vol,
 	}
-	metaRes := &nilrpc.ObjectPutResponse{}
+	metaRes := &nilrpc.MOBObjectPutResponse{}
 
 	cli := rpc.NewClient(conn)
 	if err := cli.Call(nilrpc.MdsObjectPut.String(), metaReq, metaRes); err != nil {
