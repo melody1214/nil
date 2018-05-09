@@ -76,7 +76,7 @@ func SetupDeliveryService(cfg *config.Mds, uss user.Service, cls cluster.Service
 	if err := s.nilRPCSrv.RegisterName(nilrpc.MdsUserPrefix, s.uss); err != nil {
 		return nil, err
 	}
-	if err := s.nilRPCSrv.RegisterName(nilrpc.MdsClusterPrefix, s.cls); err != nil {
+	if err := s.nilRPCSrv.RegisterName(nilrpc.MdsClusterPrefix, s.cls.RPCHandler()); err != nil {
 		return nil, err
 	}
 	if err := s.nilRPCSrv.RegisterName(nilrpc.MdsObjectPrefix, s.obh); err != nil {
@@ -134,11 +134,11 @@ func SetupDeliveryService(cfg *config.Mds, uss user.Service, cls cluster.Service
 func (s *Service) run() error {
 	go s.nilMux.ListenAndServeTLS()
 	go s.serveNilRPC()
-	return s.cls.JoinToGlobal(s.raftLayer)
+	return s.cls.Join(s.raftLayer)
 }
 
 func (s *Service) Stop() error {
-	return s.cls.Stop()
+	return s.cls.Leave()
 }
 
 func (s *Service) serveNilRPC() {

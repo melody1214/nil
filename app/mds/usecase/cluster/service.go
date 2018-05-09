@@ -35,6 +35,51 @@ func NewService(cfg *config.Mds, cmapAPI cmap.MasterAPI, s Repository) Service {
 	}
 }
 
+// Service is the interface that provides clustermap domain's service.
+type Service interface {
+	Join(raftL *nilmux.Layer) error
+	Leave() error
+	RPCHandler() RPCHandler
+}
+
+// Join joins the node to the global cluster.
+func (s *service) Join(raftL *nilmux.Layer) error {
+	if err := s.store.Open(raftL); err != nil {
+		return err
+	}
+
+	// I'm the first node of this cluster, no need to join.
+	if s.cfg.Raft.LocalClusterAddr == s.cfg.Raft.GlobalClusterAddr {
+		return nil
+	}
+
+	return raftJoin(s.cfg.Raft.GlobalClusterAddr, s.cfg.Raft.LocalClusterAddr, s.cfg.Raft.LocalClusterRegion)
+}
+
+// Leave leaves the node from the global cluster.
+func (s *service) Leave() error {
+	return s.store.Close()
+}
+
+// RPCHandler returns the RPC handler which will handle
+// the requests from the delivery layer.
+func (s *service) RPCHandler() RPCHandler {
+	// This is a trick to hide inadvertently exposed methods,
+	// such as Join() or Leave().
+	type handler struct{ RPCHandler }
+	return handler{RPCHandler: s}
+}
+
+// RPCHandler is the interface that provides clustermap domain's rpc handlers.
+type RPCHandler interface {
+	GetClusterMap(req *nilrpc.MCLGetClusterMapRequest, res *nilrpc.MCLGetClusterMapResponse) error
+	GetUpdateNoti(req *nilrpc.MCLGetUpdateNotiRequest, res *nilrpc.MCLGetUpdateNotiResponse) error
+	UpdateClusterMap(req *nilrpc.MCLUpdateClusterMapRequest, res *nilrpc.MCLUpdateClusterMapResponse) error
+	RegisterVolume(req *nilrpc.MCLRegisterVolumeRequest, res *nilrpc.MCLRegisterVolumeResponse) error
+	LocalJoin(req *nilrpc.MCLLocalJoinRequest, res *nilrpc.MCLLocalJoinResponse) error
+	GlobalJoin(req *nilrpc.MCLGlobalJoinRequest, res *nilrpc.MCLGlobalJoinResponse) error
+}
+
 // GetClusterMap returns a current local cmap.
 func (s *service) GetClusterMap(req *nilrpc.MCLGetClusterMapRequest, res *nilrpc.MCLGetClusterMapResponse) error {
 	res.ClusterMap = s.cmapAPI.GetLatestCMap()
@@ -178,20 +223,4 @@ func calcMaxChain(volumeSize uint64) int {
 
 	// Test, chain per 10MB,
 	return int(volumeSize / 10)
-}
-
-func (s *service) Stop() error {
-	return s.store.Close()
-}
-
-// Service is the interface that provides clustermap domain's rpc handlers.
-type Service interface {
-	GetClusterMap(req *nilrpc.MCLGetClusterMapRequest, res *nilrpc.MCLGetClusterMapResponse) error
-	GetUpdateNoti(req *nilrpc.MCLGetUpdateNotiRequest, res *nilrpc.MCLGetUpdateNotiResponse) error
-	UpdateClusterMap(req *nilrpc.MCLUpdateClusterMapRequest, res *nilrpc.MCLUpdateClusterMapResponse) error
-	RegisterVolume(req *nilrpc.MCLRegisterVolumeRequest, res *nilrpc.MCLRegisterVolumeResponse) error
-	LocalJoin(req *nilrpc.MCLLocalJoinRequest, res *nilrpc.MCLLocalJoinResponse) error
-	GlobalJoin(req *nilrpc.MCLGlobalJoinRequest, res *nilrpc.MCLGlobalJoinResponse) error
-	JoinToGlobal(raftL *nilmux.Layer) error
-	Stop() error
 }
