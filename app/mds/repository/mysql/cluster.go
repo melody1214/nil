@@ -197,3 +197,11 @@ func (s *clusterStore) LocalJoin(node cmap.Node) error {
 func (s *clusterStore) GlobalJoin(raftAddr, nodeID string) error {
 	return s.Store.Join(nodeID, raftAddr)
 }
+
+func (s *clusterStore) FindSameEventJob(txid repository.TxID, e *cluster.Event) (cluster.ID, error) {
+	return cluster.ID(-1), nil
+}
+
+func (s *clusterStore) InsertJob(txid repository.TxID, job *cluster.Job) error {
+	return nil
+}

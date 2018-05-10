@@ -10,7 +10,6 @@ import (
 	"github.com/chanyoung/nil/app/mds/repository/mysql"
 	"github.com/chanyoung/nil/app/mds/usecase/cluster"
 	"github.com/chanyoung/nil/app/mds/usecase/object"
-	"github.com/chanyoung/nil/app/mds/usecase/recovery"
 	"github.com/chanyoung/nil/app/mds/usecase/user"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -38,17 +37,15 @@ func Bootstrap(cfg config.Mds) error {
 
 	// Setup repositories.
 	var (
-		userStore     user.Repository
-		clusterStore  cluster.Repository
-		objectStore   object.Repository
-		recoveryStore recovery.Repository
+		userStore    user.Repository
+		clusterStore cluster.Repository
+		objectStore  object.Repository
 	)
 	if useMySQL := true; useMySQL {
 		store := mysql.New(&cfg)
 		userStore = mysql.NewUserRepository(store)
 		clusterStore = mysql.NewClusterRepository(store)
 		objectStore = mysql.NewObjectRepository(store)
-		recoveryStore = mysql.NewRecoveryRepository(store)
 	} else {
 		return fmt.Errorf("not supported store type")
 	}
@@ -69,15 +66,10 @@ func Bootstrap(cfg config.Mds) error {
 	userService := user.NewService(&cfg, userStore)
 	clusterService := cluster.NewService(&cfg, cmapService.MasterAPI(), clusterStore)
 	objectHandlers := object.NewHandlers(objectStore)
-	recoveryHandlers, err := recovery.NewHandlers(&cfg, cmapService.SlaveAPI(), recoveryStore)
-	if err != nil {
-		return errors.Wrap(err, "failed to create recovery handler")
-	}
 
 	// Setup delivery service.
 	delivery, err := delivery.SetupDeliveryService(
-		&cfg, userService,
-		clusterService, cmapService, objectHandlers, recoveryHandlers,
+		&cfg, userService, clusterService, cmapService, objectHandlers,
 	)
 	if err != nil {
 		return err

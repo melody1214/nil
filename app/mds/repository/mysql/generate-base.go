@@ -101,4 +101,17 @@ var generateSQLBase = []string{
 			FOREIGN KEY (obj_volume) REFERENCES volume (vl_id)
 		) ENGINE=InnoDB DEFAULT CHARSET=ascii
 	`,
+	`
+		CREATE TABLE IF NOT EXISTS cluster_job (
+			clj_id int unsigned NOT NULL AUTO_INCREMENT,
+			clj_type int unsigned NOT NULL,
+			clj_state int unsigned NOT NULL,
+			clj_event_type int unsigned NOT NULL,
+			clj_event_affected int unsigned NOT NULL,
+			clj_event_time varchar(32) CHARACTER SET ascii NOT NULL,
+			clj_scheduled_at varchar(32) CHARACTER SET ascii NOT NULL,
+			clj_finished_at varchar(32) CHARACTER SET ascii NOT NULL,
+			PRIMARY KEY (clj_id)
+		)
+	`,
 }

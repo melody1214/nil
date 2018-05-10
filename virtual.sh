@@ -130,6 +130,7 @@ function purge() {
 	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS node;"
 	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS cmap;"
 	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS cluster;"
+    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS cluster_job;"
     done
 }
 
@@ -340,34 +341,34 @@ function main() {
         sleep 3
     done
 
-    # Execute pending command.
-    if [ -e $PENDINGCMD ]; then
-        # Give some time to each cluster member can join the membership.
-#        sleep 90
-        sleep 3
+#     # Execute pending command.
+#     if [ -e $PENDINGCMD ]; then
+#         # Give some time to each cluster member can join the membership.
+# #        sleep 90
+#         sleep 3
 
-        # Read line by line ...
-        while read cmd; do
-            $($cmd)
-        done < $PENDINGCMD
-    fi
+#         # Read line by line ...
+#         while read cmd; do
+#             $($cmd)
+#         done < $PENDINGCMD
+#     fi
 
-    # Create users.
-    sleep 3
-    createusers
+#     # Create users.
+#     sleep 3
+#     createusers
 
-    # Create buckets.
-    sleep 3
-    createbuckets
+#     # Create buckets.
+#     sleep 3
+#     createbuckets
 
-    # Put objects.
-    sleep 3
-    putobjects
+#     # Put objects.
+#     sleep 3
+#     putobjects
 
-    # Test local recovery
-    if [ $TESTLOCALRECOVERY = true ]; then
-        testlocalrecovery
-    fi
+#     # Test local recovery
+#     if [ $TESTLOCALRECOVERY = true ]; then
+#         testlocalrecovery
+#     fi
 }
 
 # Run as root.

@@ -1,12 +1,8 @@
 package cluster
 
 import (
-	"fmt"
-	"net/rpc"
-	"strconv"
 	"time"
 
-	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/nilrpc"
@@ -20,6 +16,7 @@ var logger *logrus.Entry
 
 type service struct {
 	cfg     *config.Mds
+	jFact   *jobFactory
 	store   Repository
 	cmapAPI cmap.MasterAPI
 }
@@ -30,6 +27,7 @@ func NewService(cfg *config.Mds, cmapAPI cmap.MasterAPI, s Repository) Service {
 
 	return &service{
 		cfg:     cfg,
+		jFact:   newJobFactory(newJobRepository(s)),
 		store:   s,
 		cmapAPI: cmapAPI,
 	}
@@ -74,16 +72,10 @@ func (s *service) RPCHandler() RPCHandler {
 type RPCHandler interface {
 	GetClusterMap(req *nilrpc.MCLGetClusterMapRequest, res *nilrpc.MCLGetClusterMapResponse) error
 	GetUpdateNoti(req *nilrpc.MCLGetUpdateNotiRequest, res *nilrpc.MCLGetUpdateNotiResponse) error
-	UpdateClusterMap(req *nilrpc.MCLUpdateClusterMapRequest, res *nilrpc.MCLUpdateClusterMapResponse) error
+	// UpdateClusterMap(req *nilrpc.MCLUpdateClusterMapRequest, res *nilrpc.MCLUpdateClusterMapResponse) error
 	RegisterVolume(req *nilrpc.MCLRegisterVolumeRequest, res *nilrpc.MCLRegisterVolumeResponse) error
 	LocalJoin(req *nilrpc.MCLLocalJoinRequest, res *nilrpc.MCLLocalJoinResponse) error
 	GlobalJoin(req *nilrpc.MCLGlobalJoinRequest, res *nilrpc.MCLGlobalJoinResponse) error
-}
-
-// GetClusterMap returns a current local cmap.
-func (s *service) GetClusterMap(req *nilrpc.MCLGetClusterMapRequest, res *nilrpc.MCLGetClusterMapResponse) error {
-	res.ClusterMap = s.cmapAPI.GetLatestCMap()
-	return nil
 }
 
 // GetUpdateNoti returns when the cmap is updated or timeout.
@@ -101,120 +93,38 @@ func (s *service) GetUpdateNoti(req *nilrpc.MCLGetUpdateNotiRequest, res *nilrpc
 	}
 }
 
-func (s *service) UpdateClusterMap(req *nilrpc.MCLUpdateClusterMapRequest, res *nilrpc.MCLUpdateClusterMapResponse) error {
-	txid, err := s.store.Begin()
-	if err != nil {
-		return errors.Wrap(err, "failed to start transaction")
-	}
+// func (s *service) UpdateClusterMap(req *nilrpc.MCLUpdateClusterMapRequest, res *nilrpc.MCLUpdateClusterMapResponse) error {
+// 	txid, err := s.store.Begin()
+// 	if err != nil {
+// 		return errors.Wrap(err, "failed to start transaction")
+// 	}
 
-	if err = s.updateClusterMap(txid); err != nil {
-		s.store.Rollback(txid)
-		return err
-	}
-	if err = s.store.Commit(txid); err != nil {
-		s.store.Rollback(txid)
-		return err
-	}
+// 	if err = s.updateClusterMap(txid); err != nil {
+// 		s.store.Rollback(txid)
+// 		return err
+// 	}
+// 	if err = s.store.Commit(txid); err != nil {
+// 		s.store.Rollback(txid)
+// 		return err
+// 	}
 
-	s.rebalance()
-	return nil
-}
+// 	s.rebalance()
+// 	return nil
+// }
 
-// LocalJoin handles the join request from the same local cluster nodes.
-func (s *service) LocalJoin(req *nilrpc.MCLLocalJoinRequest, res *nilrpc.MCLLocalJoinResponse) error {
-	if s.canJoin(req.Node) == false {
-		return fmt.Errorf("can't join into the cmap")
-	}
+// func (s *service) rebalance() error {
+// 	conn, err := nilrpc.Dial(s.cfg.ServerAddr+":"+s.cfg.ServerPort, nilrpc.RPCNil, time.Duration(2*time.Second))
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer conn.Close()
 
-	if err := s.store.LocalJoin(req.Node); err != nil {
-		return errors.Wrap(err, "failed to add new node into the database")
-	}
+// 	req := &nilrpc.MRERecoveryRequest{Type: nilrpc.Rebalance}
+// 	res := &nilrpc.MRERecoveryResponse{}
 
-	return s.UpdateClusterMap(nil, nil)
-}
-
-// GlobalJoin handles the join request from the other raft nodes.
-func (s *service) GlobalJoin(req *nilrpc.MCLGlobalJoinRequest, res *nilrpc.MCLGlobalJoinResponse) error {
-	if req.RaftAddr == "" || req.NodeID == "" {
-		return fmt.Errorf("not enough arguments: %+v", req)
-	}
-	return s.store.GlobalJoin(req.RaftAddr, req.NodeID)
-}
-
-func (s *service) canJoin(node cmap.Node) bool {
-	// TODO: fill the checking rule.
-	return true
-}
-
-func (s *service) rebalance() error {
-	conn, err := nilrpc.Dial(s.cfg.ServerAddr+":"+s.cfg.ServerPort, nilrpc.RPCNil, time.Duration(2*time.Second))
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
-	req := &nilrpc.MRERecoveryRequest{Type: nilrpc.Rebalance}
-	res := &nilrpc.MRERecoveryResponse{}
-
-	cli := rpc.NewClient(conn)
-	return cli.Call(nilrpc.MdsRecoveryRecovery.String(), req, res)
-}
-
-// RegisterVolume receives a new volume information from ds and register it to the database.
-func (s *service) RegisterVolume(req *nilrpc.MCLRegisterVolumeRequest, res *nilrpc.MCLRegisterVolumeResponse) error {
-	// If the id field of request is empty, then the ds
-	// tries to get an id of volume.
-	if req.ID == "" {
-		return s.insertNewVolume(req, res)
-	}
-	return s.updateVolume(req, res)
-}
-
-func (s *service) updateVolume(req *nilrpc.MCLRegisterVolumeRequest, res *nilrpc.MCLRegisterVolumeResponse) error {
-	ctxLogger := mlog.GetMethodLogger(logger, "handlers.updateVolume")
-
-	q := fmt.Sprintf(
-		`
-		UPDATE volume
-		SET vl_status='%s', vl_size='%d', vl_free='%d', vl_used='%d', vl_max_encoding_group='%d', vl_speed='%s' 
-		WHERE vl_id in ('%s')
-		`, req.Status, req.Size, req.Free, req.Used, calcMaxChain(req.Size), req.Speed, req.ID,
-	)
-
-	_, err := s.store.Execute(repository.NotTx, q)
-	if err != nil {
-		ctxLogger.Error(err)
-		return err
-	}
-
-	return s.UpdateClusterMap(nil, nil)
-}
-
-func (s *service) insertNewVolume(req *nilrpc.MCLRegisterVolumeRequest, res *nilrpc.MCLRegisterVolumeResponse) error {
-	ctxLogger := mlog.GetMethodLogger(logger, "handlers.insertNewVolume")
-
-	q := fmt.Sprintf(
-		`
-		INSERT INTO volume (vl_node, vl_status, vl_size, vl_free, vl_used, vl_encoding_group, vl_max_encoding_group, vl_speed)
-		SELECT node_id, '%s', '%d', '%d', '%d', '%d', '%d', '%s' FROM node WHERE node_name = '%s'
-		`, req.Status, req.Size, req.Free, req.Used, 0, calcMaxChain(req.Size), req.Speed, req.Ds,
-	)
-
-	r, err := s.store.Execute(repository.NotTx, q)
-	if err != nil {
-		ctxLogger.Error(err)
-		return err
-	}
-
-	id, err := r.LastInsertId()
-	if err != nil {
-		ctxLogger.Error(err)
-		return err
-	}
-	res.ID = strconv.FormatInt(id, 10)
-
-	return s.UpdateClusterMap(nil, nil)
-}
+// 	cli := rpc.NewClient(conn)
+// 	return cli.Call(nilrpc.MdsRecoveryRecovery.String(), req, res)
+// }
 
 func calcMaxChain(volumeSize uint64) int {
 	if volumeSize <= 0 {

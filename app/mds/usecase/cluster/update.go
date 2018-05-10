@@ -6,7 +6,26 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (s *service) updateClusterMap(txid repository.TxID) error {
+func (s *service) updateClusterMap() error {
+	txid, err := s.store.Begin()
+	if err != nil {
+		return errors.Wrap(err, "failed to start transaction")
+	}
+
+	if err = s._updateClusterMap(txid); err != nil {
+		s.store.Rollback(txid)
+		return err
+	}
+
+	if err = s.store.Commit(txid); err != nil {
+		s.store.Rollback(txid)
+		return err
+	}
+
+	return nil
+}
+
+func (s *service) _updateClusterMap(txid repository.TxID) error {
 	// Set new map version.
 	ver, err := s.store.GetNewClusterMapVer(txid)
 	if err != nil {

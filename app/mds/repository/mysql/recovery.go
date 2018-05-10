@@ -1,102 +1,93 @@
 package mysql
 
-import (
-	"fmt"
+// type recoveryStore struct {
+// 	*Store
+// }
 
-	"github.com/chanyoung/nil/app/mds/repository"
-	"github.com/chanyoung/nil/app/mds/usecase/recovery"
-	"github.com/chanyoung/nil/pkg/cmap"
-	"github.com/pkg/errors"
-)
+// // NewRecoveryRepository returns a new instance of a mysql recovery repository.
+// func NewRecoveryRepository(s *Store) recovery.Repository {
+// 	return &recoveryStore{
+// 		Store: s,
+// 	}
+// }
 
-type recoveryStore struct {
-	*Store
-}
+// func (s *recoveryStore) FindAllVolumes(txid repository.TxID) ([]*recovery.Volume, error) {
+// 	q := fmt.Sprintf(
+// 		`
+// 		SELECT
+// 			vl_id,
+// 			vl_status,
+// 			vl_node,
+// 			vl_encoding_group,
+// 			vl_max_encoding_group,
+// 			vl_speed
+// 		FROM
+// 			volume
+// 		`,
+// 	)
 
-// NewRecoveryRepository returns a new instance of a mysql recovery repository.
-func NewRecoveryRepository(s *Store) recovery.Repository {
-	return &recoveryStore{
-		Store: s,
-	}
-}
+// 	rows, err := s.Query(txid, q)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	defer rows.Close()
 
-func (s *recoveryStore) FindAllVolumes(txid repository.TxID) ([]*recovery.Volume, error) {
-	q := fmt.Sprintf(
-		`
-		SELECT
-			vl_id,
-			vl_status,
-			vl_node,
-			vl_encoding_group,
-			vl_max_encoding_group,
-			vl_speed
-		FROM
-			volume
-		`,
-	)
+// 	var vols []*recovery.Volume
+// 	for rows.Next() {
+// 		v := &recovery.Volume{}
 
-	rows, err := s.Query(txid, q)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+// 		if err = rows.Scan(&v.ID, &v.Stat, &v.NodeID, &v.Chain, &v.MaxChain, &v.Speed); err != nil {
+// 			return nil, err
+// 		}
 
-	var vols []*recovery.Volume
-	for rows.Next() {
-		v := &recovery.Volume{}
+// 		vols = append(vols, v)
+// 	}
 
-		if err = rows.Scan(&v.ID, &v.Stat, &v.NodeID, &v.Chain, &v.MaxChain, &v.Speed); err != nil {
-			return nil, err
-		}
+// 	return vols, nil
+// }
 
-		vols = append(vols, v)
-	}
+// func (s recoveryStore) MakeNewEncodingGroup(txid repository.TxID, encGrp *cmap.EncodingGroup) error {
+// 	// Make new encoding group.
+// 	q := fmt.Sprintf(
+// 		`
+// 		INSERT INTO encoding_group (eg_status)
+// 		VALUES ('%s')
+// 		`, encGrp.Stat.String(),
+// 	)
+// 	r, err := s.Store.Execute(txid, q)
+// 	if err != nil {
+// 		return errors.Wrap(err, "failed to create encoding group")
+// 	}
+// 	egID, err := r.LastInsertId()
+// 	if err != nil {
+// 		return errors.Wrap(err, "failed to create encoding group")
+// 	}
 
-	return vols, nil
-}
+// 	// Register each volumes.
+// 	for role, v := range encGrp.Vols {
+// 		q = fmt.Sprintf(
+// 			`
+// 			INSERT INTO encoding_group_volume (egv_encoding_group, egv_volume, egv_role)
+// 			VALUES ('%d', '%d', '%d')
+// 			`, egID, v.Int64(), role,
+// 		)
+// 		_, err = s.Store.Execute(txid, q)
+// 		if err != nil {
+// 			return errors.Wrap(err, "failed to create volume in encoding group table")
+// 		}
 
-func (s recoveryStore) MakeNewEncodingGroup(txid repository.TxID, encGrp *cmap.EncodingGroup) error {
-	// Make new encoding group.
-	q := fmt.Sprintf(
-		`
-		INSERT INTO encoding_group (eg_status)
-		VALUES ('%s')
-		`, encGrp.Stat.String(),
-	)
-	r, err := s.Store.Execute(txid, q)
-	if err != nil {
-		return errors.Wrap(err, "failed to create encoding group")
-	}
-	egID, err := r.LastInsertId()
-	if err != nil {
-		return errors.Wrap(err, "failed to create encoding group")
-	}
+// 		q = fmt.Sprintf(
+// 			`
+// 			UPDATE volume
+// 			SET vl_encoding_group=vl_encoding_group+1
+// 			WHERE vl_id in ('%d')
+// 			`, v.Int64(),
+// 		)
+// 		_, err = s.Store.Execute(txid, q)
+// 		if err != nil {
+// 			return errors.Wrap(err, "failed to increase encoding group counting in volume")
+// 		}
+// 	}
 
-	// Register each volumes.
-	for role, v := range encGrp.Vols {
-		q = fmt.Sprintf(
-			`
-			INSERT INTO encoding_group_volume (egv_encoding_group, egv_volume, egv_role)
-			VALUES ('%d', '%d', '%d')
-			`, egID, v.Int64(), role,
-		)
-		_, err = s.Store.Execute(txid, q)
-		if err != nil {
-			return errors.Wrap(err, "failed to create volume in encoding group table")
-		}
-
-		q = fmt.Sprintf(
-			`
-			UPDATE volume
-			SET vl_encoding_group=vl_encoding_group+1
-			WHERE vl_id in ('%d')
-			`, v.Int64(),
-		)
-		_, err = s.Store.Execute(txid, q)
-		if err != nil {
-			return errors.Wrap(err, "failed to increase encoding group counting in volume")
-		}
-	}
-
-	return nil
-}
+// 	return nil
+// }

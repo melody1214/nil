@@ -1,13 +1,5 @@
 package recovery
 
-import (
-	"log"
-	"net/rpc"
-	"time"
-
-	"github.com/chanyoung/nil/pkg/nilrpc"
-)
-
 // func (w *worker) updateMembership() {
 // 	ctxLogger := mlog.GetMethodLogger(logger, "worker.updateMembership")
 
@@ -107,18 +99,18 @@ import (
 // 	}
 // }
 
-func (w *recoveryWorker) updateClusterMap() error {
-	conn, err := nilrpc.Dial(w.cfg.ServerAddr+":"+w.cfg.ServerPort, nilrpc.RPCNil, time.Duration(2*time.Second))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer conn.Close()
+// func (w *recoveryWorker) updateClusterMap() error {
+// 	conn, err := nilrpc.Dial(w.cfg.ServerAddr+":"+w.cfg.ServerPort, nilrpc.RPCNil, time.Duration(2*time.Second))
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	defer conn.Close()
 
-	req := &nilrpc.MCLUpdateClusterMapRequest{}
-	res := &nilrpc.MCLUpdateClusterMapResponse{}
+// 	req := &nilrpc.MCLUpdateClusterMapRequest{}
+// 	res := &nilrpc.MCLUpdateClusterMapResponse{}
 
-	cli := rpc.NewClient(conn)
-	defer cli.Close()
+// 	cli := rpc.NewClient(conn)
+// 	defer cli.Close()
 
-	return cli.Call(nilrpc.MdsClusterUpdateClusterMap.String(), req, res)
-}
+// 	return cli.Call(nilrpc.MdsClusterUpdateClusterMap.String(), req, res)
+// }

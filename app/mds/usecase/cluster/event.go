@@ -6,31 +6,34 @@ import (
 	"github.com/chanyoung/nil/pkg/cmap"
 )
 
-// eventType represents the type of occured event.
-type eventType int
+// EventType represents the type of occured event.
+type EventType int
 
 const (
-	addNode eventType = iota
-	fail
+	// AddNode means the event type is add node.
+	AddNode EventType = iota
+	// Fail means the event type is fail.
+	Fail
 )
 
-// eventTime represents the occured time of the event.
-type eventTime string
+// Time represents the occured time of the event or job.
+type Time string
 
-func (t eventTime) String() string { return string(t) }
+// String returns its value in built-in string type.
+func (t Time) String() string { return string(t) }
 
-// event holds the information about what event's are occured.
+// Event holds the information about what event's are occured.
 // This is an value object.
-type event struct {
-	eType     eventType
-	affected  cmap.EncodingGroup
-	timeStamp eventTime
+type Event struct {
+	Type       EventType
+	AffectedEG cmap.ID
+	TimeStamp  Time
 }
 
-func newEvent(eType eventType, affected cmap.EncodingGroup) *event {
-	return &event{
-		eType:     eType,
-		affected:  affected,
-		timeStamp: eventTime(time.Now().String()),
+func newEvent(t EventType, affectedEG cmap.ID) *Event {
+	return &Event{
+		Type:       t,
+		AffectedEG: affectedEG,
+		TimeStamp:  Time(time.Now().String()),
 	}
 }
