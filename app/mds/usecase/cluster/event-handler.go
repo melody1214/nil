@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/chanyoung/nil/pkg/nilrpc"
 )
@@ -82,6 +83,30 @@ func (s *service) insertNewVolume(req *nilrpc.MCLRegisterVolumeRequest, res *nil
 
 // LocalJoin handles the join request from the same local cluster nodes.
 func (s *service) LocalJoin(req *nilrpc.MCLLocalJoinRequest, res *nilrpc.MCLLocalJoinResponse) error {
+	// Make event structure.
+	e := newEvent(LocalJoin, NoAffectedEG)
+
+	j, err := s.jFact.create(e, req.Node)
+	if err != nil {
+		return err
+	}
+
+	s.wPool.dispatchNow(j)
+
+	waitC, err := j.getWaitChannel()
+	if err != nil {
+		return err
+	}
+
+	timeout := time.After(2 * time.Minute)
+	select {
+	case err = <-waitC:
+		return err
+	case <-timeout:
+		// TODO: j.stop()
+		return fmt.Errorf("timeout failed")
+	}
+
 	// Add new node into the database.
 	// if err := s.store.LocalJoin(req.Node); err != nil {
 	// 	return errors.Wrap(err, "failed to add new node into the database")
@@ -91,7 +116,6 @@ func (s *service) LocalJoin(req *nilrpc.MCLLocalJoinRequest, res *nilrpc.MCLLoca
 	// Removed the rebalance call because the only case of local join is
 	// the ds without any volumes.
 	// s.updateClusterMap()
-	return nil
 }
 
 // GlobalJoin handles the join request from the other raft nodes.

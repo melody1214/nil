@@ -107,10 +107,10 @@ var generateSQLBase = []string{
 			clj_type int unsigned NOT NULL,
 			clj_state int unsigned NOT NULL,
 			clj_event_type int unsigned NOT NULL,
-			clj_event_affected int unsigned NOT NULL,
+			clj_event_affected int unsigned,
 			clj_event_time varchar(32) CHARACTER SET ascii NOT NULL,
-			clj_scheduled_at varchar(32) CHARACTER SET ascii NOT NULL,
-			clj_finished_at varchar(32) CHARACTER SET ascii NOT NULL,
+			clj_scheduled_at varchar(32) CHARACTER SET ascii,
+			clj_finished_at varchar(32) CHARACTER SET ascii,
 			PRIMARY KEY (clj_id)
 		)
 	`,

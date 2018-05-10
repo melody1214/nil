@@ -10,8 +10,8 @@ import (
 type EventType int
 
 const (
-	// AddNode means the event type is add node.
-	AddNode EventType = iota
+	// LocalJoin means the event type is local join.
+	LocalJoin EventType = iota
 	// Fail means the event type is fail.
 	Fail
 )
@@ -22,6 +22,11 @@ type Time string
 // String returns its value in built-in string type.
 func (t Time) String() string { return string(t) }
 
+// TimeNow returns the current time with format.
+func TimeNow() Time {
+	return Time(time.Now().Format(time.RFC3339))
+}
+
 // Event holds the information about what event's are occured.
 // This is an value object.
 type Event struct {
@@ -30,10 +35,13 @@ type Event struct {
 	TimeStamp  Time
 }
 
+// NoAffectedEG means this event has not affect to any encoding group.
+const NoAffectedEG = cmap.ID(-999)
+
 func newEvent(t EventType, affectedEG cmap.ID) *Event {
 	return &Event{
 		Type:       t,
 		AffectedEG: affectedEG,
-		TimeStamp:  Time(time.Now().String()),
+		TimeStamp:  TimeNow(),
 	}
 }

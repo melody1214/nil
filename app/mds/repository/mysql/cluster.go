@@ -7,6 +7,7 @@ import (
 	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/app/mds/usecase/cluster"
 	"github.com/chanyoung/nil/pkg/cmap"
+	"github.com/pkg/errors"
 )
 
 type clusterStore struct {
@@ -187,7 +188,7 @@ func (s *clusterStore) LocalJoin(node cmap.Node) error {
 		`
 		INSERT INTO node (node_name, node_type, node_status, node_address)
 		VALUES ('%s', '%s', '%s', '%s')
-		`, node.Name.String(), node.Type.String(), node.Stat.String(), node.Addr.String(),
+		`, node.Name, node.Type, node.Stat, node.Addr,
 	)
 
 	_, err := s.Execute(repository.NotTx, q)
@@ -198,10 +199,57 @@ func (s *clusterStore) GlobalJoin(raftAddr, nodeID string) error {
 	return s.Store.Join(nodeID, raftAddr)
 }
 
-func (s *clusterStore) FindSameEventJob(txid repository.TxID, e *cluster.Event) (cluster.ID, error) {
-	return cluster.ID(-1), nil
+func (s *clusterStore) InsertJob(txid repository.TxID, job *cluster.Job) error {
+	if job.Type == cluster.Batch {
+		// MergeJob.
+		if err := s.mergeJob(txid, &job.Event); err != nil {
+			return errors.Wrap(err, "failed to merge old jobs")
+		}
+	}
+
+	var q string
+	if job.Event.AffectedEG == cluster.NoAffectedEG {
+		q = fmt.Sprintf(
+			`
+		INSERT INTO cluster_job (clj_type, clj_state, clj_event_type, clj_event_time)
+		VALUES ('%d', '%d', '%d', '%s')
+		`, job.Type, job.State, job.Event.Type, job.Event.TimeStamp,
+		)
+	} else {
+		q = fmt.Sprintf(
+			`
+		INSERT INTO cluster_job (clj_type, clj_state, clj_event_type, clj_event_affected, clj_event_time)
+		VALUES ('%d', '%d', '%d', '%s', '%s')
+		`, job.Type, job.State, job.Event.Type, job.Event.AffectedEG, job.Event.TimeStamp,
+		)
+	}
+
+	r, err := s.Execute(txid, q)
+	if err != nil {
+		return errors.Wrap(err, "failed to insert job")
+	}
+	id, err := r.LastInsertId()
+	if err != nil {
+		return errors.Wrap(err, "failed to insert job")
+	}
+	job.ID = cluster.ID(id)
+	return nil
 }
 
-func (s *clusterStore) InsertJob(txid repository.TxID, job *cluster.Job) error {
-	return nil
+func (s *clusterStore) mergeJob(txid repository.TxID, event *cluster.Event) error {
+	affectedEG := event.AffectedEG.String()
+	if event.AffectedEG.Int64() < 0 {
+		affectedEG = "NULL"
+	}
+
+	q := fmt.Sprintf(
+		`
+		UPDATE cluster_job
+		SET clj_state=%d, clj_finished='%s'
+		WHERE clj_event_type=%d AND clj_event_affected=%s AND clj_state=%d
+		`, cluster.Merged, cluster.TimeNow(), event.Type, affectedEG, cluster.Ready,
+	)
+
+	_, err := s.Execute(txid, q)
+	return err
 }

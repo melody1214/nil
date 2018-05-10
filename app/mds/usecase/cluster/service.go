@@ -17,6 +17,7 @@ var logger *logrus.Entry
 type service struct {
 	cfg     *config.Mds
 	jFact   *jobFactory
+	wPool   *workerPool
 	store   Repository
 	cmapAPI cmap.MasterAPI
 }
@@ -28,6 +29,7 @@ func NewService(cfg *config.Mds, cmapAPI cmap.MasterAPI, s Repository) Service {
 	return &service{
 		cfg:     cfg,
 		jFact:   newJobFactory(newJobRepository(s)),
+		wPool:   newWorkerPool(3, newJobRepository(s)),
 		store:   s,
 		cmapAPI: cmapAPI,
 	}

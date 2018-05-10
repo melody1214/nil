@@ -29,7 +29,11 @@ type Repository interface {
 
 // jobRepository is repository for storing and tracking jobs.
 type jobRepository interface {
+	Begin() (repository.TxID, error)
+	Rollback(repository.TxID) error
+	Commit(repository.TxID) error
 	InsertJob(repository.TxID, *Job) error
+	LocalJoin(cmap.Node) error
 	// FetchJob() *job
 }
 

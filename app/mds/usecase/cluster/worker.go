@@ -1,6 +1,8 @@
 package cluster
 
-import "sync"
+import (
+	"sync"
+)
 
 type workerState int
 
@@ -14,14 +16,27 @@ const (
 type worker struct {
 	id    ID
 	state workerState
-	job   Job
+	job   *Job
+	store jobRepository
 	mu    sync.Mutex
 }
 
-func newWorker(id ID) *worker {
+func newWorker(id ID, store jobRepository) *worker {
 	return &worker{
 		id:    id,
 		state: idle,
+		store: store,
+	}
+}
+
+// newContractWorker returns a new contract worker object.
+// Contract workers only handle the interactive type of job and will be
+// deleted from the pool when the job is done. Contract workers are created
+// only when there is no regular workers for handling the interactive job.
+func newContractWorker(store jobRepository) *worker {
+	return &worker{
+		state: working,
+		store: store,
 	}
 }
 
@@ -34,10 +49,8 @@ type fsm func() (next fsm)
 
 // run is the engine of dispatched worker.
 // Manage the state transitioning until meet the state nil.
-func (w *worker) run(j Job) {
-	if w.canStart() == false {
-		return
-	}
+func (w *worker) run(j *Job) {
+	w.job = j
 
 	startState := w.init
 	for state := startState; state != nil; {
@@ -45,24 +58,12 @@ func (w *worker) run(j Job) {
 	}
 }
 
-func (w *worker) canStart() bool {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-
-	if w.state != idle {
-		return false
-	}
-
-	w.state = working
-	return true
-}
-
 // init is the state for initiating the worker.
 // Read the job and determine what action should be taken.
 func (w *worker) init() fsm {
 	switch w.job.Event.Type {
-	case AddNode:
-		return nil
+	case LocalJoin:
+		return w.ljStart
 	case Fail:
 		return nil
 	default:

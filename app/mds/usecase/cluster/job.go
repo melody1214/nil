@@ -1,5 +1,9 @@
 package cluster
 
+import (
+	"fmt"
+)
+
 // ID is an unique identifier for entity objects.
 type ID int64
 
@@ -18,15 +22,17 @@ const (
 	Done
 	// Abort : Stop trying, it is impossible to perform.
 	Abort
+	// Merged : merged because the same event is occured before done.
+	Merged
 )
 
 // JobType represents the type of job.
 type JobType int
 
 const (
-	// Interactive : job requester is waiting for processing.
-	// Scheduler try to dispatch the interative job as soon as possible.
-	Interactive JobType = iota
+	// Iterative : job requester is waiting for processing.
+	// Scheduler try to dispatch the iterative job as soon as possible.
+	Iterative JobType = iota
 	// Batch : job requester is not waiting.
 	// This kind of job take a quite long time, for instance fail over.
 	Batch
@@ -45,6 +51,21 @@ type Job struct {
 	ScheduledAt Time
 	FinishedAt  Time
 
-	// This is a private field for batch type of jobs.
-	batchPrivate interface{}
+	// This is a private fields for iterative type of jobs.
+	private     interface{}
+	waitChannel chan error
+}
+
+func (j *Job) getPrivate() (interface{}, error) {
+	if j.Type != Iterative {
+		return nil, fmt.Errorf("only iterative type of job has private field")
+	}
+	return j.private, nil
+}
+
+func (j *Job) getWaitChannel() (chan error, error) {
+	if j.Type != Iterative {
+		return nil, fmt.Errorf("only iterative type of job has wait channel field")
+	}
+	return j.waitChannel, nil
 }

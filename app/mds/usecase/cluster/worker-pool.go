@@ -3,6 +3,9 @@ package cluster
 import (
 	"fmt"
 	"sync"
+	"time"
+
+	"github.com/chanyoung/nil/app/mds/repository"
 )
 
 // WorkerPool is a service for managing worker. It is involved in two entities,
@@ -11,38 +14,109 @@ import (
 type workerPool struct {
 	// Number of available workers.
 	available int
+	pool      map[ID]*worker
 
-	pool map[ID]*worker
+	// urgent is the channel to scheduler.
+	// Send the urgent job to dispatch it first.
+	urgent chan *Job
 
-	// tempPool is a worker pool of contract workers.
-	// Contract workers only handle the interactive type of job and will be
-	// deleted from the pool when the job is done.
-	// Contract workers are created only when there is no regular workers
-	// for handling the interactive job.
-	tempPool map[ID]*worker
-
-	mu sync.Mutex
+	store jobRepository
+	mu    sync.Mutex
 }
 
 // newWorkerPool returns a new worker pool service.
-func newWorkerPool(numWorker int) (*workerPool, error) {
-	if numWorker <= 0 {
-		return nil, fmt.Errorf("invalid number of workers")
+func newWorkerPool(numWorker int, store jobRepository) *workerPool {
+	p := &workerPool{
+		available: numWorker,
+		pool:      make(map[ID]*worker, numWorker),
+		urgent:    make(chan *Job, 3),
+		store:     store,
 	}
-	p := make(map[ID]*worker, numWorker)
 
 	for i := 0; i < numWorker; i++ {
-		w := newWorker(ID(i))
-		p[w.id] = w
+		w := newWorker(ID(i), store)
+		p.pool[w.id] = w
 	}
+	go p.runScheduler()
 
-	return &workerPool{
-		available: numWorker,
-		pool:      p,
-	}, nil
+	return p
 }
 
-// run starts to run the worker pool service.
-// Pool service fetches job from the repository and dispatch it repeatedly.
-func (p *workerPool) run() {
+// runScheduler starts to run the worker pool service scheduler.
+// Pool scheduler fetches job from the repository and dispatch it repeatedly.
+func (p *workerPool) runScheduler() {
+	// Check the job repository at least every 10 second.
+	checkTicker := time.NewTicker(10 * time.Second)
+	for {
+		select {
+		case <-checkTicker.C:
+			p.schedule(nil)
+		case job := <-p.urgent:
+			p.schedule(job)
+		}
+	}
+}
+
+// dispatchNow send the notification to workPool scheduler with the urgent job.
+// (which is usually interactive job)
+func (p *workerPool) dispatchNow(j *Job) {
+	p.urgent <- j
+}
+
+// schedule fetch a job from the job repository and assign it to worker.
+func (p *workerPool) schedule(job *Job) {
+	txid, err := p.store.Begin()
+	if err != nil {
+		return
+	}
+
+	if job == nil {
+		job, err = p.fetchJob(txid)
+		if err != nil {
+			p.store.Rollback(txid)
+			return
+		}
+	}
+
+	w, ok := p.fetchWorker(job.Type == Batch)
+	if ok == false {
+		p.store.Rollback(txid)
+		return
+	}
+
+	if err = p.store.Commit(txid); err != nil {
+		p.store.Rollback(txid)
+		return
+	}
+
+	go w.run(job)
+}
+
+func (p *workerPool) fetchJob(txid repository.TxID) (*Job, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
+func (p *workerPool) fetchWorker(isBatch bool) (fetched *worker, ok bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if p.available == 0 && isBatch {
+		return nil, false
+	}
+
+	if p.available == 0 && isBatch == false {
+		return newContractWorker(p.store), true
+	}
+
+	for _, w := range p.pool {
+		if w.state != idle {
+			continue
+		}
+
+		w.state = working
+		p.available--
+		return w, true
+	}
+
+	return nil, false
 }
