@@ -57,12 +57,18 @@ type fsm func() (next fsm)
 // run is the engine of dispatched worker.
 // Manage the state transitioning until meet the state nil.
 func (w *worker) run(j *Job) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
 	w.job = j
 
 	startState := w.init
 	for state := startState; state != nil; {
 		state = state()
 	}
+
+	w.job = nil
+	w.state = idle
 }
 
 // init is the state for initiating the worker.

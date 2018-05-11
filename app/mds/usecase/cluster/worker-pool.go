@@ -14,8 +14,7 @@ import (
 // and dispatches the worker.
 type workerPool struct {
 	// Number of available workers.
-	available int
-	pool      map[ID]*worker
+	pool map[ID]*worker
 
 	// urgent is the channel to scheduler.
 	// Send the urgent job to dispatch it first.
@@ -29,11 +28,10 @@ type workerPool struct {
 // newWorkerPool returns a new worker pool service.
 func newWorkerPool(numWorker int, cmapAPI cmap.MasterAPI, store jobRepository) *workerPool {
 	p := &workerPool{
-		available: numWorker,
-		pool:      make(map[ID]*worker, numWorker),
-		urgent:    make(chan *Job, 3),
-		cmapAPI:   cmapAPI,
-		store:     store,
+		pool:    make(map[ID]*worker, numWorker),
+		urgent:  make(chan *Job, 3),
+		cmapAPI: cmapAPI,
+		store:   store,
 	}
 
 	for i := 0; i < numWorker; i++ {
@@ -103,23 +101,18 @@ func (p *workerPool) fetchWorker(isBatch bool) (fetched *worker, ok bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	if p.available == 0 && isBatch {
-		return nil, false
-	}
-
-	if p.available == 0 && isBatch == false {
-		return newContractWorker(p.cmapAPI, p.store), true
-	}
-
 	for _, w := range p.pool {
 		if w.state != idle {
 			continue
 		}
 
 		w.state = working
-		p.available--
 		return w, true
 	}
 
-	return nil, false
+	if isBatch {
+		return nil, false
+	}
+
+	return newContractWorker(p.cmapAPI, p.store), true
 }
