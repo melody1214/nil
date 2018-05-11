@@ -26,6 +26,22 @@ const (
 	Merged
 )
 
+// String returns the string type of its value.
+func (s JobState) String() string {
+	if s == Ready {
+		return "Ready"
+	} else if s == Run {
+		return "Run"
+	} else if s == Done {
+		return "Done"
+	} else if s == Abort {
+		return "Abort"
+	} else if s == Merged {
+		return "Merged"
+	}
+	return "Unknown"
+}
+
 // JobType represents the type of job.
 type JobType int
 
@@ -38,6 +54,16 @@ const (
 	Batch
 )
 
+// String returns the string type of its value.
+func (t JobType) String() string {
+	if t == Iterative {
+		return "Iterative"
+	} else if t == Batch {
+		return "Batch"
+	}
+	return "Unknown"
+}
+
 // JobLog store the log about the job within 32 bytes long.
 type JobLog string
 
@@ -46,6 +72,11 @@ func newJobLog(s string) JobLog {
 		return JobLog(s)
 	}
 	return JobLog(string(s[:64]))
+}
+
+// String returns the string type of its value.
+func (l JobLog) String() string {
+	return string(l)
 }
 
 // Job act as a kind of event history in the cluster domain.

@@ -16,6 +16,16 @@ const (
 	Fail
 )
 
+// String returns the string type of its value.
+func (t EventType) String() string {
+	if t == LocalJoin {
+		return "LocalJoin"
+	} else if t == Fail {
+		return "Fail"
+	}
+	return "Unknown"
+}
+
 // Time represents the occured time of the event or job.
 type Time string
 

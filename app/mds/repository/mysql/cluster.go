@@ -266,3 +266,49 @@ func (s *clusterStore) UpdateJob(txid repository.TxID, job *cluster.Job) error {
 	_, err := s.Execute(txid, q)
 	return err
 }
+
+func (s *clusterStore) ListJob() []string {
+	l := make([]string, 0)
+
+	q := fmt.Sprintf(
+		`
+		SELECT 
+			clj_id,
+			clj_type,
+			clj_state,
+			clj_event_type,
+			ifnull (clj_event_affected, -1),
+			clj_event_time,
+			ifnull (clj_scheduled_at, ''),
+			ifnull (clj_finished_at, ''),
+			ifnull (clj_log, '')
+		FROM cluster_job
+		`,
+	)
+
+	rows, err := s.Query(repository.NotTx, q)
+	if err != nil {
+		return l
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var j cluster.Job
+		if err = rows.Scan(
+			&j.ID, &j.Type, &j.State, &j.Event.Type, &j.Event.AffectedEG,
+			&j.Event.TimeStamp, &j.ScheduledAt, &j.FinishedAt, &j.Log,
+		); err != nil {
+			return l
+		}
+
+		js := fmt.Sprintf(
+			"[ID: %d] [Type: %s] [State: %s] [EventType: %s] [EventAffectedEG: %s]\n"+
+				"[EventTime: %s]\n[ScheduledAt: %s]\n[FinishedAt: %s]\n[Log: %s]\n",
+			j.ID.Int64(), j.Type.String(), j.State.String(), j.Event.Type.String(), j.Event.AffectedEG.String(), j.Event.TimeStamp.String(), j.ScheduledAt.String(), j.FinishedAt.String(), j.Log.String(),
+		)
+
+		l = append(l, js)
+	}
+
+	return l
+}

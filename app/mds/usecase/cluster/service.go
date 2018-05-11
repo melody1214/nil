@@ -78,6 +78,7 @@ type RPCHandler interface {
 	RegisterVolume(req *nilrpc.MCLRegisterVolumeRequest, res *nilrpc.MCLRegisterVolumeResponse) error
 	LocalJoin(req *nilrpc.MCLLocalJoinRequest, res *nilrpc.MCLLocalJoinResponse) error
 	GlobalJoin(req *nilrpc.MCLGlobalJoinRequest, res *nilrpc.MCLGlobalJoinResponse) error
+	ListJob(req *nilrpc.MCLListJobRequest, res *nilrpc.MCLListJobResponse) error
 }
 
 // GetUpdateNoti returns when the cmap is updated or timeout.

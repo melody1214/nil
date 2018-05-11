@@ -13,6 +13,12 @@ func (s *service) GetClusterMap(req *nilrpc.MCLGetClusterMapRequest, res *nilrpc
 	return nil
 }
 
+// ListJob returns a current job list.
+func (s *service) ListJob(req *nilrpc.MCLListJobRequest, res *nilrpc.MCLListJobResponse) error {
+	res.List = s.store.ListJob()
+	return nil
+}
+
 // RegisterVolume receives a new volume information from ds and register it to the database.
 func (s *service) RegisterVolume(req *nilrpc.MCLRegisterVolumeRequest, res *nilrpc.MCLRegisterVolumeResponse) error {
 	// if req.ID != "" {

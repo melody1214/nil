@@ -10,6 +10,7 @@ import (
 
 // Repository provides access to cmap map database.
 type Repository interface {
+	ListJob() []string
 	FindAllNodes(repository.TxID) ([]cmap.Node, error)
 	FindAllVolumes(repository.TxID) (vols []cmap.Volume, err error)
 	FindAllEncGrps(repository.TxID) (EngGrps []cmap.EncodingGroup, err error)

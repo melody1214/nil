@@ -1,6 +1,8 @@
 package nilrpc
 
-import "github.com/chanyoung/nil/pkg/cmap"
+import (
+	"github.com/chanyoung/nil/pkg/cmap"
+)
 
 // MCLGetClusterMapRequest requests to get local cluster map.
 // Version == 0; requests the latest version.
@@ -64,4 +66,12 @@ type MCLRegisterVolumeRequest struct {
 // MCLRegisterVolumeResponse contains a registered volume id and the results.
 type MCLRegisterVolumeResponse struct {
 	ID string
+}
+
+// MCLListJobRequest requests to show the job history.
+type MCLListJobRequest struct{}
+
+// MCLListJobResponse contains the job list.
+type MCLListJobResponse struct {
+	List []string
 }

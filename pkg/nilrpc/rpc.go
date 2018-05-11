@@ -34,6 +34,7 @@ const (
 	MdsClusterLocalJoin
 	MdsClusterGlobalJoin
 	MdsClusterRegisterVolume
+	MdsClusterListJob
 
 	// MDS object domain methods.
 	MdsObjectPut
@@ -67,6 +68,8 @@ func (m MethodName) String() string {
 		return MdsClusterPrefix + "." + "GlobalJoin"
 	case MdsClusterRegisterVolume:
 		return MdsClusterPrefix + "." + "RegisterVolume"
+	case MdsClusterListJob:
+		return MdsClusterPrefix + "." + "ListJob"
 
 	case MdsObjectPut:
 		return MdsObjectPrefix + "." + "Put"
