@@ -211,16 +211,16 @@ func (s *clusterStore) InsertJob(txid repository.TxID, job *cluster.Job) error {
 	if job.Event.AffectedEG == cluster.NoAffectedEG {
 		q = fmt.Sprintf(
 			`
-		INSERT INTO cluster_job (clj_type, clj_state, clj_event_type, clj_event_time)
-		VALUES ('%d', '%d', '%d', '%s')
-		`, job.Type, job.State, job.Event.Type, job.Event.TimeStamp,
+		INSERT INTO cluster_job (clj_type, clj_state, clj_event_type, clj_event_time, clj_log)
+		VALUES ('%d', '%d', '%d', '%s', '%s')
+		`, job.Type, job.State, job.Event.Type, job.Event.TimeStamp, job.Log,
 		)
 	} else {
 		q = fmt.Sprintf(
 			`
-		INSERT INTO cluster_job (clj_type, clj_state, clj_event_type, clj_event_affected, clj_event_time)
-		VALUES ('%d', '%d', '%d', '%s', '%s')
-		`, job.Type, job.State, job.Event.Type, job.Event.AffectedEG, job.Event.TimeStamp,
+		INSERT INTO cluster_job (clj_type, clj_state, clj_event_type, clj_event_affected, clj_event_time, clj_log)
+		VALUES ('%d', '%d', '%d', '%s', '%s', '%s')
+		`, job.Type, job.State, job.Event.Type, job.Event.AffectedEG, job.Event.TimeStamp, job.Log,
 		)
 	}
 
@@ -248,6 +248,19 @@ func (s *clusterStore) mergeJob(txid repository.TxID, event *cluster.Event) erro
 		SET clj_state=%d, clj_finished='%s'
 		WHERE clj_event_type=%d AND clj_event_affected=%s AND clj_state=%d
 		`, cluster.Merged, cluster.TimeNow(), event.Type, affectedEG, cluster.Ready,
+	)
+
+	_, err := s.Execute(txid, q)
+	return err
+}
+
+func (s *clusterStore) UpdateJob(txid repository.TxID, job *cluster.Job) error {
+	q := fmt.Sprintf(
+		`
+		UPDATE cluster_job
+		SET clj_state=%d, clj_scheduled_at='%s', clj_finished_at='%s', clj_log='%s'
+		WHERE clj_id=%d
+		`, job.State, job.ScheduledAt, job.FinishedAt, job.Log, job.ID,
 	)
 
 	_, err := s.Execute(txid, q)

@@ -29,7 +29,7 @@ func NewService(cfg *config.Mds, cmapAPI cmap.MasterAPI, s Repository) Service {
 	return &service{
 		cfg:     cfg,
 		jFact:   newJobFactory(newJobRepository(s)),
-		wPool:   newWorkerPool(3, newJobRepository(s)),
+		wPool:   newWorkerPool(3, cmapAPI, newJobRepository(s)),
 		store:   s,
 		cmapAPI: cmapAPI,
 	}

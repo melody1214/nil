@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/chanyoung/nil/app/mds/repository"
+	"github.com/chanyoung/nil/pkg/cmap"
 )
 
 // WorkerPool is a service for managing worker. It is involved in two entities,
@@ -20,21 +21,23 @@ type workerPool struct {
 	// Send the urgent job to dispatch it first.
 	urgent chan *Job
 
-	store jobRepository
-	mu    sync.Mutex
+	cmapAPI cmap.MasterAPI
+	store   jobRepository
+	mu      sync.Mutex
 }
 
 // newWorkerPool returns a new worker pool service.
-func newWorkerPool(numWorker int, store jobRepository) *workerPool {
+func newWorkerPool(numWorker int, cmapAPI cmap.MasterAPI, store jobRepository) *workerPool {
 	p := &workerPool{
 		available: numWorker,
 		pool:      make(map[ID]*worker, numWorker),
 		urgent:    make(chan *Job, 3),
+		cmapAPI:   cmapAPI,
 		store:     store,
 	}
 
 	for i := 0; i < numWorker; i++ {
-		w := newWorker(ID(i), store)
+		w := newWorker(ID(i), cmapAPI, store)
 		p.pool[w.id] = w
 	}
 	go p.runScheduler()
@@ -105,7 +108,7 @@ func (p *workerPool) fetchWorker(isBatch bool) (fetched *worker, ok bool) {
 	}
 
 	if p.available == 0 && isBatch == false {
-		return newContractWorker(p.store), true
+		return newContractWorker(p.cmapAPI, p.store), true
 	}
 
 	for _, w := range p.pool {

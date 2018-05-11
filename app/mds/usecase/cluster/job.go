@@ -38,6 +38,16 @@ const (
 	Batch
 )
 
+// JobLog store the log about the job within 32 bytes long.
+type JobLog string
+
+func newJobLog(s string) JobLog {
+	if len(s) < 64 {
+		return JobLog(s)
+	}
+	return JobLog(string(s[:64]))
+}
+
 // Job act as a kind of event history in the cluster domain.
 // When a significant change occurs in configuring the cluster, the handler
 // receiving the event generates a job through the job factory. Each job has
@@ -50,10 +60,14 @@ type Job struct {
 	Event       Event
 	ScheduledAt Time
 	FinishedAt  Time
+	Log         JobLog
 
 	// This is a private fields for iterative type of jobs.
 	private     interface{}
 	waitChannel chan error
+
+	// Store errors that occur during execution.
+	err error
 }
 
 func (j *Job) getPrivate() (interface{}, error) {

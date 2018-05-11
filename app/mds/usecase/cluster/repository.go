@@ -25,6 +25,7 @@ type Repository interface {
 
 	// jobRepository methods.
 	InsertJob(repository.TxID, *Job) error
+	UpdateJob(repository.TxID, *Job) error
 }
 
 // jobRepository is repository for storing and tracking jobs.
@@ -33,8 +34,14 @@ type jobRepository interface {
 	Rollback(repository.TxID) error
 	Commit(repository.TxID) error
 	InsertJob(repository.TxID, *Job) error
+	UpdateJob(repository.TxID, *Job) error
 	LocalJoin(cmap.Node) error
 	// FetchJob() *job
+
+	GetNewClusterMapVer(repository.TxID) (cmap.Version, error)
+	FindAllNodes(repository.TxID) ([]cmap.Node, error)
+	FindAllVolumes(repository.TxID) (vols []cmap.Volume, err error)
+	FindAllEncGrps(repository.TxID) (EngGrps []cmap.EncodingGroup, err error)
 }
 
 func newJobRepository(r Repository) jobRepository {

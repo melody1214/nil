@@ -42,6 +42,7 @@ func (f *jobFactory) create(e *Event, private ...interface{}) (*Job, error) {
 		}
 		j.private = n
 		j.waitChannel = make(chan error)
+		j.Log = newJobLog("request from " + n.Addr.String() + ", name " + n.Name.String())
 	case Fail:
 		j.Type = Batch
 		j.State = Ready
