@@ -128,12 +128,3 @@ func (s *service) GetUpdateNoti(req *nilrpc.MCLGetUpdateNotiRequest, res *nilrpc
 // 	cli := rpc.NewClient(conn)
 // 	return cli.Call(nilrpc.MdsRecoveryRecovery.String(), req, res)
 // }
-
-func calcMaxChain(volumeSize uint64) int {
-	if volumeSize <= 0 {
-		return 0
-	}
-
-	// Test, chain per 10MB,
-	return int(volumeSize / 10)
-}

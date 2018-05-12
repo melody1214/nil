@@ -27,6 +27,7 @@ type Repository interface {
 	// jobRepository methods.
 	InsertJob(repository.TxID, *Job) error
 	UpdateJob(repository.TxID, *Job) error
+	RegisterVolume(txid repository.TxID, v *cmap.Volume) error
 }
 
 // jobRepository is repository for storing and tracking jobs.
@@ -43,6 +44,7 @@ type jobRepository interface {
 	FindAllNodes(repository.TxID) ([]cmap.Node, error)
 	FindAllVolumes(repository.TxID) (vols []cmap.Volume, err error)
 	FindAllEncGrps(repository.TxID) (EngGrps []cmap.EncodingGroup, err error)
+	RegisterVolume(txid repository.TxID, v *cmap.Volume) error
 }
 
 func newJobRepository(r Repository) jobRepository {

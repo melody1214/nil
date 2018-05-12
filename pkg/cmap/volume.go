@@ -51,4 +51,5 @@ type Volume struct {
 	Stat    VolumeStatus `xml:"status"`
 	Node    ID           `xml:"node"`
 	EncGrps []ID         `xml:"encgrp"`
+	MaxEG   int          `xml:"maxeg"`
 }

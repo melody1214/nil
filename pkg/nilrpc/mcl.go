@@ -54,13 +54,14 @@ type MCLGlobalJoinResponse struct{}
 
 // MCLRegisterVolumeRequest contains a new volume information.
 type MCLRegisterVolumeRequest struct {
-	ID     string
-	Ds     string
-	Size   uint64
-	Free   uint64
-	Used   uint64
-	Speed  string
-	Status string
+	Volume cmap.Volume
+	// ID     string
+	// Ds     string
+	// Size   uint64
+	// Free   uint64
+	// Used   uint64
+	// Speed  string
+	// Status string
 }
 
 // MCLRegisterVolumeResponse contains a registered volume id and the results.

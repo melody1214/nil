@@ -77,6 +77,8 @@ func (w *worker) init() fsm {
 	switch w.job.Event.Type {
 	case LocalJoin:
 		return w.ljStart
+	case RegisterVolume:
+		return w.rvStart
 	case Fail:
 		return nil
 	default:

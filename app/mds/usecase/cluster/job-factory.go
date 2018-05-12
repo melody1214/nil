@@ -22,7 +22,7 @@ func newJobFactory(s jobRepository) *jobFactory {
 }
 
 // create creates an event with a given event information.
-func (f *jobFactory) create(e *Event, private ...interface{}) (*Job, error) {
+func (f *jobFactory) create(e *Event, private interface{}) (*Job, error) {
 	j := &Job{
 		Event: *e,
 	}
@@ -32,17 +32,32 @@ func (f *jobFactory) create(e *Event, private ...interface{}) (*Job, error) {
 		j.Type = Iterative
 		j.State = Run
 
-		if len(private) < 1 {
+		if private == nil {
 			return nil, fmt.Errorf("added node information should be in private field")
 		}
 
-		n, ok := private[0].(cmap.Node)
+		n, ok := private.(cmap.Node)
 		if ok == false {
 			return nil, fmt.Errorf("wrong private field type")
 		}
 		j.private = n
 		j.waitChannel = make(chan error)
 		j.Log = newJobLog("request from " + n.Addr.String() + ", name " + n.Name.String())
+	case RegisterVolume:
+		j.Type = Iterative
+		j.State = Run
+
+		if private == nil {
+			return nil, fmt.Errorf("register volume information should be in private field")
+		}
+
+		v, ok := private.(cmap.Volume)
+		if ok == false {
+			return nil, fmt.Errorf("wrong private field type")
+		}
+		j.private = v
+		j.waitChannel = make(chan error)
+		j.Log = newJobLog("DS: " + v.ID.String())
 	case Fail:
 		j.Type = Batch
 		j.State = Ready

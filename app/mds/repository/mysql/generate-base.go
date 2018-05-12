@@ -55,8 +55,6 @@ var generateSQLBase = []string{
 			vl_status varchar(32) CHARACTER SET ascii NOT NULL,
 			vl_node int unsigned NOT NULL,
 			vl_size int unsigned NOT NULL,
-			vl_free int unsigned NOT NULL,
-			vl_used int unsigned NOT NULL,
 			vl_encoding_group int unsigned NOT NULL,
 			vl_max_encoding_group int unsigned NOT NULL,
 			vl_speed varchar(32) charset ascii NOT NULL,

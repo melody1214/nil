@@ -12,6 +12,8 @@ type EventType int
 const (
 	// LocalJoin means the event type is local join.
 	LocalJoin EventType = iota
+	// RegisterVolume means the event type is register new volume.
+	RegisterVolume
 	// Fail means the event type is fail.
 	Fail
 )
@@ -20,6 +22,8 @@ const (
 func (t EventType) String() string {
 	if t == LocalJoin {
 		return "LocalJoin"
+	} else if t == RegisterVolume {
+		return "RegisterVolume"
 	} else if t == Fail {
 		return "Fail"
 	}
@@ -46,7 +50,7 @@ type Event struct {
 }
 
 // NoAffectedEG means this event has not affect to any encoding group.
-const NoAffectedEG = cmap.ID(-999)
+const NoAffectedEG = cmap.ID(-1)
 
 func newEvent(t EventType, affectedEG cmap.ID) *Event {
 	return &Event{

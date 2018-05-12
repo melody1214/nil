@@ -21,6 +21,29 @@ func (s *service) ListJob(req *nilrpc.MCLListJobRequest, res *nilrpc.MCLListJobR
 
 // RegisterVolume receives a new volume information from ds and register it to the database.
 func (s *service) RegisterVolume(req *nilrpc.MCLRegisterVolumeRequest, res *nilrpc.MCLRegisterVolumeResponse) error {
+	e := newEvent(RegisterVolume, NoAffectedEG)
+
+	j, err := s.jFact.create(e, req.Volume)
+	if err != nil {
+		return err
+	}
+
+	s.wPool.dispatchNow(j)
+
+	waitC, err := j.getWaitChannel()
+	if err != nil {
+		return err
+	}
+
+	timeout := time.After(2 * time.Minute)
+	select {
+	case err = <-waitC:
+		return err
+	case <-timeout:
+		// TODO: j.stop()
+		return fmt.Errorf("timeout failed")
+	}
+
 	// if req.ID != "" {
 	// 	return fmt.Errorf("not allowed to update volume by rpc")
 	// }
@@ -37,7 +60,6 @@ func (s *service) RegisterVolume(req *nilrpc.MCLRegisterVolumeRequest, res *nilr
 	// 	return s.insertNewVolume(req, res)
 	// }
 	// return s.updateVolume(req, res)
-	return nil
 }
 
 func (s *service) updateVolume(req *nilrpc.MCLRegisterVolumeRequest, res *nilrpc.MCLRegisterVolumeResponse) error {
@@ -89,7 +111,6 @@ func (s *service) insertNewVolume(req *nilrpc.MCLRegisterVolumeRequest, res *nil
 
 // LocalJoin handles the join request from the same local cluster nodes.
 func (s *service) LocalJoin(req *nilrpc.MCLLocalJoinRequest, res *nilrpc.MCLLocalJoinResponse) error {
-	// Make event structure.
 	e := newEvent(LocalJoin, NoAffectedEG)
 
 	j, err := s.jFact.create(e, req.Node)
@@ -112,16 +133,6 @@ func (s *service) LocalJoin(req *nilrpc.MCLLocalJoinRequest, res *nilrpc.MCLLoca
 		// TODO: j.stop()
 		return fmt.Errorf("timeout failed")
 	}
-
-	// Add new node into the database.
-	// if err := s.store.LocalJoin(req.Node); err != nil {
-	// 	return errors.Wrap(err, "failed to add new node into the database")
-	// }
-
-	// Just update the cluster map.
-	// Removed the rebalance call because the only case of local join is
-	// the ds without any volumes.
-	// s.updateClusterMap()
 }
 
 // GlobalJoin handles the join request from the other raft nodes.
