@@ -3,9 +3,8 @@ package cluster
 import (
 	"fmt"
 
-	"github.com/chanyoung/nil/pkg/cmap"
-
 	"github.com/chanyoung/nil/app/mds/repository"
+	"github.com/chanyoung/nil/pkg/cmap"
 )
 
 // Prefix: rv

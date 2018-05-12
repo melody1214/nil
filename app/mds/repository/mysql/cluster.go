@@ -314,19 +314,12 @@ func (s *clusterStore) ListJob() []string {
 }
 
 func (s *clusterStore) RegisterVolume(txid repository.TxID, v *cmap.Volume) error {
-	fmt.Printf("\n%+v\n", *v)
 	q := fmt.Sprintf(
 		`
 		INSERT INTO volume (vl_node, vl_status, vl_size, vl_encoding_group, vl_max_encoding_group, vl_speed)
 		VALUES(%d, '%s', '%d', '%d', '%d', '%s')
 		`, v.Node, cmap.Prepared, v.Size, 0, v.MaxEG, v.Speed,
 	)
-	// q := fmt.Sprintf(
-	// 	`
-	// 	INSERT INTO volume (vl_node, vl_status, vl_size, vl_free, vl_used, vl_encoding_group, vl_max_encoding_group, vl_speed)
-	// 	SELECT node_id, '%s', '%d', '%d', '%d', '%d', '%d', '%s' FROM node WHERE node_name = '%s'
-	// 	`, req.Status, req.Size, req.Free, req.Used, 0, calcMaxChain(req.Size), req.Speed, req.Ds,
-	// )
 
 	r, err := s.Execute(txid, q)
 	if err != nil {

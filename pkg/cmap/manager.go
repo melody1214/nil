@@ -168,26 +168,24 @@ func (m *cMapManager) GetUpdatedNoti(ver Version) <-chan interface{} {
 // GetStateChangedNoti returns a channel which will send notification when
 // some cluster map member's state are changed.
 func (m *cMapManager) GetStateChangedNoti() <-chan interface{} {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	// Make buffered channel is important because not to be blocked
 	// while in the send noti progress if the receiver had been timeout.
 	notiC := make(chan interface{}, 2)
-
-	go func() {
-		m.mu.Lock()
-		defer m.mu.Unlock()
-
-		m.stateChangedNotiChannels[Now()] = notiC
-	}()
+	m.stateChangedNotiChannels[Now()] = notiC
 
 	return notiC
 }
 
-// StateChanged means some states are changed and sends notifications to all observers.
-func (m *cMapManager) StateChanged() {
-	for i, ch := range m.stateChangedNotiChannels {
+// sendStateChangedNotiToAll sends notifications to all observers when some
+// states are changed.
+func (m *cMapManager) sendStateChangedNotiToAll() {
+	for key, ch := range m.stateChangedNotiChannels {
 		ch <- nil
 		close(ch)
-		delete(m.stateChangedNotiChannels, i)
+		delete(m.stateChangedNotiChannels, key)
 	}
 }
 
@@ -272,19 +270,26 @@ func (m *cMapManager) mergeCMap(received *CMap) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	stateChanged := false
 	mine := m.latestCMap()
 	if mine.Version < received.Version {
 		// Mine is outdated.
-		mergeCMap(mine, received)
+		stateChanged = mergeCMap(mine, received)
 		m.update(received)
 	} else {
 		// Same version or received is outdated.
-		mergeCMap(received, mine)
+		stateChanged = mergeCMap(received, mine)
+	}
+
+	if stateChanged {
+		m.sendStateChangedNotiToAll()
 	}
 }
 
 // mergeCMap compares each incarnation of members and merge to destination cmap.
-func mergeCMap(src, dst *CMap) {
+func mergeCMap(src, dst *CMap) bool {
+	stateChanged := false
+
 	// Merge nodes.
 	for _, sn := range src.Nodes {
 		for i, dn := range dst.Nodes {
@@ -312,10 +317,15 @@ func mergeCMap(src, dst *CMap) {
 				merge = true
 			}
 
-			if merge {
-				dst.Nodes[i].Stat = sn.Stat
-				dst.Nodes[i].Incr = sn.Incr
+			if merge == false {
+				break
 			}
+
+			if dst.Nodes[i].Stat != sn.Stat {
+				dst.Nodes[i].Stat = sn.Stat
+				stateChanged = true
+			}
+			dst.Nodes[i].Incr = sn.Incr
 		}
 	}
 
@@ -334,8 +344,11 @@ func mergeCMap(src, dst *CMap) {
 				break
 			}
 
+			if dst.Vols[i].Stat != sv.Stat {
+				dst.Vols[i].Stat = sv.Stat
+				stateChanged = true
+			}
 			dst.Vols[i].Size = sv.Size
-			dst.Vols[i].Stat = sv.Stat
 			dst.Vols[i].Speed = sv.Speed
 			dst.Vols[i].Incr = sv.Incr
 		}
@@ -356,11 +369,16 @@ func mergeCMap(src, dst *CMap) {
 				break
 			}
 
+			if dst.EncGrps[i].Stat != se.Stat {
+				dst.EncGrps[i].Stat = se.Stat
+				stateChanged = true
+			}
 			dst.EncGrps[i].Size = se.Size
 			dst.EncGrps[i].Used = se.Used
 			dst.EncGrps[i].Free = se.Free
-			dst.EncGrps[i].Stat = se.Stat
 			dst.EncGrps[i].Incr = se.Incr
 		}
 	}
+
+	return stateChanged
 }

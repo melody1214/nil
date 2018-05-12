@@ -205,7 +205,7 @@ func (s *server) disseminate(id ID, stat NodeStatus) {
 			cmap.Nodes[i].Incr++
 		}
 
-		s.cMapManager.StateChanged()
+		s.cMapManager.sendStateChangedNotiToAll()
 		go s.broadcast()
 		return
 	}

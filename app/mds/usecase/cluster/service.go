@@ -26,13 +26,16 @@ type service struct {
 func NewService(cfg *config.Mds, cmapAPI cmap.MasterAPI, s Repository) Service {
 	logger = mlog.GetPackageLogger("app/mds/usecase/cluster")
 
-	return &service{
+	service := &service{
 		cfg:     cfg,
 		jFact:   newJobFactory(newJobRepository(s)),
 		wPool:   newWorkerPool(3, cmapAPI, newJobRepository(s)),
 		store:   s,
 		cmapAPI: cmapAPI,
 	}
+	service.runStateChangedObserver()
+
+	return service
 }
 
 // Service is the interface that provides clustermap domain's service.
@@ -128,3 +131,12 @@ func (s *service) GetUpdateNoti(req *nilrpc.MCLGetUpdateNotiRequest, res *nilrpc
 // 	cli := rpc.NewClient(conn)
 // 	return cli.Call(nilrpc.MdsRecoveryRecovery.String(), req, res)
 // }
+
+func calcMaxChain(volumeSize uint64) int {
+	if volumeSize <= 0 {
+		return 0
+	}
+
+	// Test, chain per 10MB,
+	return int(volumeSize / 10)
+}

@@ -100,3 +100,15 @@ func (s *service) GlobalJoin(req *nilrpc.MCLGlobalJoinRequest, res *nilrpc.MCLGl
 	}
 	return s.store.GlobalJoin(req.RaftAddr, req.NodeID)
 }
+
+func (s *service) runStateChangedObserver() {
+	go func() {
+		for {
+			notiC := s.cmapAPI.GetStateChangedNoti()
+			select {
+			case <-notiC:
+				// Handle state changed.
+			}
+		}
+	}()
+}
