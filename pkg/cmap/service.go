@@ -124,6 +124,7 @@ func (s *Service) UpdateVolume(volume Volume) error {
 
 		cm.Vols[i].Stat = volume.Stat
 		cm.Vols[i].Size = volume.Size
+		cm.Vols[i].Speed = volume.Speed
 		cm.Vols[i].Incr = cm.Vols[i].Incr + 1
 	}
 

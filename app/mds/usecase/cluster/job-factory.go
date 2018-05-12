@@ -51,7 +51,7 @@ func (f *jobFactory) create(e *Event, private interface{}) (*Job, error) {
 			return nil, fmt.Errorf("register volume information should be in private field")
 		}
 
-		v, ok := private.(cmap.Volume)
+		v, ok := private.(*cmap.Volume)
 		if ok == false {
 			return nil, fmt.Errorf("wrong private field type")
 		}

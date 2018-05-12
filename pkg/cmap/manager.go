@@ -336,6 +336,7 @@ func mergeCMap(src, dst *CMap) {
 
 			dst.Vols[i].Size = sv.Size
 			dst.Vols[i].Stat = sv.Stat
+			dst.Vols[i].Speed = sv.Speed
 			dst.Vols[i].Incr = sv.Incr
 		}
 	}

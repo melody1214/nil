@@ -23,7 +23,7 @@ func (s *service) ListJob(req *nilrpc.MCLListJobRequest, res *nilrpc.MCLListJobR
 func (s *service) RegisterVolume(req *nilrpc.MCLRegisterVolumeRequest, res *nilrpc.MCLRegisterVolumeResponse) error {
 	e := newEvent(RegisterVolume, NoAffectedEG)
 
-	j, err := s.jFact.create(e, req.Volume)
+	j, err := s.jFact.create(e, &req.Volume)
 	if err != nil {
 		return err
 	}
@@ -38,28 +38,12 @@ func (s *service) RegisterVolume(req *nilrpc.MCLRegisterVolumeRequest, res *nilr
 	timeout := time.After(2 * time.Minute)
 	select {
 	case err = <-waitC:
+		res.ID = req.Volume.ID
 		return err
 	case <-timeout:
 		// TODO: j.stop()
 		return fmt.Errorf("timeout failed")
 	}
-
-	// if req.ID != "" {
-	// 	return fmt.Errorf("not allowed to update volume by rpc")
-	// }
-
-	// if err := s.insertNewVolume(req, res); err != nil {
-	// 	return err
-	// }
-
-	// go s.jFact.create(newEvent(Rebalance, 0))
-	// return nil
-	// // If the id field of request is empty, then the ds
-	// // tries to get an id of volume.
-	// if req.ID == "" {
-	// 	return s.insertNewVolume(req, res)
-	// }
-	// return s.updateVolume(req, res)
 }
 
 func (s *service) updateVolume(req *nilrpc.MCLRegisterVolumeRequest, res *nilrpc.MCLRegisterVolumeResponse) error {
@@ -80,32 +64,6 @@ func (s *service) updateVolume(req *nilrpc.MCLRegisterVolumeRequest, res *nilrpc
 	// }
 
 	// return s.UpdateClusterMap(nil, nil)
-	return nil
-}
-
-func (s *service) insertNewVolume(req *nilrpc.MCLRegisterVolumeRequest, res *nilrpc.MCLRegisterVolumeResponse) error {
-	// ctxLogger := mlog.GetMethodLogger(logger, "handlers.insertNewVolume")
-
-	// q := fmt.Sprintf(
-	// 	`
-	// 	INSERT INTO volume (vl_node, vl_status, vl_size, vl_free, vl_used, vl_encoding_group, vl_max_encoding_group, vl_speed)
-	// 	SELECT node_id, '%s', '%d', '%d', '%d', '%d', '%d', '%s' FROM node WHERE node_name = '%s'
-	// 	`, req.Status, req.Size, req.Free, req.Used, 0, calcMaxChain(req.Size), req.Speed, req.Ds,
-	// )
-
-	// r, err := s.store.Execute(repository.NotTx, q)
-	// if err != nil {
-	// 	ctxLogger.Error(err)
-	// 	return err
-	// }
-
-	// id, err := r.LastInsertId()
-	// if err != nil {
-	// 	ctxLogger.Error(err)
-	// 	return err
-	// }
-	// res.ID = strconv.FormatInt(id, 10)
-
 	return nil
 }
 

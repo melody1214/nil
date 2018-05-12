@@ -73,7 +73,7 @@ func (s *service) AddVolume(req *nilrpc.DCLAddVolumeRequest, res *nilrpc.DCLAddV
 		return err
 	}
 
-	lv.Name = registerRes.ID
+	lv.Name = registerRes.ID.String()
 	lv.MntPoint = "vol-" + lv.Name
 	if chunkSize, err := strconv.ParseInt(s.cfg.ChunkSize, 10, 64); err != nil {
 		// Default 10MB.
@@ -83,42 +83,32 @@ func (s *service) AddVolume(req *nilrpc.DCLAddVolumeRequest, res *nilrpc.DCLAddV
 		lv.ChunkSize = chunkSize
 	}
 
-	// // 2) Add lv to the store service.
-	// if err := s.store.AddVolume(lv); err != nil {
-	// 	// TODO: remove added volume in the mds.
-	// 	return err
-	// }
+	// 2) Add lv to the store service.
+	if err := s.store.AddVolume(lv); err != nil {
+		// TODO: remove added volume in the mds.
+		return err
+	}
 
-	// registerReq.ID = lv.Name
-	// registerReq.Size = lv.Size
-	// registerReq.Free = lv.Free
-	// registerReq.Used = lv.Used
-	// registerReq.Speed = lv.Speed.String()
-	// registerReq.Status = lv.Status.String()
-	// if err := cli.Call(nilrpc.MdsClusterRegisterVolume.String(), registerReq, registerRes); err != nil {
-	// 	// TODO: remove added volume in the mds and ds.
-	// 	return err
-	// }
-
-	// go func() {
-	// 	for {
-	// 		ver := s.cmapAPI.GetLatestCMapVersion()
-	// 		id, _ := strconv.ParseInt(lv.Name, 10, 64)
-	// 		v, err := s.cmapAPI.SearchCallVolume().ID(cmap.ID(id)).Do()
-	// 		if err != nil {
-	// 			ctxLogger.Error(errors.Wrap(err, "failed to search volume, wait cmap to be updated"))
-	// 			notiC := s.cmapAPI.GetUpdatedNoti(ver)
-	// 			<-notiC
-	// 			continue
-	// 		}
-	// 		v.Size = lv.Size
-	// 		v.Stat = cmap.Active
-	// 		if err = s.cmapAPI.UpdateVolume(v); err != nil {
-	// 			ctxLogger.Error(errors.Wrap(err, "failed to update volume"))
-	// 		}
-	// 		break
-	// 	}
-	// }()
+	go func() {
+		for {
+			ver := s.cmapAPI.GetLatestCMapVersion()
+			// id, _ := strconv.ParseInt(lv.Name, 10, 64)
+			v, err := s.cmapAPI.SearchCallVolume().ID(registerRes.ID).Do()
+			if err != nil {
+				ctxLogger.Error(errors.Wrap(err, "failed to search volume, wait cmap to be updated"))
+				notiC := s.cmapAPI.GetUpdatedNoti(ver)
+				<-notiC
+				continue
+			}
+			v.Size = lv.Size
+			v.Speed = cmap.VolumeSpeed(lv.Speed.String())
+			v.Stat = cmap.VolumeStatus(lv.Status.String())
+			if err = s.cmapAPI.UpdateVolume(v); err != nil {
+				ctxLogger.Error(errors.Wrap(err, "failed to update volume"))
+			}
+			break
+		}
+	}()
 
 	ctxLogger.Infof("add volume %s succeeded", lv.Name)
 	return nil

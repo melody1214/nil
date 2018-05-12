@@ -30,7 +30,7 @@ func (w *worker) rvInsertDB() fsm {
 		return w.rvFinish
 	}
 
-	v := private.(cmap.Volume)
+	v := private.(*cmap.Volume)
 	calcMaxEG := func(volumeSize uint64) int {
 		if volumeSize <= 0 {
 			return 0
@@ -47,7 +47,7 @@ func (w *worker) rvInsertDB() fsm {
 		return w.rvFinish
 	}
 
-	if w.job.err = w.store.RegisterVolume(txid, &v); w.job.err != nil {
+	if w.job.err = w.store.RegisterVolume(txid, v); w.job.err != nil {
 		w.store.Rollback(txid)
 		return w.rvFinish
 	}
