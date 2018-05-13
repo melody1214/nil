@@ -65,3 +65,22 @@ func (s *service) createClusterMap(ver cmap.Version, txid repository.TxID) (*cma
 		EncGrps: encGrps,
 	}, nil
 }
+
+func (s *service) updateDBByCMap(m *cmap.CMap) error {
+	txid, err := s.store.Begin()
+	if err != nil {
+		return errors.Wrap(err, "failed to start transaction")
+	}
+
+	if err = s.store.UpdateChangedCMap(txid, m); err != nil {
+		s.store.Rollback(txid)
+		return err
+	}
+
+	if err = s.store.Commit(txid); err != nil {
+		s.store.Rollback(txid)
+		return err
+	}
+
+	return nil
+}

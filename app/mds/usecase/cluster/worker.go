@@ -18,20 +18,22 @@ const (
 // worker handles job. The worker processes one task at a time and processing
 // like finite state machine. A walker has a unique identity and is an entity.
 type worker struct {
-	id      ID
-	state   workerState
-	job     *Job
-	cmapAPI cmap.MasterAPI
-	store   jobRepository
-	mu      sync.Mutex
+	id                ID
+	state             workerState
+	job               *Job
+	localParityShards int
+	cmapAPI           cmap.MasterAPI
+	store             jobRepository
+	mu                sync.Mutex
 }
 
-func newWorker(id ID, cmapAPI cmap.MasterAPI, store jobRepository) *worker {
+func newWorker(id ID, localParityShards int, cmapAPI cmap.MasterAPI, store jobRepository) *worker {
 	return &worker{
-		id:      id,
-		state:   idle,
-		cmapAPI: cmapAPI,
-		store:   store,
+		id:                id,
+		state:             idle,
+		localParityShards: localParityShards,
+		cmapAPI:           cmapAPI,
+		store:             store,
 	}
 }
 

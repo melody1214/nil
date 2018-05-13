@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/chanyoung/nil/pkg/cmap"
@@ -26,10 +27,16 @@ type service struct {
 func NewService(cfg *config.Mds, cmapAPI cmap.MasterAPI, s Repository) Service {
 	logger = mlog.GetPackageLogger("app/mds/usecase/cluster")
 
+	localParityShards, err := strconv.Atoi(cfg.LocalParityShards)
+	if err != nil {
+		// TODO: error handling.
+		return nil
+	}
+
 	service := &service{
 		cfg:     cfg,
 		jFact:   newJobFactory(newJobRepository(s)),
-		wPool:   newWorkerPool(3, cmapAPI, newJobRepository(s)),
+		wPool:   newWorkerPool(3, localParityShards, cmapAPI, newJobRepository(s)),
 		store:   s,
 		cmapAPI: cmapAPI,
 	}
@@ -132,11 +139,11 @@ func (s *service) GetUpdateNoti(req *nilrpc.MCLGetUpdateNotiRequest, res *nilrpc
 // 	return cli.Call(nilrpc.MdsRecoveryRecovery.String(), req, res)
 // }
 
-func calcMaxChain(volumeSize uint64) int {
+func calcMaxEG(volumeSize uint64) int {
 	if volumeSize <= 0 {
 		return 0
 	}
 
-	// Test, chain per 10MB,
+	// Test, eg per 10MB,
 	return int(volumeSize / 10)
 }

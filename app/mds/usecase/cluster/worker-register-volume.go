@@ -31,14 +31,6 @@ func (w *worker) rvInsertDB() fsm {
 	}
 
 	v := private.(*cmap.Volume)
-	calcMaxEG := func(volumeSize uint64) int {
-		if volumeSize <= 0 {
-			return 0
-		}
-
-		// Test, chain per 10MB,
-		return int(volumeSize / 10)
-	}
 	v.MaxEG = calcMaxEG(v.Size)
 
 	var txid repository.TxID

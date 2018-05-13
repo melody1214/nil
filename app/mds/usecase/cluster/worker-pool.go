@@ -18,22 +18,25 @@ type workerPool struct {
 	// Send the urgent job to dispatch it first.
 	urgent chan *Job
 
+	localParityShards int
+
 	cmapAPI cmap.MasterAPI
 	store   jobRepository
 	mu      sync.Mutex
 }
 
 // newWorkerPool returns a new worker pool service.
-func newWorkerPool(numWorker int, cmapAPI cmap.MasterAPI, store jobRepository) *workerPool {
+func newWorkerPool(numWorker, localParityShards int, cmapAPI cmap.MasterAPI, store jobRepository) *workerPool {
 	p := &workerPool{
-		pool:    make(map[ID]*worker, numWorker),
-		urgent:  make(chan *Job, 3),
-		cmapAPI: cmapAPI,
-		store:   store,
+		pool:              make(map[ID]*worker, numWorker),
+		urgent:            make(chan *Job, 3),
+		localParityShards: localParityShards,
+		cmapAPI:           cmapAPI,
+		store:             store,
 	}
 
 	for i := 0; i < numWorker; i++ {
-		w := newWorker(ID(i), cmapAPI, store)
+		w := newWorker(ID(i), localParityShards, cmapAPI, store)
 		p.pool[w.id] = w
 	}
 	go p.runScheduler()

@@ -111,11 +111,19 @@ func (s *service) runStateChangedObserver() {
 			case <-notiC:
 				changedCMap := s.cmapAPI.GetLatestCMap()
 
+				// Update volume max eg.
+				for i, v := range changedCMap.Vols {
+					changedCMap.Vols[i].MaxEG = calcMaxEG(v.Size)
+				}
+				if err := s.updateDBByCMap(&changedCMap); err != nil {
+					fmt.Printf("\n%+v\n", err)
+				}
+
 				events := extractEventsFromCMap(&lastCMap, &changedCMap)
 				for _, e := range events {
 					if _, err := s.jFact.create(e, nil); err != nil {
-						fmt.Printf("\n%+v\n", err)
 						// TODO: handling errors.
+						fmt.Printf("\n%+v\n", err)
 						continue
 					}
 				}

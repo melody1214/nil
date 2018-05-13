@@ -64,6 +64,7 @@ func (s *clusterStore) FindAllVolumes(txid repository.TxID) (vols []cmap.Volume,
 			vl_status,
 			vl_node,
 			vl_size,
+			vl_max_encoding_group,
 			vl_speed
 		FROM
 			volume
@@ -81,7 +82,7 @@ func (s *clusterStore) FindAllVolumes(txid repository.TxID) (vols []cmap.Volume,
 	for rows.Next() {
 		v := cmap.Volume{}
 
-		if err = rows.Scan(&v.ID, &v.Stat, &v.Node, &v.Size, &v.Speed); err != nil {
+		if err = rows.Scan(&v.ID, &v.Stat, &v.Node, &v.Size, &v.MaxEG, &v.Speed); err != nil {
 			return nil, err
 		}
 
@@ -372,4 +373,99 @@ func (s *clusterStore) FetchJob(txid repository.TxID) (*cluster.Job, error) {
 	_, err := s.Execute(txid, q)
 
 	return j, err
+}
+
+func (s *clusterStore) MakeNewEncodingGroup(txid repository.TxID, encGrp *cmap.EncodingGroup) error {
+	// Make new encoding group.
+	q := fmt.Sprintf(
+		`
+		INSERT INTO encoding_group (eg_status)
+		VALUES ('%s')
+		`, encGrp.Stat.String(),
+	)
+	r, err := s.Store.Execute(txid, q)
+	if err != nil {
+		return errors.Wrap(err, "failed to create encoding group")
+	}
+	egID, err := r.LastInsertId()
+	if err != nil {
+		return errors.Wrap(err, "failed to create encoding group")
+	}
+
+	// Register each volumes.
+	for role, v := range encGrp.Vols {
+		q = fmt.Sprintf(
+			`
+			INSERT INTO encoding_group_volume (egv_encoding_group, egv_volume, egv_role)
+			VALUES ('%d', '%d', '%d')
+			`, egID, v.Int64(), role,
+		)
+		_, err = s.Store.Execute(txid, q)
+		if err != nil {
+			return errors.Wrap(err, "failed to create volume in encoding group table")
+		}
+
+		q = fmt.Sprintf(
+			`
+			UPDATE volume
+			SET vl_encoding_group=vl_encoding_group+1
+			WHERE vl_id in ('%d')
+			`, v.Int64(),
+		)
+		_, err = s.Store.Execute(txid, q)
+		if err != nil {
+			return errors.Wrap(err, "failed to increase encoding group counting in volume")
+		}
+	}
+
+	return nil
+}
+
+func (s *clusterStore) UpdateChangedCMap(txid repository.TxID, cmap *cmap.CMap) error {
+	for _, n := range cmap.Nodes {
+		q := fmt.Sprintf(
+			`
+		UPDATE node
+		SET node_status='%s'
+		WHERE node_id=%d
+		`, n.Stat, n.ID,
+		)
+
+		_, err := s.Execute(txid, q)
+		if err != nil {
+			return errors.Wrap(err, "failed to update node")
+		}
+	}
+
+	for _, v := range cmap.Vols {
+		q := fmt.Sprintf(
+			`
+		UPDATE volume
+		SET vl_status='%s', vl_size=%d, vl_max_encoding_group=%d, vl_speed='%s'
+		WHERE vl_id=%d
+		`, v.Stat, v.Size, v.MaxEG, v.Speed, v.ID,
+		)
+
+		_, err := s.Execute(txid, q)
+		if err != nil {
+			return errors.Wrap(err, "failed to update volume")
+		}
+	}
+
+	for _, eg := range cmap.EncGrps {
+		q := fmt.Sprintf(
+			`
+		UPDATE encoding_group
+		SET eg_status='%s'
+		WHERE eg_id=%d
+		`, eg.Stat, eg.ID,
+		)
+
+		_, err := s.Execute(txid, q)
+		if err != nil {
+			return errors.Wrap(err, "failed to update encoding group")
+		}
+	}
+
+	return nil
 }
