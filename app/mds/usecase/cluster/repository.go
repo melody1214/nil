@@ -26,6 +26,7 @@ type Repository interface {
 
 	// jobRepository methods.
 	InsertJob(repository.TxID, *Job) error
+	FetchJob(txid repository.TxID) (*Job, error)
 	UpdateJob(repository.TxID, *Job) error
 	RegisterVolume(txid repository.TxID, v *cmap.Volume) error
 }
@@ -36,6 +37,7 @@ type jobRepository interface {
 	Rollback(repository.TxID) error
 	Commit(repository.TxID) error
 	InsertJob(repository.TxID, *Job) error
+	FetchJob(txid repository.TxID) (*Job, error)
 	UpdateJob(repository.TxID, *Job) error
 	LocalJoin(cmap.Node) error
 	// FetchJob() *job

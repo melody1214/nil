@@ -14,6 +14,8 @@ const (
 	LocalJoin EventType = iota
 	// RegisterVolume means the event type is register new volume.
 	RegisterVolume
+	// Rebalance means the event type is rebalance.
+	Rebalance
 	// Fail means the event type is fail.
 	Fail
 )
@@ -24,6 +26,8 @@ func (t EventType) String() string {
 		return "LocalJoin"
 	} else if t == RegisterVolume {
 		return "RegisterVolume"
+	} else if t == Rebalance {
+		return "Rebalance"
 	} else if t == Fail {
 		return "Fail"
 	}
@@ -58,4 +62,58 @@ func newEvent(t EventType, affectedEG cmap.ID) *Event {
 		AffectedEG: affectedEG,
 		TimeStamp:  TimeNow(),
 	}
+}
+
+func extractEventsFromCMap(old, new *cmap.CMap) []*Event {
+	needRebalance := false
+
+	events := make([]*Event, 0)
+	for _, newNode := range new.Nodes {
+		for _, oldNode := range old.Nodes {
+			if newNode.ID != oldNode.ID {
+				continue
+			}
+
+			if newNode.Stat == oldNode.Stat {
+				continue
+			}
+
+			switch newNode.Stat {
+			case cmap.Suspect:
+				// Make nodes rdonly.
+			case cmap.Faulty:
+				// Make recovery events.
+			}
+		}
+	}
+
+	for _, newVol := range new.Vols {
+		for _, oldVol := range old.Vols {
+			if newVol.ID != oldVol.ID {
+				continue
+			}
+
+			if newVol.Stat == oldVol.Stat {
+				continue
+			}
+
+			switch oldVol.Stat {
+			case cmap.Prepared:
+				if newVol.Stat == cmap.Active {
+					needRebalance = true
+				} else if newVol.Stat == cmap.Failed {
+					// Make recovery events.
+				}
+			case cmap.Active:
+				// Make recovery events.
+			}
+		}
+	}
+
+	if needRebalance {
+		e := newEvent(Rebalance, NoAffectedEG)
+		events = append(events, e)
+	}
+
+	return events
 }

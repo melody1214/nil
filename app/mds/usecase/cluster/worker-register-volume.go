@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/pkg/cmap"
@@ -81,7 +82,12 @@ func (w *worker) rvFinish() fsm {
 	if err != nil {
 		return nil
 	}
-	wc <- w.job.err
+
+	select {
+	case wc <- w.job.err:
+	case <-time.After(2 * time.Second):
+		// Todo: handling timeout.
+	}
 
 	if err := w.store.UpdateJob(repository.NotTx, w.job); err != nil {
 		// TODO: handling error

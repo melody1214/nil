@@ -43,6 +43,7 @@ func (f *jobFactory) create(e *Event, private interface{}) (*Job, error) {
 		j.private = n
 		j.waitChannel = make(chan error)
 		j.Log = newJobLog("request from " + n.Addr.String() + ", name " + n.Name.String())
+
 	case RegisterVolume:
 		j.Type = Iterative
 		j.State = Run
@@ -58,9 +59,15 @@ func (f *jobFactory) create(e *Event, private interface{}) (*Job, error) {
 		j.private = v
 		j.waitChannel = make(chan error)
 		j.Log = newJobLog("DS: " + v.ID.String())
+
+	case Rebalance:
+		j.Type = Batch
+		j.State = Ready
+
 	case Fail:
 		j.Type = Batch
 		j.State = Ready
+
 	default:
 		return nil, fmt.Errorf("unknown event type")
 	}

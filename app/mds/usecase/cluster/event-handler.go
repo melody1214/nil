@@ -103,11 +103,24 @@ func (s *service) GlobalJoin(req *nilrpc.MCLGlobalJoinRequest, res *nilrpc.MCLGl
 
 func (s *service) runStateChangedObserver() {
 	go func() {
+		lastCMap := s.cmapAPI.GetLatestCMap()
+
 		for {
 			notiC := s.cmapAPI.GetStateChangedNoti()
 			select {
 			case <-notiC:
-				// Handle state changed.
+				changedCMap := s.cmapAPI.GetLatestCMap()
+
+				events := extractEventsFromCMap(&lastCMap, &changedCMap)
+				for _, e := range events {
+					if _, err := s.jFact.create(e, nil); err != nil {
+						fmt.Printf("\n%+v\n", err)
+						// TODO: handling errors.
+						continue
+					}
+				}
+
+				lastCMap = changedCMap
 			}
 		}
 	}()

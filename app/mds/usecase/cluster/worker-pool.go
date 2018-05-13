@@ -1,11 +1,9 @@
 package cluster
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
-	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/pkg/cmap"
 )
 
@@ -72,7 +70,7 @@ func (p *workerPool) schedule(job *Job) {
 	}
 
 	if job == nil {
-		job, err = p.fetchJob(txid)
+		job, err = p.store.FetchJob(txid)
 		if err != nil {
 			p.store.Rollback(txid)
 			return
@@ -91,10 +89,6 @@ func (p *workerPool) schedule(job *Job) {
 	}
 
 	go w.run(job)
-}
-
-func (p *workerPool) fetchJob(txid repository.TxID) (*Job, error) {
-	return nil, fmt.Errorf("not implemented")
 }
 
 func (p *workerPool) fetchWorker(isBatch bool) (fetched *worker, ok bool) {

@@ -239,14 +239,16 @@ func (s *clusterStore) InsertJob(txid repository.TxID, job *cluster.Job) error {
 func (s *clusterStore) mergeJob(txid repository.TxID, event *cluster.Event) error {
 	affectedEG := event.AffectedEG.String()
 	if event.AffectedEG.Int64() < 0 {
-		affectedEG = "NULL"
+		affectedEG = "is NULL"
+	} else {
+		affectedEG = "=" + event.AffectedEG.String()
 	}
 
 	q := fmt.Sprintf(
 		`
 		UPDATE cluster_job
-		SET clj_state=%d, clj_finished='%s'
-		WHERE clj_event_type=%d AND clj_event_affected=%s AND clj_state=%d
+		SET clj_state=%d, clj_finished_at='%s'
+		WHERE clj_event_type=%d AND clj_event_affected %s AND clj_state=%d
 		`, cluster.Merged, cluster.TimeNow(), event.Type, affectedEG, cluster.Ready,
 	)
 
@@ -333,4 +335,41 @@ func (s *clusterStore) RegisterVolume(txid repository.TxID, v *cmap.Volume) erro
 	v.ID = cmap.ID(id)
 
 	return nil
+}
+
+func (s *clusterStore) FetchJob(txid repository.TxID) (*cluster.Job, error) {
+	q := fmt.Sprintf(
+		`
+		SELECT clj_id, clj_event_type, clj_event_affected, clj_event_time
+		FROM cluster_job
+		WHERE clj_state=%d AND clj_type=%d
+		ORDER BY clj_id LIMIT 1
+		`, cluster.Ready, cluster.Batch,
+	)
+
+	j := &cluster.Job{
+		Type:  cluster.Batch,
+		State: cluster.Run,
+	}
+	var nullableEventAffected sql.NullInt64
+	if err := s.QueryRow(txid, q).Scan(
+		&j.ID, &j.Event.Type, &nullableEventAffected, &j.Event.TimeStamp,
+	); err != nil {
+		return nil, err
+	}
+
+	if nullableEventAffected.Valid {
+		j.Event.AffectedEG = cmap.ID(nullableEventAffected.Int64)
+	}
+
+	q = fmt.Sprintf(
+		`
+		UPDATE cluster_job
+		SET clj_state=%d
+		WHERE clj_id=%d AND clj_state=%d
+		`, cluster.Run, j.ID, cluster.Ready,
+	)
+	_, err := s.Execute(txid, q)
+
+	return j, err
 }

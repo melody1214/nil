@@ -79,6 +79,8 @@ func (w *worker) init() fsm {
 		return w.ljStart
 	case RegisterVolume:
 		return w.rvStart
+	case Rebalance:
+		return w.rbStart
 	case Fail:
 		return nil
 	default:
