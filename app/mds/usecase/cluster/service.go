@@ -84,7 +84,6 @@ func (s *service) RPCHandler() RPCHandler {
 type RPCHandler interface {
 	GetClusterMap(req *nilrpc.MCLGetClusterMapRequest, res *nilrpc.MCLGetClusterMapResponse) error
 	GetUpdateNoti(req *nilrpc.MCLGetUpdateNotiRequest, res *nilrpc.MCLGetUpdateNotiResponse) error
-	// UpdateClusterMap(req *nilrpc.MCLUpdateClusterMapRequest, res *nilrpc.MCLUpdateClusterMapResponse) error
 	RegisterVolume(req *nilrpc.MCLRegisterVolumeRequest, res *nilrpc.MCLRegisterVolumeResponse) error
 	LocalJoin(req *nilrpc.MCLLocalJoinRequest, res *nilrpc.MCLLocalJoinResponse) error
 	GlobalJoin(req *nilrpc.MCLGlobalJoinRequest, res *nilrpc.MCLGlobalJoinResponse) error
@@ -105,39 +104,6 @@ func (s *service) GetUpdateNoti(req *nilrpc.MCLGetUpdateNotiRequest, res *nilrpc
 		}
 	}
 }
-
-// func (s *service) UpdateClusterMap(req *nilrpc.MCLUpdateClusterMapRequest, res *nilrpc.MCLUpdateClusterMapResponse) error {
-// 	txid, err := s.store.Begin()
-// 	if err != nil {
-// 		return errors.Wrap(err, "failed to start transaction")
-// 	}
-
-// 	if err = s.updateClusterMap(txid); err != nil {
-// 		s.store.Rollback(txid)
-// 		return err
-// 	}
-// 	if err = s.store.Commit(txid); err != nil {
-// 		s.store.Rollback(txid)
-// 		return err
-// 	}
-
-// 	s.rebalance()
-// 	return nil
-// }
-
-// func (s *service) rebalance() error {
-// 	conn, err := nilrpc.Dial(s.cfg.ServerAddr+":"+s.cfg.ServerPort, nilrpc.RPCNil, time.Duration(2*time.Second))
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer conn.Close()
-
-// 	req := &nilrpc.MRERecoveryRequest{Type: nilrpc.Rebalance}
-// 	res := &nilrpc.MRERecoveryResponse{}
-
-// 	cli := rpc.NewClient(conn)
-// 	return cli.Call(nilrpc.MdsRecoveryRecovery.String(), req, res)
-// }
 
 func calcMaxEG(volumeSize uint64) int {
 	if volumeSize <= 0 {

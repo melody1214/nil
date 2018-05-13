@@ -46,27 +46,6 @@ func (s *service) RegisterVolume(req *nilrpc.MCLRegisterVolumeRequest, res *nilr
 	}
 }
 
-func (s *service) updateVolume(req *nilrpc.MCLRegisterVolumeRequest, res *nilrpc.MCLRegisterVolumeResponse) error {
-	// ctxLogger := mlog.GetMethodLogger(logger, "handlers.updateVolume")
-
-	// q := fmt.Sprintf(
-	// 	`
-	// 	UPDATE volume
-	// 	SET vl_status='%s', vl_size='%d', vl_free='%d', vl_used='%d', vl_max_encoding_group='%d', vl_speed='%s'
-	// 	WHERE vl_id in ('%s')
-	// 	`, req.Status, req.Size, req.Free, req.Used, calcMaxChain(req.Size), req.Speed, req.ID,
-	// )
-
-	// _, err := s.store.Execute(repository.NotTx, q)
-	// if err != nil {
-	// 	ctxLogger.Error(err)
-	// 	return err
-	// }
-
-	// return s.UpdateClusterMap(nil, nil)
-	return nil
-}
-
 // LocalJoin handles the join request from the same local cluster nodes.
 func (s *service) LocalJoin(req *nilrpc.MCLLocalJoinRequest, res *nilrpc.MCLLocalJoinResponse) error {
 	e := newEvent(LocalJoin, NoAffectedEG)

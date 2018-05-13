@@ -30,7 +30,6 @@ const (
 	// MDS cluster domain methods.
 	MdsClusterGetClusterMap
 	MdsClusterGetUpdateNoti
-	MdsClusterUpdateClusterMap
 	MdsClusterLocalJoin
 	MdsClusterGlobalJoin
 	MdsClusterRegisterVolume
@@ -60,8 +59,6 @@ func (m MethodName) String() string {
 		return MdsClusterPrefix + "." + "GetClusterMap"
 	case MdsClusterGetUpdateNoti:
 		return MdsClusterPrefix + "." + "GetUpdateNoti"
-	case MdsClusterUpdateClusterMap:
-		return MdsClusterPrefix + "." + "UpdateClusterMap"
 	case MdsClusterLocalJoin:
 		return MdsClusterPrefix + "." + "LocalJoin"
 	case MdsClusterGlobalJoin:
