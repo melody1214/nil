@@ -2,7 +2,7 @@ package partstore
 
 import "github.com/chanyoung/nil/app/ds/repository"
 
-type part struct {
+type pg struct {
 	// Embed volume.
 	*repository.Vol
 

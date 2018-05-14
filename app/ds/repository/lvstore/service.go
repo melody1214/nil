@@ -116,13 +116,13 @@ func (s *service) GetObjectSize(lvID, objID string) (int64, bool) {
 	}
 
 	lv.Lock.RLock()
-	obj, ok := lv.Obj[objID]
+	obj, ok := lv.ObjInfo[objID]
 	lv.Lock.RUnlock()
 	if ok == false {
 		return 0, false
 	}
 
-	return obj.Info.Size, true
+	return obj.Size, true
 }
 
 func (s *service) GetObjectMD5(lvID, objID string) (string, bool) {
@@ -132,13 +132,13 @@ func (s *service) GetObjectMD5(lvID, objID string) (string, bool) {
 	}
 
 	lv.Lock.RLock()
-	obj, ok := lv.Obj[objID]
+	obj, ok := lv.ObjInfo[objID]
 	lv.Lock.RUnlock()
 	if ok == false {
 		return "", false
 	}
 
-	return obj.Info.MD5, true
+	return obj.MD5, true
 }
 
 func (s *service) GetChunkHeaderSize() int64 {
@@ -178,7 +178,7 @@ func (s *service) read(r *repository.Request) {
 
 	// Find and get the requested object.
 	lv.Lock.RLock()
-	obj, ok := lv.Obj[r.Oid]
+	obj, ok := lv.ChunkMap[r.Cid].ObjMap[r.Oid]
 	lv.Lock.RUnlock()
 	if !ok {
 		r.Err = fmt.Errorf("no such object: %s", r.Oid)
@@ -193,7 +193,7 @@ func (s *service) read(r *repository.Request) {
 	}
 
 	// Open a chunk requested by a client.
-	fChunk, err := os.Open(lgDir + "/" + obj.Map.Cid)
+	fChunk, err := os.Open(lgDir + "/" + obj.Cid)
 	if err != nil {
 		r.Err = err
 		return
@@ -201,7 +201,7 @@ func (s *service) read(r *repository.Request) {
 	defer fChunk.Close()
 
 	// Seek offset beginning of the requested object in the chunk.
-	_, err = fChunk.Seek(obj.Map.Offset, os.SEEK_SET)
+	_, err = fChunk.Seek(obj.Offset, os.SEEK_SET)
 	if err != nil {
 		r.Err = err
 		return
@@ -346,16 +346,21 @@ func (s *service) write(r *repository.Request) {
 
 	// Store mapping information between the object and the chunk.
 	lv.Lock.Lock()
-	lv.Obj[r.Oid] = repository.Object{
-		Map: repository.ObjMap{
-			Cid:    r.Cid,
-			Offset: fChunkLen,
-		},
-		Info: repository.ObjInfo{
-			Size: r.Osize,
-			MD5:  r.Md5,
-		},
+
+	lv.ChunkMap[r.Cid] = repository.StChunkMap{
+		ObjMap: make(map[string]repository.StObjMap),
 	}
+
+	lv.ChunkMap[r.Cid].ObjMap[r.Oid] = repository.StObjMap{
+		Cid:    r.Cid,
+		Offset: fChunkLen,
+	}
+
+	lv.ObjInfo[r.Oid] = repository.StObjInfo{
+		Size: r.Osize,
+		MD5:  r.Md5,
+	}
+
 	lv.Lock.Unlock()
 
 	// Complete to write the object into the chunk.
@@ -372,7 +377,7 @@ func (s *service) writeAll(r *repository.Request) {
 	}
 
 	// Check if the requested object is in the object map.
-	_, ok = lv.Obj[r.Oid]
+	_, ok = lv.ChunkMap[r.Cid].ObjMap[r.Oid]
 	if ok {
 		r.Err = fmt.Errorf("same name of the chunk is existed: %s", r.Oid)
 		return
@@ -408,16 +413,16 @@ func (s *service) writeAll(r *repository.Request) {
 
 	// Store mapping information between the object and the chunk.
 	lv.Lock.Lock()
-	lv.Obj[r.Oid] = repository.Object{
-		Map: repository.ObjMap{
-			Cid:    r.Cid,
-			Offset: 0,
-		},
-		Info: repository.ObjInfo{
-			Size: r.Osize,
-			MD5:  r.Md5,
-		},
+
+	lv.ChunkMap[r.Cid] = repository.StChunkMap{
+		ObjMap: make(map[string]repository.StObjMap),
 	}
+
+	lv.ChunkMap[r.Cid].ObjMap[r.Oid] = repository.StObjMap{
+		Cid:    r.Cid,
+		Offset: 0,
+	}
+
 	lv.Lock.Unlock()
 
 	// Complete to write the object into the chunk.
@@ -434,15 +439,17 @@ func (s *service) delete(r *repository.Request) {
 	}
 
 	// Check if the requested object is in the object map.
-	_, ok = lv.Obj[r.Oid]
+	_, ok = lv.ChunkMap[r.Cid].ObjMap[r.Oid]
 	if !ok {
 		r.Err = fmt.Errorf("no such object: %s", r.Oid)
 		return
 	}
 
+	// TODO: delete object info.
+
 	// Delete the object from the map.
 	lv.Lock.Lock()
-	delete(lv.Obj, r.Oid)
+	delete(lv.ChunkMap[r.Cid].ObjMap, r.Oid)
 	lv.Lock.Unlock()
 
 	// Complete to delete the object from the map.

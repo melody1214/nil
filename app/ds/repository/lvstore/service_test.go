@@ -15,7 +15,7 @@ import (
 func TestServiceAPIs(t *testing.T) {
 	dir := "testServiceAPIs"
 	os.Mkdir(dir, 0775)
-	defer os.RemoveAll(dir)
+	//defer os.RemoveAll(dir)
 
 	os.Mkdir(dir+"/lv1", 0775)
 	lv1 := &lv{
@@ -25,7 +25,8 @@ func TestServiceAPIs(t *testing.T) {
 			Size:      1024,
 			Speed:     repository.High,
 			ChunkSize: 10000000,
-			Obj:       make(map[string]repository.Object),
+			ChunkMap:  make(map[string]repository.StChunkMap),
+			ObjInfo:   make(map[string]repository.StObjInfo),
 		},
 	}
 
@@ -37,7 +38,8 @@ func TestServiceAPIs(t *testing.T) {
 			Size:      1024,
 			Speed:     repository.High,
 			ChunkSize: 10000000,
-			Obj:       make(map[string]repository.Object),
+			ChunkMap:  make(map[string]repository.StChunkMap),
+			ObjInfo:   make(map[string]repository.StObjInfo),
 		},
 	}
 

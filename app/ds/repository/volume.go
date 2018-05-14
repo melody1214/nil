@@ -52,38 +52,40 @@ func (s Status) String() string {
 	}
 }
 
-// ObjMap contains mapping information of objects and chunks.
-type ObjMap struct {
+// StObjMap contains mapping information of objects and chunks.
+type StObjMap struct {
 	Cid    string
 	Offset int64
 }
 
-// ObjInfo contains information of objects.
-type ObjInfo struct {
+// StObjInfo contains information of objects.
+type StObjInfo struct {
 	Size int64
 	MD5  string
 }
 
-// Object contains a Map which contains mapping information between objects and chunks,
-// and an Info which contains the object information.
-type Object struct {
-	Map  ObjMap
-	Info ObjInfo
+// StChunkMap contains mapping information between chunks to partitions.
+type StChunkMap struct {
+	PartID string
+	ObjMap map[string]StObjMap
 }
 
 // Vol contains information about the volume.
 type Vol struct {
-	Name     string
-	Dev      string
-	MntPoint string
-	Size     uint64
-	Free     uint64
-	Used     uint64
-	Speed    VolumeSpeed
-	Status   Status
+	Name      string
+	Dev       string
+	MntPoint  string
+	Size      uint64
+	Free      uint64
+	Used      uint64
+	Speed     VolumeSpeed
+	Status    Status
+	DiskSched uint8
+	NumOfPart uint8
 
 	ChunkSize int64
-	Obj       map[string]Object
+	ChunkMap  map[string]StChunkMap
+	ObjInfo   map[string]StObjInfo
 	Lock      sync.RWMutex
 }
 
@@ -97,9 +99,9 @@ func NewVol(dev string) (v *Vol, err error) {
 
 	// Creates the LV with the given device path.
 	v = &Vol{
-		Dev:    dev,
-		Status: Prepared,
-		Obj:    make(map[string]Object),
+		Dev:      dev,
+		Status:   Prepared,
+		ChunkMap: make(map[string]StChunkMap),
 	}
 
 	// Checks the given device path is valid.

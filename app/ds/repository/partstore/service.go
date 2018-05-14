@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/chanyoung/nil/app/ds/repository"
@@ -13,7 +14,7 @@ import (
 
 // service is the backend store service.
 type service struct {
-	parts        map[string]*part
+	pgs          map[string]*pg
 	basePath     string
 	requestQueue queue
 	pushCh       chan interface{}
@@ -23,7 +24,7 @@ type service struct {
 func NewService(basePath string) repository.Service {
 	return &service{
 		basePath: basePath,
-		parts:    map[string]*part{},
+		pgs:      map[string]*pg{},
 		pushCh:   make(chan interface{}, 1),
 	}
 }
@@ -33,7 +34,7 @@ func NewService(basePath string) repository.Service {
 func newService(basePath string) *service {
 	return &service{
 		basePath: basePath,
-		parts:    map[string]*part{},
+		pgs:      map[string]*pg{},
 		pushCh:   make(chan interface{}, 1),
 	}
 }
@@ -42,7 +43,7 @@ func newService(basePath string) *service {
 func (s *service) Run() {
 	checkTicker := time.NewTicker(100 * time.Millisecond)
 
-	// TODO: change to do not polling.
+	// TODO: change to do not pollin.
 	for {
 		select {
 		case <-s.pushCh:
@@ -63,8 +64,8 @@ func (s *service) Stop() {
 	// Tracking all jobs and wait them until finished.
 
 	// Deletes all volumes in the store.
-	for _, part := range s.parts {
-		part.Umount()
+	for _, pg := range s.pgs {
+		pg.Umount()
 	}
 }
 
@@ -81,9 +82,9 @@ func (s *service) Push(r *repository.Request) error {
 	return nil
 }
 
-// AddVolume adds a volume into the part map.
+// AddVolume adds a volume into the pg map.
 func (s *service) AddVolume(v *repository.Vol) error {
-	if _, ok := s.parts[v.Name]; ok {
+	if _, ok := s.pgs[v.Name]; ok {
 		return fmt.Errorf("Volume name %s already exists", v.Name)
 	}
 
@@ -99,7 +100,7 @@ func (s *service) AddVolume(v *repository.Vol) error {
 	// TODO: Set the disk speed.
 	v.SetSpeed()
 
-	s.parts[v.Name] = &part{
+	s.pgs[v.Name] = &pg{
 		Vol: v,
 	}
 
@@ -109,36 +110,36 @@ func (s *service) AddVolume(v *repository.Vol) error {
 	return nil
 }
 
-func (s *service) GetObjectSize(partID, objID string) (int64, bool) {
-	part, ok := s.parts[partID]
+func (s *service) GetObjectSize(pgID, objID string) (int64, bool) {
+	pg, ok := s.pgs[pgID]
 	if ok == false {
 		return 0, false
 	}
 
-	part.Lock.RLock()
-	obj, ok := part.Obj[objID]
-	part.Lock.RUnlock()
+	pg.Lock.RLock()
+	obj, ok := pg.ObjInfo[objID]
+	pg.Lock.RUnlock()
 	if ok == false {
 		return 0, false
 	}
 
-	return obj.Info.Size, true
+	return obj.Size, true
 }
 
-func (s *service) GetObjectMD5(partID, objID string) (string, bool) {
-	part, ok := s.parts[partID]
+func (s *service) GetObjectMD5(pgID, objID string) (string, bool) {
+	pg, ok := s.pgs[pgID]
 	if ok == false {
 		return "", false
 	}
 
-	part.Lock.RLock()
-	obj, ok := part.Obj[objID]
-	part.Lock.RUnlock()
+	pg.Lock.RLock()
+	obj, ok := pg.ObjInfo[objID]
+	pg.Lock.RUnlock()
 	if ok == false {
 		return "", false
 	}
 
-	return obj.Info.MD5, true
+	return obj.MD5, true
 }
 
 func (s *service) GetChunkHeaderSize() int64 {
@@ -170,30 +171,38 @@ func (s *service) handleCall(r *repository.Request) {
 
 func (s *service) read(r *repository.Request) {
 	// Find and get the requested logical volume.
-	part, ok := s.parts[r.Vol]
+	pg, ok := s.pgs[r.Vol]
 	if !ok {
-		r.Err = fmt.Errorf("no such part: %s", r.Vol)
+		r.Err = fmt.Errorf("no such partition group: %s", r.Vol)
 		return
 	}
 
 	// Find and get the requested object.
-	part.Lock.RLock()
-	obj, ok := part.Obj[r.Oid]
-	part.Lock.RUnlock()
+	pg.Lock.RLock()
+	chk, ok := pg.ChunkMap[r.Cid]
+	pg.Lock.RUnlock()
+	if !ok {
+		r.Err = fmt.Errorf("no chunk of such object: %s", r.Oid)
+		return
+	}
+
+	pg.Lock.RLock()
+	obj, ok := chk.ObjMap[r.Oid]
+	pg.Lock.RUnlock()
 	if !ok {
 		r.Err = fmt.Errorf("no such object: %s", r.Oid)
 		return
 	}
 
 	// Create a directory for a local group if not exist.
-	lgDir := part.MntPoint + "/" + r.LocGid
+	lgDir := pg.MntPoint + "/" + chk.PartID + "/" + r.LocGid
 	_, err := os.Stat(lgDir)
 	if os.IsNotExist(err) {
 		os.MkdirAll(lgDir, 0775)
 	}
 
 	// Open a chunk requested by a client.
-	fChunk, err := os.Open(lgDir + "/" + obj.Map.Cid)
+	fChunk, err := os.Open(lgDir + "/" + obj.Cid)
 	if err != nil {
 		r.Err = err
 		return
@@ -201,7 +210,7 @@ func (s *service) read(r *repository.Request) {
 	defer fChunk.Close()
 
 	// Seek offset beginning of the requested object in the chunk.
-	_, err = fChunk.Seek(obj.Map.Offset, os.SEEK_SET)
+	_, err = fChunk.Seek(obj.Offset, os.SEEK_SET)
 	if err != nil {
 		r.Err = err
 		return
@@ -221,14 +230,22 @@ func (s *service) read(r *repository.Request) {
 
 func (s *service) readAll(r *repository.Request) {
 	// Find and get a logical volume.
-	part, ok := s.parts[r.Vol]
+	pg, ok := s.pgs[r.Vol]
 	if !ok {
-		r.Err = fmt.Errorf("no such part: %s", r.Vol)
+		r.Err = fmt.Errorf("no such partition group: %s", r.Vol)
 		return
 	}
 
+	pg.Lock.RLock()
+	chk, ok := pg.ChunkMap[r.Cid]
+	if !ok {
+		r.Err = fmt.Errorf("no chunk of such object: %s", r.Oid)
+		return
+	}
+	pg.Lock.RUnlock()
+
 	// Create a directory for a local group if not exist.
-	lgDir := part.MntPoint + "/" + r.LocGid
+	lgDir := pg.MntPoint + "/" + chk.PartID + "/" + r.LocGid
 	_, err := os.Stat(lgDir)
 	if os.IsNotExist(err) {
 		os.MkdirAll(lgDir, 0775)
@@ -256,14 +273,28 @@ func (s *service) readAll(r *repository.Request) {
 
 func (s *service) write(r *repository.Request) {
 	// Find and get a logical volume.
-	part, ok := s.parts[r.Vol]
+	pg, ok := s.pgs[r.Vol]
 	if !ok {
-		r.Err = fmt.Errorf("no such part: %s", r.Vol)
+		r.Err = fmt.Errorf("no such partition group: %s", r.Vol)
 		return
 	}
 
+	pg.Lock.RLock()
+	chk, ok := pg.ChunkMap[r.Cid]
+	pg.Lock.RUnlock()
+	if !ok {
+		pg.DiskSched = pg.DiskSched%pg.NumOfPart + 1
+		pg.Lock.Lock()
+		pg.ChunkMap[r.Cid] = repository.StChunkMap{
+			PartID: "part" + strconv.Itoa(int(pg.DiskSched)),
+			ObjMap: make(map[string]repository.StObjMap),
+		}
+		pg.Lock.Unlock()
+		chk = pg.ChunkMap[r.Cid]
+	}
+
 	// Create a directory for a local group if not exist.
-	lgDir := part.MntPoint + "/" + r.LocGid
+	lgDir := pg.MntPoint + "/" + chk.PartID + "/" + r.LocGid
 	_, err := os.Stat(lgDir)
 	if os.IsNotExist(err) {
 		os.MkdirAll(lgDir, 0775)
@@ -308,12 +339,12 @@ func (s *service) write(r *repository.Request) {
 	oHeader[0] = r.User
 
 	// Check whether the chunk is full or has not enough space to write the object.
-	if fChunkLen >= part.ChunkSize {
+	if fChunkLen >= pg.ChunkSize {
 		r.Err = fmt.Errorf("chunk full")
 		return
 	}
-	if fChunkLen+int64(len(oHeader))+r.Osize > part.ChunkSize {
-		err = fChunk.Truncate(part.ChunkSize)
+	if fChunkLen+int64(len(oHeader))+r.Osize > pg.ChunkSize {
+		err = fChunk.Truncate(pg.ChunkSize)
 		r.Err = fmt.Errorf("truncated")
 		return
 	}
@@ -345,18 +376,19 @@ func (s *service) write(r *repository.Request) {
 	}
 
 	// Store mapping information between the object and the chunk.
-	part.Lock.Lock()
-	part.Obj[r.Oid] = repository.Object{
-		Map: repository.ObjMap{
-			Cid:    r.Cid,
-			Offset: fChunkLen,
-		},
-		Info: repository.ObjInfo{
-			Size: r.Osize,
-			MD5:  r.Md5,
-		},
+	pg.Lock.Lock()
+
+	chk.ObjMap[r.Oid] = repository.StObjMap{
+		Cid:    r.Cid,
+		Offset: fChunkLen,
 	}
-	part.Lock.Unlock()
+
+	pg.ObjInfo[r.Oid] = repository.StObjInfo{
+		Size: r.Osize,
+		MD5:  r.Md5,
+	}
+
+	pg.Lock.Unlock()
 
 	// Complete to write the object into the chunk.
 	r.Err = nil
@@ -365,21 +397,21 @@ func (s *service) write(r *repository.Request) {
 
 func (s *service) writeAll(r *repository.Request) {
 	// Find and get a logical volume.
-	part, ok := s.parts[r.Vol]
+	pg, ok := s.pgs[r.Vol]
 	if !ok {
-		r.Err = fmt.Errorf("no such part: %s", r.Vol)
+		r.Err = fmt.Errorf("no such partition group: %s", r.Vol)
 		return
 	}
 
 	// Check if the requested object is in the object map.
-	_, ok = part.Obj[r.Oid]
+	_, ok = pg.ChunkMap[r.Cid].ObjMap[r.Oid]
 	if ok {
 		r.Err = fmt.Errorf("same name of the chunk is existed: %s", r.Oid)
 		return
 	}
 
 	// Create a directory for a local group if not exist.
-	lgDir := part.MntPoint + "/" + r.LocGid
+	lgDir := pg.MntPoint + "/" + r.LocGid
 	_, err := os.Stat(lgDir)
 	if os.IsNotExist(err) {
 		os.MkdirAll(lgDir, 0775)
@@ -394,7 +426,7 @@ func (s *service) writeAll(r *repository.Request) {
 	defer fChunk.Close()
 
 	// Check whether the chunk is full or has not enough space to write the object.
-	if r.Osize != part.ChunkSize {
+	if r.Osize != pg.ChunkSize {
 		r.Err = fmt.Errorf("write all must writes same length with the chunk size")
 		return
 	}
@@ -407,18 +439,8 @@ func (s *service) writeAll(r *repository.Request) {
 	}
 
 	// Store mapping information between the object and the chunk.
-	part.Lock.Lock()
-	part.Obj[r.Oid] = repository.Object{
-		Map: repository.ObjMap{
-			Cid:    r.Cid,
-			Offset: 0,
-		},
-		Info: repository.ObjInfo{
-			Size: r.Osize,
-			MD5:  r.Md5,
-		},
-	}
-	part.Lock.Unlock()
+	pg.Lock.Lock()
+	pg.Lock.Unlock()
 
 	// Complete to write the object into the chunk.
 	r.Err = nil
@@ -427,23 +449,23 @@ func (s *service) writeAll(r *repository.Request) {
 
 func (s *service) delete(r *repository.Request) {
 	// Find and get a logical volume.
-	part, ok := s.parts[r.Vol]
+	pg, ok := s.pgs[r.Vol]
 	if !ok {
-		r.Err = fmt.Errorf("no such part: %s", r.Vol)
+		r.Err = fmt.Errorf("no such partition group: %s", r.Vol)
 		return
 	}
 
 	// Check if the requested object is in the object map.
-	_, ok = part.Obj[r.Oid]
+	_, ok = pg.ChunkMap[r.Cid].ObjMap[r.Oid]
 	if !ok {
 		r.Err = fmt.Errorf("no such object: %s", r.Oid)
 		return
 	}
 
 	// Delete the object from the map.
-	part.Lock.Lock()
-	delete(part.Obj, r.Oid)
-	part.Lock.Unlock()
+	pg.Lock.Lock()
+	delete(pg.ChunkMap[r.Cid].ObjMap, r.Oid)
+	pg.Lock.Unlock()
 
 	// Complete to delete the object from the map.
 	r.Err = nil
