@@ -26,8 +26,8 @@ func TestServiceAPIs(t *testing.T) {
 			Speed:     repository.High,
 			ChunkSize: 10000000,
 			NumOfPart: 3,
-			ChunkMap:  make(map[string]repository.StChunkMap),
-			ObjInfo:   make(map[string]repository.StObjInfo),
+			ChunkMap:  make(map[string]repository.ChunkMap),
+			ObjMap:    make(map[string]repository.ObjMap),
 		},
 	}
 
@@ -40,8 +40,8 @@ func TestServiceAPIs(t *testing.T) {
 			Speed:     repository.High,
 			ChunkSize: 10000000,
 			NumOfPart: 3,
-			ChunkMap:  make(map[string]repository.StChunkMap),
-			ObjInfo:   make(map[string]repository.StObjInfo),
+			ChunkMap:  make(map[string]repository.ChunkMap),
+			ObjMap:    make(map[string]repository.ObjMap),
 		},
 	}
 
@@ -60,7 +60,7 @@ func TestServiceAPIs(t *testing.T) {
 		result             error
 	}{
 		{repository.Read, "pg1", "lg1", "banana", "chunk1", int64(len("banana is good\n")), "banana is good\n",
-			fmt.Errorf("no chunk of such object: banana"),
+			fmt.Errorf("no such object: banana"),
 		},
 		{repository.Write, "pg1", "lg1", "banana", "chunk1", int64(len("banana is good\n")), "banana is good\n", nil},
 		{repository.Read, "pg1", "lg1", "banana", "chunk1", int64(len("banana is good\n")), "banana is good\n", nil},
@@ -68,7 +68,7 @@ func TestServiceAPIs(t *testing.T) {
 			fmt.Errorf("no such object: apple"),
 		},
 		{repository.Read, "pg2", "lg2", "apple", "chunk2", int64(len("apple is sweet\n")), "apple is sweet\n",
-			fmt.Errorf("no chunk of such object: apple"),
+			fmt.Errorf("no such object: apple"),
 		},
 		{repository.Write, "pg2", "lg2", "apple", "chunk2", int64(len("apple is sweet\n")), "apple is sweet\n", nil},
 		{repository.Read, "pg2", "lg2", "apple", "chunk2", int64(len("apple is sweet\n")), "apple is sweet\n", nil},

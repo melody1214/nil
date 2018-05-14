@@ -32,7 +32,7 @@
 
         "work_dir": ".",
 
-        "store": "lv",
+        "store": "part",
 
         "chunk_size": "100000",
         "local_parity_shards": "3",

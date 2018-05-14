@@ -116,13 +116,13 @@ func (s *service) GetObjectSize(lvID, objID string) (int64, bool) {
 	}
 
 	lv.Lock.RLock()
-	obj, ok := lv.ObjInfo[objID]
+	obj, ok := lv.ObjMap[objID]
 	lv.Lock.RUnlock()
 	if ok == false {
 		return 0, false
 	}
 
-	return obj.Size, true
+	return obj.ObjInfo.Size, true
 }
 
 func (s *service) GetObjectMD5(lvID, objID string) (string, bool) {
@@ -132,13 +132,13 @@ func (s *service) GetObjectMD5(lvID, objID string) (string, bool) {
 	}
 
 	lv.Lock.RLock()
-	obj, ok := lv.ObjInfo[objID]
+	obj, ok := lv.ObjMap[objID]
 	lv.Lock.RUnlock()
 	if ok == false {
 		return "", false
 	}
 
-	return obj.MD5, true
+	return obj.ObjInfo.MD5, true
 }
 
 func (s *service) GetChunkHeaderSize() int64 {
@@ -178,7 +178,7 @@ func (s *service) read(r *repository.Request) {
 
 	// Find and get the requested object.
 	lv.Lock.RLock()
-	obj, ok := lv.ChunkMap[r.Cid].ObjMap[r.Oid]
+	obj, ok := lv.ObjMap[r.Oid]
 	lv.Lock.RUnlock()
 	if !ok {
 		r.Err = fmt.Errorf("no such object: %s", r.Oid)
@@ -347,18 +347,13 @@ func (s *service) write(r *repository.Request) {
 	// Store mapping information between the object and the chunk.
 	lv.Lock.Lock()
 
-	lv.ChunkMap[r.Cid] = repository.StChunkMap{
-		ObjMap: make(map[string]repository.StObjMap),
-	}
-
-	lv.ChunkMap[r.Cid].ObjMap[r.Oid] = repository.StObjMap{
+	lv.ObjMap[r.Oid] = repository.ObjMap{
 		Cid:    r.Cid,
 		Offset: fChunkLen,
-	}
-
-	lv.ObjInfo[r.Oid] = repository.StObjInfo{
-		Size: r.Osize,
-		MD5:  r.Md5,
+		ObjInfo: repository.ObjInfo{
+			Size: r.Osize,
+			MD5:  r.Md5,
+		},
 	}
 
 	lv.Lock.Unlock()
@@ -377,7 +372,7 @@ func (s *service) writeAll(r *repository.Request) {
 	}
 
 	// Check if the requested object is in the object map.
-	_, ok = lv.ChunkMap[r.Cid].ObjMap[r.Oid]
+	_, ok = lv.ObjMap[r.Oid]
 	if ok {
 		r.Err = fmt.Errorf("same name of the chunk is existed: %s", r.Oid)
 		return
@@ -414,11 +409,7 @@ func (s *service) writeAll(r *repository.Request) {
 	// Store mapping information between the object and the chunk.
 	lv.Lock.Lock()
 
-	lv.ChunkMap[r.Cid] = repository.StChunkMap{
-		ObjMap: make(map[string]repository.StObjMap),
-	}
-
-	lv.ChunkMap[r.Cid].ObjMap[r.Oid] = repository.StObjMap{
+	lv.ObjMap[r.Oid] = repository.ObjMap{
 		Cid:    r.Cid,
 		Offset: 0,
 	}
@@ -439,7 +430,7 @@ func (s *service) delete(r *repository.Request) {
 	}
 
 	// Check if the requested object is in the object map.
-	_, ok = lv.ChunkMap[r.Cid].ObjMap[r.Oid]
+	_, ok = lv.ObjMap[r.Oid]
 	if !ok {
 		r.Err = fmt.Errorf("no such object: %s", r.Oid)
 		return
@@ -449,7 +440,7 @@ func (s *service) delete(r *repository.Request) {
 
 	// Delete the object from the map.
 	lv.Lock.Lock()
-	delete(lv.ChunkMap[r.Cid].ObjMap, r.Oid)
+	delete(lv.ObjMap, r.Oid)
 	lv.Lock.Unlock()
 
 	// Complete to delete the object from the map.

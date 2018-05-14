@@ -117,13 +117,13 @@ func (s *service) GetObjectSize(pgID, objID string) (int64, bool) {
 	}
 
 	pg.Lock.RLock()
-	obj, ok := pg.ObjInfo[objID]
+	obj, ok := pg.ObjMap[objID]
 	pg.Lock.RUnlock()
 	if ok == false {
 		return 0, false
 	}
 
-	return obj.Size, true
+	return obj.ObjInfo.Size, true
 }
 
 func (s *service) GetObjectMD5(pgID, objID string) (string, bool) {
@@ -133,13 +133,13 @@ func (s *service) GetObjectMD5(pgID, objID string) (string, bool) {
 	}
 
 	pg.Lock.RLock()
-	obj, ok := pg.ObjInfo[objID]
+	obj, ok := pg.ObjMap[objID]
 	pg.Lock.RUnlock()
 	if ok == false {
 		return "", false
 	}
 
-	return obj.MD5, true
+	return obj.ObjInfo.MD5, true
 }
 
 func (s *service) GetChunkHeaderSize() int64 {
@@ -177,20 +177,20 @@ func (s *service) read(r *repository.Request) {
 		return
 	}
 
-	// Find and get the requested object.
 	pg.Lock.RLock()
-	chk, ok := pg.ChunkMap[r.Cid]
-	pg.Lock.RUnlock()
-	if !ok {
-		r.Err = fmt.Errorf("no chunk of such object: %s", r.Oid)
-		return
-	}
-
-	pg.Lock.RLock()
-	obj, ok := chk.ObjMap[r.Oid]
+	obj, ok := pg.ObjMap[r.Oid]
 	pg.Lock.RUnlock()
 	if !ok {
 		r.Err = fmt.Errorf("no such object: %s", r.Oid)
+		return
+	}
+
+	// Find and get the requested object.
+	pg.Lock.RLock()
+	chk, ok := pg.ChunkMap[obj.Cid]
+	pg.Lock.RUnlock()
+	if !ok {
+		r.Err = fmt.Errorf("no chunk of such object: %s", r.Oid)
 		return
 	}
 
@@ -235,6 +235,7 @@ func (s *service) readAll(r *repository.Request) {
 		r.Err = fmt.Errorf("no such partition group: %s", r.Vol)
 		return
 	}
+	pg.Lock.RUnlock()
 
 	pg.Lock.RLock()
 	chk, ok := pg.ChunkMap[r.Cid]
@@ -285,9 +286,8 @@ func (s *service) write(r *repository.Request) {
 	if !ok {
 		pg.DiskSched = pg.DiskSched%pg.NumOfPart + 1
 		pg.Lock.Lock()
-		pg.ChunkMap[r.Cid] = repository.StChunkMap{
+		pg.ChunkMap[r.Cid] = repository.ChunkMap{
 			PartID: "part" + strconv.Itoa(int(pg.DiskSched)),
-			ObjMap: make(map[string]repository.StObjMap),
 		}
 		pg.Lock.Unlock()
 		chk = pg.ChunkMap[r.Cid]
@@ -378,14 +378,13 @@ func (s *service) write(r *repository.Request) {
 	// Store mapping information between the object and the chunk.
 	pg.Lock.Lock()
 
-	chk.ObjMap[r.Oid] = repository.StObjMap{
+	pg.ObjMap[r.Oid] = repository.ObjMap{
 		Cid:    r.Cid,
 		Offset: fChunkLen,
-	}
-
-	pg.ObjInfo[r.Oid] = repository.StObjInfo{
-		Size: r.Osize,
-		MD5:  r.Md5,
+		ObjInfo: repository.ObjInfo{
+			Size: r.Osize,
+			MD5:  r.Md5,
+		},
 	}
 
 	pg.Lock.Unlock()
@@ -404,7 +403,7 @@ func (s *service) writeAll(r *repository.Request) {
 	}
 
 	// Check if the requested object is in the object map.
-	_, ok = pg.ChunkMap[r.Cid].ObjMap[r.Oid]
+	_, ok = pg.ObjMap[r.Oid]
 	if ok {
 		r.Err = fmt.Errorf("same name of the chunk is existed: %s", r.Oid)
 		return
@@ -456,7 +455,7 @@ func (s *service) delete(r *repository.Request) {
 	}
 
 	// Check if the requested object is in the object map.
-	_, ok = pg.ChunkMap[r.Cid].ObjMap[r.Oid]
+	_, ok = pg.ObjMap[r.Oid]
 	if !ok {
 		r.Err = fmt.Errorf("no such object: %s", r.Oid)
 		return
@@ -464,7 +463,7 @@ func (s *service) delete(r *repository.Request) {
 
 	// Delete the object from the map.
 	pg.Lock.Lock()
-	delete(pg.ChunkMap[r.Cid].ObjMap, r.Oid)
+	delete(pg.ObjMap, r.Oid)
 	pg.Lock.Unlock()
 
 	// Complete to delete the object from the map.
