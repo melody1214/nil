@@ -230,6 +230,13 @@ function runds() {
     createsdisks "$DISKNUM" "$DISKSIZE" "$workdir" "$port"
 }
 
+function ggg() {
+    # TODO: shuffling
+    for region in ${REGIONS[@]}; do
+        echo $region
+    done
+}
+
 function createusers() {
     for region in ${REGIONS[@]}; do
         TOTALUSERS=$(($TOTALUSERS + $REGIONUSERS))
@@ -344,6 +351,9 @@ function main() {
         runregion "$region" 1 1 6
         sleep 3
     done
+
+    # Generate global encoding group.
+    ggg
 
     # Execute pending command.
     if [ -e $PENDINGCMD ]; then

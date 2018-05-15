@@ -32,7 +32,7 @@ func NewService(cfg *config.Mds, cmapAPI cmap.SlaveAPI, store Repository) Servic
 // GGG stands for generate global encoding group.
 // GGG generates the global encoding group with the given regions.
 func (s *service) GGG(req *nilrpc.MGEGGGRequest, res *nilrpc.MGEGGGResponse) error {
-	fmt.Println("!!!!!!!!!!!!!!!!!!!!")
+	fmt.Println(req.Regions)
 
 	return nil
 }

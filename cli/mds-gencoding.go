@@ -1,8 +1,10 @@
 package cli
 
 import (
+	"fmt"
 	"log"
 	"net/rpc"
+	"strings"
 	"time"
 
 	"github.com/chanyoung/nil/pkg/nilrpc"
@@ -11,10 +13,19 @@ import (
 )
 
 var mdsGGGCmd = &cobra.Command{
-	Use:   "ggg",
+	Use:   "ggg [region1,region2,region3,region4]",
 	Short: "generate global encoding group",
 	Long:  "generate global encoding group",
-	Run:   mdsGGGRun,
+	Args: func(cmd *cobra.Command, args []string) error {
+		if len(args) < 1 {
+			return fmt.Errorf("requires region names")
+		}
+		if len(args) > 1 {
+			return fmt.Errorf("includes invalid arguments")
+		}
+		return nil
+	},
+	Run: mdsGGGRun,
 }
 
 var (
@@ -24,13 +35,20 @@ var (
 )
 
 func mdsGGGRun(cmd *cobra.Command, args []string) {
+	regions := strings.Split(args[0], ",")
+	if len(regions) != 4 {
+		log.Fatal(fmt.Errorf("invalid region numbers"))
+	}
+
 	conn, err := nilrpc.Dial(mdsGGGBind+":"+mdsGGGPort, nilrpc.RPCNil, time.Duration(2*time.Second))
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer conn.Close()
 
-	req := &nilrpc.MGEGGGRequest{}
+	req := &nilrpc.MGEGGGRequest{
+		Regions: regions,
+	}
 	res := &nilrpc.MGEGGGResponse{}
 
 	cli := rpc.NewClient(conn)
