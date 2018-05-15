@@ -10,10 +10,10 @@ import (
 
 // Prefixes for domains.
 const (
-	MdsUserPrefix     = "MDS_USER"
-	MdsClusterPrefix  = "MDS_CLUSTER"
-	MdsObjectPrefix   = "MDS_OBJECT"
-	MdsRecoveryPrefix = "MDS_RECOVERY"
+	MdsUserPrefix      = "MDS_USER"
+	MdsClusterPrefix   = "MDS_CLUSTER"
+	MdsObjectPrefix    = "MDS_OBJECT"
+	MdsGencodingPrefix = "MDS_GENCODING"
 
 	DsClusterPrefix = "DS_CLUSTER"
 )
@@ -39,8 +39,8 @@ const (
 	MdsObjectPut
 	MdsObjectGet
 
-	// MDS recovery domain methods
-	MdsRecoveryRecovery
+	// MDS global encoding domain methods
+	MdsGencodingGGG
 
 	// DS cluster domain methods.
 	DsClusterAddVolume
@@ -73,8 +73,8 @@ func (m MethodName) String() string {
 	case MdsObjectGet:
 		return MdsObjectPrefix + "." + "Get"
 
-	case MdsRecoveryRecovery:
-		return MdsRecoveryPrefix + "." + "Recovery"
+	case MdsGencodingGGG:
+		return MdsGencodingPrefix + "." + "GGG"
 
 	case DsClusterAddVolume:
 		return DsClusterPrefix + "." + "AddVolume"

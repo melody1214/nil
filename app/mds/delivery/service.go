@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/chanyoung/nil/app/mds/usecase/cluster"
+	"github.com/chanyoung/nil/app/mds/usecase/gencoding"
 	"github.com/chanyoung/nil/app/mds/usecase/object"
 	"github.com/chanyoung/nil/app/mds/usecase/user"
 	"github.com/chanyoung/nil/pkg/cmap"
@@ -26,6 +27,7 @@ type Service struct {
 	cls cluster.Service
 	cms *cmap.Service
 	obh object.Handlers
+	ges gencoding.Service
 
 	nilLayer        *nilmux.Layer
 	raftLayer       *nilmux.Layer
@@ -36,7 +38,7 @@ type Service struct {
 }
 
 // SetupDeliveryService bootstraps a delivery service with necessary dependencies.
-func SetupDeliveryService(cfg *config.Mds, uss user.Service, cls cluster.Service, cms *cmap.Service, obh object.Handlers) (*Service, error) {
+func SetupDeliveryService(cfg *config.Mds, uss user.Service, cls cluster.Service, cms *cmap.Service, obh object.Handlers, ges gencoding.Service) (*Service, error) {
 	if cfg == nil {
 		return nil, errors.New("invalid argument")
 	}
@@ -49,6 +51,7 @@ func SetupDeliveryService(cfg *config.Mds, uss user.Service, cls cluster.Service
 		cls: cls,
 		cms: cms,
 		obh: obh,
+		ges: ges,
 	}
 
 	// Resolve gateway address.
@@ -77,6 +80,9 @@ func SetupDeliveryService(cfg *config.Mds, uss user.Service, cls cluster.Service
 		return nil, err
 	}
 	if err := s.nilRPCSrv.RegisterName(nilrpc.MdsObjectPrefix, s.obh); err != nil {
+		return nil, err
+	}
+	if err := s.nilRPCSrv.RegisterName(nilrpc.MdsGencodingPrefix, s.ges); err != nil {
 		return nil, err
 	}
 

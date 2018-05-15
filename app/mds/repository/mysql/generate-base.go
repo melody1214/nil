@@ -113,4 +113,33 @@ var generateSQLBase = []string{
 			PRIMARY KEY (clj_id)
 		)
 	`,
+	`
+		CREATE TABLE IF NOT EXISTS global_encoding_case (
+			gec_id int unsigned NOT NULL AUTO_INCREMENT,
+			gec_state int unsigned NOT NULL,
+			PRIMARY KEY (gec_id)
+		)
+	`,
+	`
+		CREATE TABLE IF NOT EXISTS global_encoding_region (
+			ger_id int unsigned NOT NULL AUTO_INCREMENT,
+			ger_region int unsigned NOT NULL,
+			PRIMARY KEY (ger_id),
+			FOREIGN KEY (ger_region) REFERENCES region (rg_id)
+		)
+	`,
+	`
+		CREATE TABLE IF NOT EXISTS global_encoding_group (
+			geg_id int unsigned NOT NULL AUTO_INCREMENT,
+			PRIMARY KEY (geg_id)
+		)
+	`,
+	`
+		CREATE TABLE IF NOT EXISTS global_encoding_group_member (
+			gegm_id int unsigned NOT NULL AUTO_INCREMENT,
+			gegm_encoding_group int unsigned NOT NULL,
+			PRIMARY KEY (gegm_id),
+			FOREIGN KEY (gegm_encoding_group) REFERENCES encoding_group (eg_id)
+		)
+	`,
 }
