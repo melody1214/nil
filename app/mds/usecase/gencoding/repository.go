@@ -10,4 +10,6 @@ type Repository interface {
 	Rollback(repository.TxID) error
 	Commit(repository.TxID) error
 	GenerateGencodingGroup(regions []string) error
+	AmILeader() bool
+	Make() error
 }

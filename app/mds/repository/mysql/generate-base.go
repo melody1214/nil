@@ -151,7 +151,6 @@ var generateSQLBase = []string{
 		CREATE TABLE IF NOT EXISTS global_encoding_request (
 			ger_id int unsigned NOT NULL AUTO_INCREMENT,
 			ger_region int unsigned NOT NULL,
-			ger_encoding_group int unsigned NOT NULL,
 			ger_encoding_group_chunk int unsigned NOT NULL,
 			PRIMARY KEY (ger_id),
 			FOREIGN KEY (ger_region) REFERENCES region (rg_id)

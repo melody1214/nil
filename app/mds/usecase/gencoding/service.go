@@ -2,6 +2,7 @@ package gencoding
 
 import (
 	"strconv"
+	"time"
 
 	"fmt"
 
@@ -44,6 +45,8 @@ func NewService(cfg *config.Mds, cmapAPI cmap.SlaveAPI, store Repository) (Servi
 	}
 	s.shards = shards
 
+	go s.run()
+
 	return s, nil
 }
 
@@ -55,6 +58,28 @@ func (s *service) GGG(req *nilrpc.MGEGGGRequest, res *nilrpc.MGEGGGResponse) err
 	}
 
 	return s.store.GenerateGencodingGroup(req.Regions)
+}
+
+func (s *service) run() {
+	// Check and create global encoding jobs in every 10 seconds.
+	checkTicker := time.NewTicker(10 * time.Second)
+	for {
+		select {
+		case <-checkTicker.C:
+			s.createGlobalEncodingJob()
+		}
+	}
+}
+
+func (s *service) createGlobalEncodingJob() {
+	// Do create global encoding job is only allowed to master.
+	if s.store.AmILeader() == false {
+		return
+	}
+
+	if err := s.store.Make(); err != nil {
+		fmt.Printf("\n\n%v\n\n", err)
+	}
 }
 
 // Service is the interface that provides global encoding domain's service
