@@ -36,7 +36,7 @@ var (
 
 func mdsGGGRun(cmd *cobra.Command, args []string) {
 	regions := strings.Split(args[0], ",")
-	if len(regions) != 4 {
+	if len(regions) < 3 {
 		log.Fatal(fmt.Errorf("invalid region numbers"))
 	}
 
@@ -55,6 +55,8 @@ func mdsGGGRun(cmd *cobra.Command, args []string) {
 	if err := cli.Call(nilrpc.MdsGencodingGGG.String(), req, res); err != nil {
 		log.Fatal(err)
 	}
+
+	log.Printf("Successfully generate global encoding group: %s\n", args[0])
 }
 
 func init() {

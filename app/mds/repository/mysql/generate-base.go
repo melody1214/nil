@@ -116,16 +116,16 @@ var generateSQLBase = []string{
 	`
 		CREATE TABLE IF NOT EXISTS global_encoding_group (
 			geg_id int unsigned NOT NULL AUTO_INCREMENT,
+			geg_region_frst int unsigned NOT NULL,
+			geg_region_secd int unsigned NOT NULL,
+			geg_region_thrd int unsigned NOT NULL,
+			geg_region_four int unsigned NOT NULL,
 			geg_state int unsigned NOT NULL,
-			PRIMARY KEY (geg_id)
-		)
-	`,
-	`
-		CREATE TABLE IF NOT EXISTS global_encoding_region (
-			ger_id int unsigned NOT NULL AUTO_INCREMENT,
-			ger_region int unsigned NOT NULL,
-			PRIMARY KEY (ger_id),
-			FOREIGN KEY (ger_region) REFERENCES region (rg_id)
+			PRIMARY KEY (geg_id),
+			FOREIGN KEY (geg_region_frst) REFERENCES region (rg_id),
+			FOREIGN KEY (geg_region_secd) REFERENCES region (rg_id),
+			FOREIGN KEY (geg_region_thrd) REFERENCES region (rg_id),
+			FOREIGN KEY (geg_region_four) REFERENCES region (rg_id)
 		)
 	`,
 	`

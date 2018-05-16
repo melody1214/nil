@@ -23,6 +23,8 @@
         "rebalance": "5s",
 
         "local_parity_shards": "3",
+        "global_parity_shards": "15",
+        "global_parity_regions": "3",
 
         "log_location": "stderr"
     },

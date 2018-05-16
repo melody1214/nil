@@ -69,7 +69,10 @@ func Bootstrap(cfg config.Mds) error {
 	userService := user.NewService(&cfg, userStore)
 	clusterService := cluster.NewService(&cfg, cmapService.MasterAPI(), clusterStore)
 	objectHandlers := object.NewHandlers(objectStore)
-	gencodingService := gencoding.NewService(&cfg, cmapService.SlaveAPI(), gencodingStore)
+	gencodingService, err := gencoding.NewService(&cfg, cmapService.SlaveAPI(), gencodingStore)
+	if err != nil {
+		return errors.Wrap(err, "failed to create global encoding service")
+	}
 
 	// Setup delivery service.
 	delivery, err := delivery.SetupDeliveryService(

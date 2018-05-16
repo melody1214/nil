@@ -9,4 +9,5 @@ type Repository interface {
 	Begin() (repository.TxID, error)
 	Rollback(repository.TxID) error
 	Commit(repository.TxID) error
+	GenerateGencodingGroup(regions []string) error
 }

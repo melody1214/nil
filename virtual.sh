@@ -13,8 +13,8 @@ MNT=$DIR/mnt
 PENDINGCMD=$DIR/pending
 
 # Region names follow ISO-3166-1
-# REGIONS=("KR" "US" "HK" "SG" "JP" "DE")
-REGIONS=("KR")
+REGIONS=("KR" "US" "HK" "SG" "JP" "DE")
+# REGIONS=("KR")
 GWBASEPORT=50000
 MDSBASEPORT=51000
 DSBASEPORT=52000
@@ -122,7 +122,6 @@ function purge() {
     for region in ${REGIONS[@]}; do
     mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoding_table_record;"
     mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoding_table;"
-    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoding_region;"
     mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoding_group;"
 	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS object;"
 	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS bucket;"
@@ -231,9 +230,32 @@ function runds() {
 }
 
 function ggg() {
-    # TODO: shuffling
-    for region in ${REGIONS[@]}; do
-        echo $region
+    local try="$1"
+    local numRegions=4
+
+    for i in $(seq 1 $try); do
+        local copiedRegions=("${REGIONS[@]}")
+        local selectedRegions=""
+
+        # local idx=$(($RANDOM % ${#copiedRegions[@]}))
+        while [ ${#copiedRegions[@]} -ne $((${#REGIONS[@]} - $numRegions)) ]; do
+            local duplicated=${#copiedRegions[@]}
+
+            local idx=$(($RANDOM % ${#REGIONS[@]}))
+            local selected=${copiedRegions[$idx]}
+            unset copiedRegions[$idx]
+            if [ ${#copiedRegions[@]} -eq $duplicated ]; then
+                sleep 0
+                continue
+            fi
+
+            selectedRegions+=$selected
+            if [ ${#copiedRegions[@]} -ne $((${#REGIONS[@]} - $numRegions)) ]; then
+                selectedRegions+=","
+            fi
+        done
+
+        $NIL mds ggg $selectedRegions
     done
 }
 
@@ -353,7 +375,7 @@ function main() {
     done
 
     # Generate global encoding group.
-    ggg
+    ggg 30
 
     # Execute pending command.
     if [ -e $PENDINGCMD ]; then
