@@ -115,9 +115,9 @@ func (s *service) GetObjectSize(lvID, objID string) (int64, bool) {
 		return 0, false
 	}
 
-	lv.Lock.RLock()
+	lv.Lock.Obj.RLock()
 	obj, ok := lv.ObjMap[objID]
-	lv.Lock.RUnlock()
+	lv.Lock.Obj.RUnlock()
 	if ok == false {
 		return 0, false
 	}
@@ -131,9 +131,9 @@ func (s *service) GetObjectMD5(lvID, objID string) (string, bool) {
 		return "", false
 	}
 
-	lv.Lock.RLock()
+	lv.Lock.Obj.RLock()
 	obj, ok := lv.ObjMap[objID]
-	lv.Lock.RUnlock()
+	lv.Lock.Obj.RUnlock()
 	if ok == false {
 		return "", false
 	}
@@ -165,6 +165,8 @@ func (s *service) handleCall(r *repository.Request) {
 		s.delete(r)
 	case repository.ReadAll:
 		s.readAll(r)
+	case repository.DeleteReal:
+		s.deleteReal(r)
 	}
 }
 
@@ -177,9 +179,9 @@ func (s *service) read(r *repository.Request) {
 	}
 
 	// Find and get the requested object.
-	lv.Lock.RLock()
+	lv.Lock.Obj.RLock()
 	obj, ok := lv.ObjMap[r.Oid]
-	lv.Lock.RUnlock()
+	lv.Lock.Obj.RUnlock()
 	if !ok {
 		r.Err = fmt.Errorf("no such object: %s", r.Oid)
 		return
@@ -345,7 +347,7 @@ func (s *service) write(r *repository.Request) {
 	}
 
 	// Store mapping information between the object and the chunk.
-	lv.Lock.Lock()
+	lv.Lock.Obj.Lock()
 
 	lv.ObjMap[r.Oid] = repository.ObjMap{
 		Cid:    r.Cid,
@@ -356,7 +358,7 @@ func (s *service) write(r *repository.Request) {
 		},
 	}
 
-	lv.Lock.Unlock()
+	lv.Lock.Obj.Unlock()
 
 	// Complete to write the object into the chunk.
 	r.Err = nil
@@ -407,14 +409,14 @@ func (s *service) writeAll(r *repository.Request) {
 	}
 
 	// Store mapping information between the object and the chunk.
-	lv.Lock.Lock()
+	lv.Lock.Obj.Lock()
 
 	lv.ObjMap[r.Oid] = repository.ObjMap{
 		Cid:    r.Cid,
 		Offset: 0,
 	}
 
-	lv.Lock.Unlock()
+	lv.Lock.Obj.Unlock()
 
 	// Complete to write the object into the chunk.
 	r.Err = nil
@@ -439,13 +441,91 @@ func (s *service) delete(r *repository.Request) {
 	// TODO: delete object info.
 
 	// Delete the object from the map.
-	lv.Lock.Lock()
+	lv.Lock.Obj.Lock()
 	delete(lv.ObjMap, r.Oid)
-	lv.Lock.Unlock()
+	lv.Lock.Obj.Unlock()
 
 	// Complete to delete the object from the map.
 	r.Err = nil
 	return
+}
+
+func (s *service) deleteReal(r *repository.Request) {
+	// Find and get a logical volume.
+	lv, ok := s.lvs[r.Vol]
+	if !ok {
+		r.Err = fmt.Errorf("no such partition group: %s", r.Vol)
+		return
+	}
+
+	lv.Lock.Obj.RLock()
+	obj, ok := lv.ObjMap[r.Oid]
+	lv.Lock.Obj.RUnlock()
+	if ok {
+		lgDir := lv.MntPoint + "/" + r.LocGid
+
+		fChunk, err := os.OpenFile(lgDir+"/"+obj.Cid, os.O_RDWR, 0775)
+		if err != nil {
+			r.Err = err
+			return
+		}
+		defer fChunk.Close()
+
+		// Obtain a path of the chunk.
+		fChunkName := fChunk.Name()
+
+		// Get an information of the chunk.
+		fChunkInfo, err := os.Lstat(fChunkName)
+		if err != nil {
+			r.Err = err
+			return
+		}
+
+		// Get current length of the chunk.
+		fChunkLen := fChunkInfo.Size()
+
+		if obj.Offset+obj.ObjInfo.Size != fChunkLen {
+			r.Err = fmt.Errorf("can remove only a last object of a chunk")
+			return
+		}
+		fChunk.Seek(obj.Offset, io.SeekStart)
+		fChunk.Truncate(fChunkLen - (fChunkLen - obj.Offset))
+
+		lv.Lock.Obj.Lock()
+		delete(lv.ObjMap, r.Oid)
+		lv.Lock.Obj.Unlock()
+
+		r.Err = nil
+		return
+	}
+
+	lgDir := lv.MntPoint + "/" + r.LocGid
+	chk := lgDir + "/" + r.Cid
+
+	// Remove chunk
+
+	// Remove all metadata of chunk
+	for key, value := range lv.ObjMap {
+		if value.Cid == r.Cid {
+			lv.Lock.Obj.Lock()
+			delete(lv.ObjMap, key)
+			lv.Lock.Obj.Unlock()
+		}
+	}
+
+	err := os.Remove(chk)
+	if err != nil {
+		r.Err = fmt.Errorf("no such chunk: %s", r.Cid)
+		return
+	}
+
+	lv.Lock.Chk.Lock()
+	delete(lv.ChunkMap, r.Cid)
+	lv.Lock.Chk.Unlock()
+
+	r.Err = nil
+	return
+
 }
 
 // NewClusterRepository returns a new lv store inteface in a view of cluster domain.

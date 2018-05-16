@@ -76,14 +76,19 @@ func TestServiceAPIs(t *testing.T) {
 		{repository.Write, "pg1", "lg1", "banana", "chunk1", int64(len("banana is good\n")), "banana is good\n", nil},
 		{repository.Write, "pg1", "lg1", "banana", "chunk2", int64(len("banana is good\n")), "banana is good\n", nil},
 		{repository.Write, "pg1", "lg1", "banana", "chunk3", int64(len("banana is good\n")), "banana is good\n", nil},
-		{repository.Write, "pg1", "lg1", "banana", "chunk1", int64(len("banana is good\n")), "banana is good\n", nil},
-		{repository.Write, "pg1", "lg1", "banana", "chunk1", int64(len("banana is good\n")), "banana is good\n", nil},
+		{repository.Write, "pg1", "lg1", "pineapple", "chunk1", int64(len("pineapple is good\n")), "pineapple is good\n", nil},
+		{repository.Write, "pg1", "lg1", "watermelon", "chunk1", int64(len("watermelon is good\n")), "watermelon is good\n", nil},
 		{repository.Write, "pg1", "lg1", "banana", "chunk3", int64(len("banana is good\n")), "banana is good\n", nil},
 		{repository.Write, "pg1", "lg1", "banana", "chunk2", int64(len("banana is good\n")), "banana is good\n", nil},
-		{repository.Write, "pg1", "lg1", "banana", "chunk1", int64(len("banana is good\n")), "banana is good\n", nil},
+		{repository.Write, "pg1", "lg1", "orange", "chunk1", int64(len("orange is good\n")), "orange is good\n", nil},
 		{repository.Write, "pg1", "lg1", "banana", "chunk4", int64(len("banana is good\n")), "banana is good\n", nil},
 		{repository.Write, "pg1", "lg1", "banana", "chunk5", int64(len("banana is good\n")), "banana is good\n", nil},
 		{repository.Write, "pg1", "lg1", "banana", "chunk6", int64(len("banana is good\n")), "banana is good\n", nil},
+		{repository.DeleteReal, "pg1", "lg1", "orange", "", int64(len("orange is good\n")), "orange is good\n", nil},
+		{repository.DeleteReal, "pg1", "lg1", "pineapple", "", int64(len("pineapple is good\n")), "pineapple is good\n",
+			fmt.Errorf("can remove only a last object of a chunk")},
+		{repository.DeleteReal, "pg1", "lg1", "watermelon", "", int64(len("pineapple is good\n")), "pineapple is good\n", nil},
+		{repository.DeleteReal, "pg1", "lg1", "", "chunk2", int64(len("pineapple is good\n")), "pineapple is good\n", nil},
 	}
 
 	for _, c := range testCases {

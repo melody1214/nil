@@ -116,9 +116,9 @@ func (s *service) GetObjectSize(pgID, objID string) (int64, bool) {
 		return 0, false
 	}
 
-	pg.Lock.RLock()
+	pg.Lock.Obj.RLock()
 	obj, ok := pg.ObjMap[objID]
-	pg.Lock.RUnlock()
+	pg.Lock.Obj.RUnlock()
 	if ok == false {
 		return 0, false
 	}
@@ -132,9 +132,9 @@ func (s *service) GetObjectMD5(pgID, objID string) (string, bool) {
 		return "", false
 	}
 
-	pg.Lock.RLock()
+	pg.Lock.Obj.RLock()
 	obj, ok := pg.ObjMap[objID]
-	pg.Lock.RUnlock()
+	pg.Lock.Obj.RUnlock()
 	if ok == false {
 		return "", false
 	}
@@ -166,6 +166,8 @@ func (s *service) handleCall(r *repository.Request) {
 		s.delete(r)
 	case repository.ReadAll:
 		s.readAll(r)
+	case repository.DeleteReal:
+		s.deleteReal(r)
 	}
 }
 
@@ -177,18 +179,18 @@ func (s *service) read(r *repository.Request) {
 		return
 	}
 
-	pg.Lock.RLock()
+	pg.Lock.Obj.RLock()
 	obj, ok := pg.ObjMap[r.Oid]
-	pg.Lock.RUnlock()
+	pg.Lock.Obj.RUnlock()
 	if !ok {
 		r.Err = fmt.Errorf("no such object: %s", r.Oid)
 		return
 	}
 
 	// Find and get the requested object.
-	pg.Lock.RLock()
+	pg.Lock.Chk.RLock()
 	chk, ok := pg.ChunkMap[obj.Cid]
-	pg.Lock.RUnlock()
+	pg.Lock.Chk.RUnlock()
 	if !ok {
 		r.Err = fmt.Errorf("no chunk of such object: %s", r.Oid)
 		return
@@ -235,15 +237,13 @@ func (s *service) readAll(r *repository.Request) {
 		r.Err = fmt.Errorf("no such partition group: %s", r.Vol)
 		return
 	}
-	pg.Lock.RUnlock()
-
-	pg.Lock.RLock()
+	pg.Lock.Chk.RLock()
 	chk, ok := pg.ChunkMap[r.Cid]
 	if !ok {
 		r.Err = fmt.Errorf("no chunk of such object: %s", r.Oid)
 		return
 	}
-	pg.Lock.RUnlock()
+	pg.Lock.Chk.RUnlock()
 
 	// Create a directory for a local group if not exist.
 	lgDir := pg.MntPoint + "/" + chk.PartID + "/" + r.LocGid
@@ -280,17 +280,19 @@ func (s *service) write(r *repository.Request) {
 		return
 	}
 
-	pg.Lock.RLock()
+	pg.Lock.Chk.RLock()
 	chk, ok := pg.ChunkMap[r.Cid]
-	pg.Lock.RUnlock()
+	pg.Lock.Chk.RUnlock()
 	if !ok {
 		pg.DiskSched = pg.DiskSched%pg.NumOfPart + 1
-		pg.Lock.Lock()
+		pg.Lock.Chk.Lock()
 		pg.ChunkMap[r.Cid] = repository.ChunkMap{
 			PartID: "part" + strconv.Itoa(int(pg.DiskSched)),
 		}
-		pg.Lock.Unlock()
+		pg.Lock.Chk.Unlock()
+		pg.Lock.Chk.RLock()
 		chk = pg.ChunkMap[r.Cid]
+		pg.Lock.Chk.RUnlock()
 	}
 
 	// Create a directory for a local group if not exist.
@@ -376,7 +378,7 @@ func (s *service) write(r *repository.Request) {
 	}
 
 	// Store mapping information between the object and the chunk.
-	pg.Lock.Lock()
+	pg.Lock.Obj.Lock()
 
 	pg.ObjMap[r.Oid] = repository.ObjMap{
 		Cid:    r.Cid,
@@ -387,7 +389,7 @@ func (s *service) write(r *repository.Request) {
 		},
 	}
 
-	pg.Lock.Unlock()
+	pg.Lock.Obj.Unlock()
 
 	// Complete to write the object into the chunk.
 	r.Err = nil
@@ -403,7 +405,9 @@ func (s *service) writeAll(r *repository.Request) {
 	}
 
 	// Check if the requested object is in the object map.
+	pg.Lock.Obj.RLock()
 	_, ok = pg.ObjMap[r.Oid]
+	pg.Lock.Obj.RUnlock()
 	if ok {
 		r.Err = fmt.Errorf("same name of the chunk is existed: %s", r.Oid)
 		return
@@ -438,8 +442,6 @@ func (s *service) writeAll(r *repository.Request) {
 	}
 
 	// Store mapping information between the object and the chunk.
-	pg.Lock.Lock()
-	pg.Lock.Unlock()
 
 	// Complete to write the object into the chunk.
 	r.Err = nil
@@ -455,18 +457,113 @@ func (s *service) delete(r *repository.Request) {
 	}
 
 	// Check if the requested object is in the object map.
+	pg.Lock.Obj.RLock()
 	_, ok = pg.ObjMap[r.Oid]
+	pg.Lock.Obj.RUnlock()
 	if !ok {
 		r.Err = fmt.Errorf("no such object: %s", r.Oid)
 		return
 	}
 
 	// Delete the object from the map.
-	pg.Lock.Lock()
+	pg.Lock.Obj.Lock()
 	delete(pg.ObjMap, r.Oid)
-	pg.Lock.Unlock()
+	pg.Lock.Obj.Unlock()
 
 	// Complete to delete the object from the map.
+	r.Err = nil
+	return
+}
+
+func (s *service) deleteReal(r *repository.Request) {
+	// Find and get a logical volume.
+	pg, ok := s.pgs[r.Vol]
+	if !ok {
+		r.Err = fmt.Errorf("no such partition group: %s", r.Vol)
+		return
+	}
+
+	// Check if the requested object is in the object map.
+	pg.Lock.Chk.RLock()
+	chk, ok := pg.ChunkMap[r.Cid]
+	pg.Lock.Chk.RUnlock()
+
+	// Remove chunk
+	if ok {
+		lgDir := pg.MntPoint + "/" + chk.PartID + "/" + r.LocGid
+
+		// Remove all metadata of chunk
+		for key, value := range pg.ObjMap {
+			if value.Cid == r.Cid {
+				pg.Lock.Obj.Lock()
+				delete(pg.ObjMap, key)
+				pg.Lock.Obj.Unlock()
+			}
+		}
+
+		err := os.Remove(lgDir + "/" + r.Cid)
+		if err != nil {
+			r.Err = fmt.Errorf("no such chunk: %s", r.Cid)
+			return
+		}
+
+		pg.Lock.Chk.Lock()
+		delete(pg.ChunkMap, r.Cid)
+		pg.Lock.Chk.Unlock()
+
+		r.Err = nil
+		return
+	}
+
+	// Remove object
+	pg.Lock.Obj.RLock()
+	obj, ok := pg.ObjMap[r.Oid]
+	pg.Lock.Obj.RUnlock()
+	if !ok {
+		r.Err = fmt.Errorf("no such object: %s", r.Oid)
+		return
+	}
+
+	pg.Lock.Obj.RLock()
+	chk, ok = pg.ChunkMap[obj.Cid]
+	pg.Lock.Obj.RUnlock()
+	if !ok {
+		r.Err = fmt.Errorf("no chunk including such object: %s", r.Cid)
+		return
+	}
+
+	lgDir := pg.MntPoint + "/" + chk.PartID + "/" + r.LocGid
+	fChunk, err := os.OpenFile(lgDir+"/"+obj.Cid, os.O_RDWR, 0775)
+	if err != nil {
+		r.Err = err
+		return
+	}
+	defer fChunk.Close()
+
+	// Obtain a path of the chunk.
+	fChunkName := fChunk.Name()
+
+	// Get an information of the chunk.
+	fChunkInfo, err := os.Lstat(fChunkName)
+	if err != nil {
+		r.Err = err
+		return
+	}
+
+	// Get current length of the chunk.
+	fChunkLen := fChunkInfo.Size()
+
+	if obj.Offset+obj.ObjInfo.Size != fChunkLen {
+		r.Err = fmt.Errorf("can remove only a last object of a chunk")
+		return
+	}
+	fChunk.Seek(obj.Offset, io.SeekStart)
+	fChunk.Truncate(fChunkLen - (fChunkLen - obj.Offset))
+
+	pg.Lock.Obj.Lock()
+	delete(pg.ObjMap, r.Oid)
+	pg.Lock.Obj.Unlock()
+
 	r.Err = nil
 	return
 }

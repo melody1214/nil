@@ -18,10 +18,12 @@ const (
 	Write
 	// WriteAll requests an object handle that can write the requested object.
 	WriteAll
-	// Delete requests an object handle that can delete the requested object.
+	// Delete requests an object handle that can delete metadata of the requested object.
 	Delete
 	// ReadAll requests an object handle that can read the requested chunk.
 	ReadAll
+	// DeleteReal requests an object handle that can delete the requested object.
+	DeleteReal
 )
 
 // Request includes information abOut backend store request.
@@ -67,6 +69,10 @@ func (r *Request) Verify() error {
 		}
 	case WriteAll:
 		if r.Vol == "" || r.Cid == "" || r.In == nil {
+			return fmt.Errorf("%v: invalid arguments", r)
+		}
+	case DeleteReal:
+		if r.Vol == "" || (r.Oid == "" && r.Cid == "") {
 			return fmt.Errorf("%v: invalid arguments", r)
 		}
 	default:

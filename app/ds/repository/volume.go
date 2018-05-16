@@ -70,6 +70,12 @@ type ChunkMap struct {
 	PartID string
 }
 
+// Lock contains locks for object and chunk respectively.
+type Lock struct {
+	Obj sync.RWMutex
+	Chk sync.RWMutex
+}
+
 // Vol contains information about the volume.
 type Vol struct {
 	Name      string
@@ -86,7 +92,7 @@ type Vol struct {
 	ChunkSize int64
 	ObjMap    map[string]ObjMap
 	ChunkMap  map[string]ChunkMap
-	Lock      sync.RWMutex
+	Lock      Lock
 }
 
 // NewVol collects information about the volume with the given
