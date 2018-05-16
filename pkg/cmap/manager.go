@@ -377,6 +377,7 @@ func mergeCMap(src, dst *CMap) bool {
 			dst.EncGrps[i].Used = se.Used
 			dst.EncGrps[i].Free = se.Free
 			dst.EncGrps[i].Incr = se.Incr
+			dst.EncGrps[i].Uenc = se.Uenc
 		}
 	}
 

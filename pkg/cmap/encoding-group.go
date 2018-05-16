@@ -33,4 +33,5 @@ type EncodingGroup struct {
 	Used int64               `xml:"used"`
 	Free int64               `xml:"free"`
 	Vols []ID                `xml:"volume"`
+	Uenc int                 `xml:"unencoded"`
 }

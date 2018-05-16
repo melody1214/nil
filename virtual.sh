@@ -120,7 +120,8 @@ function purge() {
     rm -rf $DIR
 
     for region in ${REGIONS[@]}; do
-    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoding_table_record;"
+    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoding_request;"
+    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoding_table_eg;"
     mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoding_table;"
     mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoding_group;"
 	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS object;"
@@ -396,7 +397,7 @@ function main() {
     createusers
 
     # Create buckets.
-    sleep 3
+    sleep 5
     createbuckets
 
     # Put objects.
