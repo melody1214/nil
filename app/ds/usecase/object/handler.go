@@ -122,7 +122,8 @@ func (h *handlers) writeToPrimary(req client.RequestEvent) {
 		// TODO: handling error in writing process.
 
 		// Rollback writed data.
-		storeReq.Op = repository.Delete
+		storeReq.Cid = ""
+		storeReq.Op = repository.DeleteReal
 		h.store.Push(storeReq)
 		storeReq.Wait()
 		h.chunkPool.FinishWriting(cid, 0)
@@ -138,7 +139,8 @@ func (h *handlers) writeToPrimary(req client.RequestEvent) {
 		// TODO: handling error in writing.
 
 		// Rollback writed data.
-		storeReq.Op = repository.Delete
+		storeReq.Cid = ""
+		storeReq.Op = repository.DeleteReal
 		h.store.Push(storeReq)
 		storeReq.Wait()
 		h.chunkPool.FinishWriting(cid, 0)
@@ -271,7 +273,8 @@ func (h *handlers) writeCopy(req client.RequestEvent) {
 		// TODO: handling error in writing process.
 
 		// Rollback writed data.
-		storeReq.Op = repository.Delete
+		storeReq.Cid = ""
+		storeReq.Op = repository.DeleteReal
 		h.store.Push(storeReq)
 		storeReq.Wait()
 
@@ -283,7 +286,8 @@ func (h *handlers) writeCopy(req client.RequestEvent) {
 	mds, err := h.cmapAPI.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
 	if err != nil {
 		// Rollback writed data.
-		storeReq.Op = repository.Delete
+		storeReq.Cid = ""
+		storeReq.Op = repository.DeleteReal
 		h.store.Push(storeReq)
 		storeReq.Wait()
 
@@ -295,7 +299,8 @@ func (h *handlers) writeCopy(req client.RequestEvent) {
 	conn, err := nilrpc.Dial(mds.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
 	if err != nil {
 		// Rollback writed data.
-		storeReq.Op = repository.Delete
+		storeReq.Cid = ""
+		storeReq.Op = repository.DeleteReal
 		h.store.Push(storeReq)
 		storeReq.Wait()
 
@@ -316,7 +321,8 @@ func (h *handlers) writeCopy(req client.RequestEvent) {
 	cli := rpc.NewClient(conn)
 	if err := cli.Call(nilrpc.MdsObjectPut.String(), metaReq, metaRes); err != nil {
 		// Rollback writed data.
-		storeReq.Op = repository.Delete
+		storeReq.Cid = ""
+		storeReq.Op = repository.DeleteReal
 		h.store.Push(storeReq)
 		storeReq.Wait()
 

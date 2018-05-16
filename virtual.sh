@@ -13,8 +13,8 @@ MNT=$DIR/mnt
 PENDINGCMD=$DIR/pending
 
 # Region names follow ISO-3166-1
-REGIONS=("KR" "US" "HK" "SG" "JP" "DE")
-# REGIONS=("KR")
+# REGIONS=("KR" "US" "HK" "SG" "JP" "DE")
+REGIONS=("KR")
 GWBASEPORT=50000
 MDSBASEPORT=51000
 DSBASEPORT=52000
@@ -233,11 +233,14 @@ function ggg() {
     local try="$1"
     local numRegions=4
 
+    if [ ${#REGIONS[@]} -lt 4 ]; then
+        return
+    fi
+
     for i in $(seq 1 $try); do
         local copiedRegions=("${REGIONS[@]}")
         local selectedRegions=""
 
-        # local idx=$(($RANDOM % ${#copiedRegions[@]}))
         while [ ${#copiedRegions[@]} -ne $((${#REGIONS[@]} - $numRegions)) ]; do
             local duplicated=${#copiedRegions[@]}
 
@@ -245,7 +248,7 @@ function ggg() {
             local selected=${copiedRegions[$idx]}
             unset copiedRegions[$idx]
             if [ ${#copiedRegions[@]} -eq $duplicated ]; then
-                sleep 0
+                sleep 0.01
                 continue
             fi
 

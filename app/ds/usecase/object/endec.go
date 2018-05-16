@@ -228,7 +228,7 @@ func (e *endec) _genLocalParity(c chunk, stop <-chan interface{}) <-chan error {
 					prArr[i].CloseWithError(fmt.Errorf("receive stop encoding signal from manager"))
 				}
 				deleteParityReq := &repository.Request{
-					Op:     repository.Delete,
+					Op:     repository.DeleteReal,
 					Vol:    string(c.volume),
 					LocGid: string(c.encodingGroup),
 					Cid:    string(c.id),
@@ -252,7 +252,7 @@ func (e *endec) _genLocalParity(c chunk, stop <-chan interface{}) <-chan error {
 		deleteReqArr := make([]*repository.Request, e.chunkPool.shardSize)
 		for i := int64(0); i < e.chunkPool.shardSize; i++ {
 			deleteReqArr[i] = &repository.Request{
-				Op:     repository.Delete,
+				Op:     repository.DeleteReal,
 				Vol:    string(c.volume),
 				LocGid: string(c.encodingGroup),
 				Cid:    string(c.id) + "_" + strconv.FormatInt(i+1, 10),
