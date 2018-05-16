@@ -120,10 +120,10 @@ function purge() {
     rm -rf $DIR
 
     for region in ${REGIONS[@]}; do
-    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoding_group_member;"
-    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoding_group;"
+    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoding_table_record;"
+    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoding_table;"
     mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoding_region;"
-    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoding_case;"
+    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoding_group;"
 	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS object;"
 	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS bucket;"
 	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS region;"

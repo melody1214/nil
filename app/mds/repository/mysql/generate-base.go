@@ -114,10 +114,10 @@ var generateSQLBase = []string{
 		)
 	`,
 	`
-		CREATE TABLE IF NOT EXISTS global_encoding_case (
-			gec_id int unsigned NOT NULL AUTO_INCREMENT,
-			gec_state int unsigned NOT NULL,
-			PRIMARY KEY (gec_id)
+		CREATE TABLE IF NOT EXISTS global_encoding_group (
+			geg_id int unsigned NOT NULL AUTO_INCREMENT,
+			geg_state int unsigned NOT NULL,
+			PRIMARY KEY (geg_id)
 		)
 	`,
 	`
@@ -129,17 +129,17 @@ var generateSQLBase = []string{
 		)
 	`,
 	`
-		CREATE TABLE IF NOT EXISTS global_encoding_group (
-			geg_id int unsigned NOT NULL AUTO_INCREMENT,
-			PRIMARY KEY (geg_id)
+		CREATE TABLE IF NOT EXISTS global_encoding_table (
+			get_id int unsigned NOT NULL AUTO_INCREMENT,
+			PRIMARY KEY (get_id)
 		)
 	`,
 	`
-		CREATE TABLE IF NOT EXISTS global_encoding_group_member (
-			gegm_id int unsigned NOT NULL AUTO_INCREMENT,
-			gegm_encoding_group int unsigned NOT NULL,
-			PRIMARY KEY (gegm_id),
-			FOREIGN KEY (gegm_encoding_group) REFERENCES encoding_group (eg_id)
+		CREATE TABLE IF NOT EXISTS global_encoding_table_record (
+			getr_id int unsigned NOT NULL AUTO_INCREMENT,
+			getr_encoding_group int unsigned NOT NULL,
+			PRIMARY KEY (getr_id),
+			FOREIGN KEY (getr_encoding_group) REFERENCES encoding_group (eg_id)
 		)
 	`,
 }
