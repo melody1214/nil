@@ -18,4 +18,6 @@ type Service interface {
 	GetObjectMD5(lvID, objID string) (string, bool)
 	GetChunkHeaderSize() int64
 	GetObjectHeaderSize() int64
+
+	RenameChunk(src string, dest string, Vol string, LocGid string) error
 }

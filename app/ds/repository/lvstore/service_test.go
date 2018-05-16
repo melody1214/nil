@@ -15,7 +15,7 @@ import (
 func TestServiceAPIs(t *testing.T) {
 	dir := "testServiceAPIs"
 	os.Mkdir(dir, 0775)
-	defer os.RemoveAll(dir)
+	//defer os.RemoveAll(dir)
 
 	os.Mkdir(dir+"/lv1", 0775)
 	lv1 := &lv{
@@ -70,6 +70,7 @@ func TestServiceAPIs(t *testing.T) {
 		{repository.Read, "lv2", "lg2", "apple", "chunk2", int64(len("apple is sweet\n")), "apple is sweet\n", nil},
 		{repository.Delete, "lv2", "lg2", "apple", "chunk2", int64(len("apple is sweet\n")), "apple is sweet\n", nil},
 		{repository.Write, "lv1", "lg1", "orange", "chunk1", int64(len("orange is good\n")), "orange is good\n", nil},
+		{repository.Write, "lv1", "lg1", "strawberry", "chunk3", int64(len("orange is good\n")), "orange is good\n", nil},
 		{repository.Write, "lv1", "lg1", "pineapple", "chunk1", int64(len("pineapple is good\n")), "pineapple is good\n", nil},
 		{repository.Write, "lv1", "lg1", "watermelon", "chunk1", int64(len("watermelon is good\n")), "watermelon is good\n", nil},
 		{repository.DeleteReal, "lv1", "lg1", "orange", "", int64(len("orange is good\n")), "orange is good\n",
@@ -113,4 +114,6 @@ func TestServiceAPIs(t *testing.T) {
 			continue
 		}
 	}
+
+	s.RenameChunk("chunk3", "g_chunk3", "lv1", "lg1")
 }

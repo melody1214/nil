@@ -568,6 +568,36 @@ func (s *service) deleteReal(r *repository.Request) {
 	return
 }
 
+// RenameChunk renames oldpath to newpath of chunk.
+func (s *service) RenameChunk(src string, dest string, Vol string, LocGid string) error {
+	if Vol == "" || src == "" || dest == "" || LocGid == "" {
+		err := fmt.Errorf("invalid arguments: %s, %s, %s, %s", src, dest, Vol, LocGid)
+		return err
+	}
+
+	pg, ok := s.pgs[Vol]
+	if !ok {
+		err := fmt.Errorf("no such partition group: %s", Vol)
+		return err
+	}
+
+	pg.Lock.Chk.RLock()
+	chk, ok := pg.ChunkMap[src]
+	pg.Lock.Chk.RUnlock()
+	if !ok {
+		err := fmt.Errorf("no such chunk: %s", src)
+		return err
+	}
+
+	lgDir := pg.MntPoint + "/" + chk.PartID + "/" + LocGid
+	err := os.Rename(lgDir+"/"+src, lgDir+"/"+dest)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // NewClusterRepository returns a new part store inteface in a view of cluster domain.
 func NewClusterRepository(store repository.Service) cluster.Repository {
 	return store
