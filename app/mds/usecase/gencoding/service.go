@@ -1,10 +1,10 @@
 package gencoding
 
 import (
+	"fmt"
+	"net/rpc"
 	"strconv"
 	"time"
-
-	"fmt"
 
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
@@ -62,11 +62,14 @@ func (s *service) GGG(req *nilrpc.MGEGGGRequest, res *nilrpc.MGEGGGResponse) err
 
 func (s *service) run() {
 	// Check and create global encoding jobs in every 10 seconds.
-	checkTicker := time.NewTicker(10 * time.Second)
+	checkTicker := time.NewTicker(30 * time.Second)
+	updateTicker := time.NewTicker(30 * time.Second)
 	for {
 		select {
 		case <-checkTicker.C:
 			s.createGlobalEncodingJob()
+		case <-updateTicker.C:
+			s.checkAndUpdateUnencodedChunk()
 		}
 	}
 }
@@ -82,7 +85,58 @@ func (s *service) createGlobalEncodingJob() {
 	}
 }
 
+func (s *service) checkAndUpdateUnencodedChunk() {
+	// No leader to send.
+	leaderEndpoint := s.store.LeaderEndpoint()
+	if leaderEndpoint == "" {
+		return
+	}
+
+	m := s.cmapAPI.GetLatestCMap()
+
+	max := 0
+	for _, eg := range m.EncGrps {
+		if max < eg.Uenc {
+			max = eg.Uenc
+		}
+	}
+
+	req := &nilrpc.MGEUpdateUnencodedChunkRequest{
+		Region:    s.cfg.Raft.LocalClusterRegion,
+		Unencoded: max,
+	}
+	res := &nilrpc.MGEUpdateUnencodedChunkResponse{}
+	if s.store.AmILeader() {
+		err := s.UpdateUnencodedChunk(req, res)
+		if err != nil {
+			fmt.Printf("\n\n%v\n\n", err)
+		}
+		return
+	}
+
+	conn, err := nilrpc.Dial(leaderEndpoint, nilrpc.RPCNil, time.Duration(2*time.Second))
+	if err != nil {
+		fmt.Printf("\n\n%v\n\n", err)
+		return
+	}
+	defer conn.Close()
+
+	cli := rpc.NewClient(conn)
+	if err := cli.Call(nilrpc.MdsGencodingUpdateUnencodedChunk.String(), req, res); err != nil {
+		fmt.Printf("\n\n%v\n\n", err)
+	}
+}
+
+func (s *service) UpdateUnencodedChunk(req *nilrpc.MGEUpdateUnencodedChunkRequest, res *nilrpc.MGEUpdateUnencodedChunkResponse) error {
+	err := s.store.UpdateUnencodedChunks(req.Region, req.Unencoded)
+	if err != nil {
+		fmt.Printf("\n\n%v\n\n", err)
+	}
+	return err
+}
+
 // Service is the interface that provides global encoding domain's service
 type Service interface {
 	GGG(req *nilrpc.MGEGGGRequest, res *nilrpc.MGEGGGResponse) error
+	UpdateUnencodedChunk(req *nilrpc.MGEUpdateUnencodedChunkRequest, res *nilrpc.MGEUpdateUnencodedChunkResponse) error
 }

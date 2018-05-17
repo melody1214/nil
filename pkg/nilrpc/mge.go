@@ -8,3 +8,10 @@ type MGEGGGRequest struct {
 
 // MGEGGGResponse returns the result of the request.
 type MGEGGGResponse struct{}
+
+type MGEUpdateUnencodedChunkRequest struct {
+	Region    string
+	Unencoded int
+}
+
+type MGEUpdateUnencodedChunkResponse struct{}

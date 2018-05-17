@@ -73,6 +73,7 @@ type SlaveAPI interface {
 	UpdateEncodingGroupStatus(egID ID, stat EncodingGroupStatus) error
 	UpdateEncodingGroupUsed(egID ID, used uint64) error
 	GetLatestCMapVersion() Version
+	GetLatestCMap() CMap
 	GetUpdatedNoti(ver Version) <-chan interface{}
 	FindEncodingGroupByLeader(leaderNode ID) []EncodingGroup
 	UpdateEncodingGroupUnencoded(eg EncodingGroup) error

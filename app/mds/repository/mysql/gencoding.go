@@ -157,3 +157,69 @@ func (s *gencodingStore) Make() error {
 	_, err = s.PublishCommand("execute", q)
 	return err
 }
+
+func (s *gencodingStore) UpdateUnencodedChunks(regionName string, unencoded int) error {
+	q := fmt.Sprintf(
+		`
+		SELECT rg_id
+		FROM region
+		WHERE rg_name='%s'
+		`, regionName,
+	)
+	var regionID int
+	if err := s.QueryRow(repository.NotTx, q).Scan(&regionID); err != nil {
+		return err
+	}
+
+	q = fmt.Sprintf(
+		`
+		INSERT INTO global_encoding_request (ger_region, ger_encoding_group_chunk)
+		VALUES (%d, %d)
+		ON DUPLICATE KEY UPDATE ger_region=%d, ger_encoding_group_chunk=%d
+		`, regionID, unencoded, regionID, unencoded,
+	)
+
+	_, err := s.PublishCommand("execute", q)
+	return err
+}
+
+func (s *gencodingStore) LeaderEndpoint() (endpoint string) {
+	if s.raft == nil {
+		return
+	}
+
+	future := s.raft.GetConfiguration()
+	if err := future.Error(); err != nil {
+		return
+	}
+
+	servers := future.Configuration().Servers
+	// Not joined yet.
+	if len(servers) == 1 {
+		return
+	}
+
+	var leader *raft.Server
+	leaderAddress := s.raft.Leader()
+	for _, s := range servers {
+		if s.Address == leaderAddress {
+			leader = &s
+			break
+		}
+	}
+
+	if leader == nil {
+		return
+	}
+
+	q := fmt.Sprintf(
+		`
+		SELECT rg_end_point
+		FROM region
+		WHERE rg_name='%s'
+		`, string(leader.ID),
+	)
+
+	s.QueryRow(repository.NotTx, q).Scan(&endpoint)
+	return
+}
