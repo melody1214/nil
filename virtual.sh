@@ -386,7 +386,7 @@ function main() {
     done
 
     # Generate global encoding group.
-    ggg 30
+    ggg 100
 
     # Execute pending command.
     if [ -e $PENDINGCMD ]; then

@@ -15,3 +15,9 @@ type MGEUpdateUnencodedChunkRequest struct {
 }
 
 type MGEUpdateUnencodedChunkResponse struct{}
+
+type MGESelectEncodingGroupRequest struct {
+	TblID int
+}
+
+type MGESelectEncodingGroupResponse struct{}

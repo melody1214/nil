@@ -80,9 +80,9 @@ func (s *gencodingStore) AmILeader() bool {
 	return s.raft.State() == raft.Leader
 }
 
-func (s *gencodingStore) Make() error {
+func (s *gencodingStore) Make() (*gencoding.Table, error) {
 	if s.raft == nil {
-		return nil
+		return nil, fmt.Errorf("raft is nil")
 	}
 
 	q := fmt.Sprintf(
@@ -97,7 +97,7 @@ func (s *gencodingStore) Make() error {
 
 	rows, err := s.Query(repository.NotTx, q)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -111,20 +111,25 @@ func (s *gencodingStore) Make() error {
 		var r ger
 
 		if err = rows.Scan(&r.region, &r.chunk); err != nil {
-			return err
+			return nil, err
 		}
 
 		rs = append(rs, r)
 	}
 
 	if len(rs) < 4 {
-		return fmt.Errorf("not enough request information")
+		return nil, fmt.Errorf("not enough request information")
 	}
 
 	for i, r := range rs {
 		if i < 3 && r.chunk == 0 {
-			return fmt.Errorf("not enough chunk to encode")
+			return nil, fmt.Errorf("not enough chunk to encode")
 		}
+	}
+
+	tbl := &gencoding.Table{
+		RegionIDs: make([]int, 4),
+		Status:    gencoding.Ready,
 	}
 
 	var gegID = 0
@@ -145,10 +150,16 @@ func (s *gencodingStore) Make() error {
 		if err := s.QueryRow(repository.NotTx, q).Scan(&gegID); err != nil {
 			continue
 		}
+
+		tbl.RegionIDs[0] = rs[0].region
+		tbl.RegionIDs[1] = rs[1].region
+		tbl.RegionIDs[2] = rs[2].region
+		tbl.RegionIDs[3] = rs[3+randIdx[0]].region
+		break
 	}
 
 	if gegID == 0 {
-		return fmt.Errorf("failed to find the global encoding group with the selected regions")
+		return nil, fmt.Errorf("failed to find the global encoding group with the selected regions")
 	}
 
 	q = fmt.Sprintf(
@@ -157,9 +168,16 @@ func (s *gencodingStore) Make() error {
 		VALUES ('%d', '%d')
 		`, gegID, gencoding.Ready,
 	)
+	r, err := s.PublishCommand("execute", q)
+	if err != nil {
+		return nil, err
+	}
+	tbl.ID, err = r.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
 
-	_, err = s.PublishCommand("execute", q)
-	return err
+	return tbl, err
 }
 
 func (s *gencodingStore) UpdateUnencodedChunks(regionName string, unencoded int) error {
@@ -222,6 +240,19 @@ func (s *gencodingStore) LeaderEndpoint() (endpoint string) {
 		FROM region
 		WHERE rg_name='%s'
 		`, string(leader.ID),
+	)
+
+	s.QueryRow(repository.NotTx, q).Scan(&endpoint)
+	return
+}
+
+func (s *gencodingStore) RegionEndpoint(regionID int) (endpoint string) {
+	q := fmt.Sprintf(
+		`
+		SELECT rg_end_point
+		FROM region
+		WHERE rg_id='%d'
+		`, regionID,
 	)
 
 	s.QueryRow(repository.NotTx, q).Scan(&endpoint)

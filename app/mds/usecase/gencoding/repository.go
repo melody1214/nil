@@ -13,5 +13,6 @@ type Repository interface {
 	UpdateUnencodedChunks(regionName string, unencoded int) error
 	AmILeader() bool
 	LeaderEndpoint() string
-	Make() error
+	Make() (*Table, error)
+	RegionEndpoint(regionID int) (endpoint string)
 }

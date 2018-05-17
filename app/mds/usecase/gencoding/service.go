@@ -82,9 +82,44 @@ func (s *service) createGlobalEncodingJob() {
 		return
 	}
 
-	if err := s.store.Make(); err != nil {
+	tbl, err := s.store.Make()
+	if err != nil {
 		// fmt.Printf("\n\n%v\n\n", err)
+		return
 	}
+
+	if err := s.fillTbl(tbl); err != nil {
+		fmt.Printf("\n\n%v\n\n", err)
+		return
+	}
+}
+
+func (s *service) fillTbl(tbl *Table) error {
+	for i := range tbl.RegionIDs {
+		regionEndpoint := s.store.RegionEndpoint(tbl.RegionIDs[i])
+
+		req := &nilrpc.MGESelectEncodingGroupRequest{}
+		res := &nilrpc.MGESelectEncodingGroupResponse{}
+
+		conn, err := nilrpc.Dial(regionEndpoint, nilrpc.RPCNil, time.Duration(2*time.Second))
+		if err != nil {
+			fmt.Printf("\n\n%v\n\n", err)
+			return err
+		}
+		defer conn.Close()
+
+		cli := rpc.NewClient(conn)
+		if err := cli.Call(nilrpc.MdsGencodingSelectEncodingGroup.String(), req, res); err != nil {
+			fmt.Printf("\n\n%v\n\n", err)
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *service) SelectEncodingGroup(req *nilrpc.MGESelectEncodingGroupRequest, res *nilrpc.MGESelectEncodingGroupResponse) error {
+	// TODO: Get Encoding group and rename unencoded chunk to given tbl id.
+	return nil
 }
 
 func (s *service) checkAndUpdateUnencodedChunk() {
