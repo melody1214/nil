@@ -61,8 +61,10 @@ func (s *service) GGG(req *nilrpc.MGEGGGRequest, res *nilrpc.MGEGGGResponse) err
 }
 
 func (s *service) run() {
-	// Check and create global encoding jobs in every 10 seconds.
-	checkTicker := time.NewTicker(30 * time.Second)
+	// Check and create global encoding jobs in every 60 seconds.
+	checkTicker := time.NewTicker(60 * time.Second)
+
+	// update unencoded chunks in every 30 seconds.
 	updateTicker := time.NewTicker(30 * time.Second)
 	for {
 		select {

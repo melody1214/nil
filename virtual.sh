@@ -13,8 +13,8 @@ MNT=$DIR/mnt
 PENDINGCMD=$DIR/pending
 
 # Region names follow ISO-3166-1
-# REGIONS=("KR" "US" "HK" "SG" "JP" "DE")
-REGIONS=("KR")
+REGIONS=("KR" "US" "HK" "SG" "JP" "DE")
+# REGIONS=("KR")
 GWBASEPORT=50000
 MDSBASEPORT=51000
 DSBASEPORT=52000
@@ -314,19 +314,16 @@ function putobjects() {
         dummyarray+=($DIR/$dummysize.txt)
     done
 
-    for i in $(seq 1 $TOTALUSERS); do
-        local ak=user$i[accesskey]
-        local sk=user$i[secretkey]
-        local region=user$i[bucketregion]
-
+    for i in $(seq 1 50); do
         for j in $(seq 1 $BUCKETS); do
-            local bucket="user$i-bucket$j"
+            for k in $(seq 1 $TOTALUSERS); do
+                local ak=user$k[accesskey]
+                local sk=user$k[secretkey]
+                local region=user$k[bucketregion]
+                local bucket="user$k-bucket$j"
 
-            for k in $(seq 1 50); do
-                # echo ${dummyarray[$RANDOM % ${#dummyarray[@]}]}
-                local host=0
-                    for i in $(seq 1 ${#REGIONS[@]}); do
-                    local idx=$(($i-1))
+                for z in $(seq 1 ${#REGIONS[@]}); do
+                    local idx=$(($z-1))
                     if [ ${REGIONS[$idx]} = ${!region} ]; then
                         host=$idx
                         break

@@ -46,12 +46,12 @@ func (s *gencodingStore) GenerateGencodingGroup(regions []string) error {
 
 	q := fmt.Sprintf(
 		`
-		INSERT INTO global_encoding_group (geg_region_frst, geg_region_secd, geg_region_thrd, geg_region_four, geg_state)
+		INSERT INTO global_encoding_group (geg_region_first, geg_region_second, geg_region_third, geg_region_parity, geg_state)
 		SELECT * FROM (SELECT '%d', '%d', '%d', '%d', '%d') AS tmp
 		WHERE NOT EXISTS (
 			SELECT geg_id
 			FROM global_encoding_group
-			WHERE geg_region_frst = '%d' AND geg_region_secd = '%d' AND geg_region_thrd = '%d' AND geg_region_four = '%d'
+			WHERE geg_region_first = '%d' AND geg_region_second = '%d' AND geg_region_third = '%d' AND geg_region_parity = '%d'
 		) LIMIT 1
 		`, regionIDs[0], regionIDs[1], regionIDs[2], regionIDs[3], 0, regionIDs[0], regionIDs[1], regionIDs[2], regionIDs[3],
 	)
@@ -81,13 +81,17 @@ func (s *gencodingStore) AmILeader() bool {
 }
 
 func (s *gencodingStore) Make() error {
+	if s.raft == nil {
+		return nil
+	}
+
 	q := fmt.Sprintf(
 		`
 		SELECT
 			ger_region, ger_encoding_group_chunk
 		FROM
 			global_encoding_request
-		ORDER BY ger_encoding_group_chunk DESC limit 4
+		ORDER BY ger_encoding_group_chunk DESC
 		`,
 	)
 
@@ -106,26 +110,26 @@ func (s *gencodingStore) Make() error {
 	for rows.Next() {
 		var r ger
 
-		if err = rows.Scan(&r); err != nil {
+		if err = rows.Scan(&r.region, &r.chunk); err != nil {
 			return err
 		}
 
 		rs = append(rs, r)
 	}
 
-	if len(rs) != 4 {
+	if len(rs) < 4 {
 		return fmt.Errorf("not enough request information")
 	}
 
-	for _, r := range rs {
-		if r.chunk == 0 {
+	for i, r := range rs {
+		if i < 3 && r.chunk == 0 {
 			return fmt.Errorf("not enough chunk to encode")
 		}
 	}
 
 	var gegID = 0
 	for i := 0; i < 20; i++ {
-		randIdx := s.random.Perm(len(rs))
+		randIdx := s.random.Perm(len(rs) - 3)
 
 		q = fmt.Sprintf(
 			`
@@ -134,8 +138,8 @@ func (s *gencodingStore) Make() error {
 		FROM
 			global_encoding_group
 		WHERE
-			geg_region_frst = %d AND geg_region_secd = %d AND geg_region_thrd = %d AND geg_region_four = %d
-		`, rs[randIdx[0]].region, rs[randIdx[1]].region, rs[randIdx[2]].region, rs[randIdx[3]].region,
+			geg_region_first = %d AND geg_region_second = %d AND geg_region_third = %d AND geg_region_parity = %d
+		`, rs[0].region, rs[1].region, rs[2].region, rs[3+randIdx[0]].region,
 		)
 
 		if err := s.QueryRow(repository.NotTx, q).Scan(&gegID); err != nil {
@@ -151,7 +155,7 @@ func (s *gencodingStore) Make() error {
 		`
 		INSERT INTO global_encoding_table (get_global_encoding_group, get_status)
 		VALUES ('%d', '%d')
-		`, gegID, 0,
+		`, gegID, gencoding.Ready,
 	)
 
 	_, err = s.PublishCommand("execute", q)
