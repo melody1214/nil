@@ -21,7 +21,7 @@ DSBASEPORT=52000
 
 # Disk configuration.
 DISKSIZE=100 # megabytes
-DISKNUM=3    # per ds
+DISKNUM=2    # per ds
 
 # User per region
 TOTALUSERS=0    # (REGIONUSERS) * (number of regions)
@@ -384,7 +384,7 @@ function main() {
 
     for region in ${REGIONS[@]}; do
         echo "set region $region ..."
-        runregion "$region" 1 1 6
+        runregion "$region" 1 1 10
         sleep 3
     done
 

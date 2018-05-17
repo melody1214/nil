@@ -498,13 +498,13 @@ func (s *service) deleteReal(r *repository.Request) {
 		lgDir := pg.MntPoint + "/" + chk.PartID + "/" + r.LocGid
 
 		// Remove all metadata of chunk
+		pg.Lock.Obj.Lock()
 		for key, value := range pg.ObjMap {
 			if value.Cid == r.Cid {
-				pg.Lock.Obj.Lock()
 				delete(pg.ObjMap, key)
-				pg.Lock.Obj.Unlock()
 			}
 		}
+		pg.Lock.Obj.Unlock()
 
 		err := os.Remove(lgDir + "/" + r.Cid)
 		if err != nil {
