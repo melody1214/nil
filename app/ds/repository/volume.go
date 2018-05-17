@@ -188,7 +188,8 @@ func (v *Vol) Usage() int {
 
 // SetSpeed set a disk speed level of this volume.
 func (v *Vol) SetSpeed() {
-	speeds := [3]VolumeSpeed{High, Mid, Low}
+	// speeds := [3]VolumeSpeed{High, Mid, Low}
+	speeds := [2]VolumeSpeed{High, Mid}
 
 	v.Speed = speeds[rand.Intn(len(speeds))]
 }

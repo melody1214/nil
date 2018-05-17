@@ -256,6 +256,10 @@ func (w *worker) pickOneNewEncodingGroupVolume(picked []cmap.Volume, candidates 
 			continue
 		}
 
+		if sameFailureDomain(c, picked) {
+			continue
+		}
+
 		return c, nil
 	}
 
@@ -265,6 +269,15 @@ func (w *worker) pickOneNewEncodingGroupVolume(picked []cmap.Volume, candidates 
 func isPicked(target cmap.Volume, picked []cmap.Volume) bool {
 	for _, v := range picked {
 		if v.ID == target.ID {
+			return true
+		}
+	}
+	return false
+}
+
+func sameFailureDomain(target cmap.Volume, picked []cmap.Volume) bool {
+	for _, v := range picked {
+		if v.Node == target.Node {
 			return true
 		}
 	}

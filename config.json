@@ -22,7 +22,7 @@
 
         "rebalance": "5s",
 
-        "local_parity_shards": "3",
+        "local_parity_shards": "5",
         "global_parity_shards": "15",
         "global_parity_regions": "3",
 
@@ -37,7 +37,7 @@
         "store": "part",
 
         "chunk_size": "100000",
-        "local_parity_shards": "3",
+        "local_parity_shards": "5",
 
         "log_location": "stderr"
     },

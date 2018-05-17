@@ -13,8 +13,8 @@ MNT=$DIR/mnt
 PENDINGCMD=$DIR/pending
 
 # Region names follow ISO-3166-1
-REGIONS=("KR" "US" "HK" "SG" "JP" "DE")
-# REGIONS=("KR")
+# REGIONS=("KR" "US" "HK" "SG" "JP" "DE")
+REGIONS=("KR")
 GWBASEPORT=50000
 MDSBASEPORT=51000
 DSBASEPORT=52000
@@ -334,7 +334,6 @@ function putobjects() {
                 done
 
                 local gwport=$((50000 + $host))
-                echo "s3cmd put ${dummyarray[$RANDOM % ${#dummyarray[@]}]} s3://$bucket/obj$k --access_key=${!ak} --secret_key=${!sk} --region=${!region} --no-check-hostname --host=https://localhost:$gwport --host-bucket=https://localhost:$gwport"
                 s3cmd put ${dummyarray[$RANDOM % ${#dummyarray[@]}]} s3://$bucket/obj$k --access_key=${!ak} --secret_key=${!sk} --region=${!region} --no-check-hostname --host=https://localhost:$gwport --host-bucket=https://localhost:$gwport
             done
         done
