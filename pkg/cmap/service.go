@@ -74,6 +74,8 @@ type SlaveAPI interface {
 	UpdateEncodingGroupUsed(egID ID, used uint64) error
 	GetLatestCMapVersion() Version
 	GetUpdatedNoti(ver Version) <-chan interface{}
+	FindEncodingGroupByLeader(leaderNode ID) []EncodingGroup
+	UpdateEncodingGroupUnencoded(eg EncodingGroup) error
 }
 
 // SlaveAPI returns a set of APIs that can be used by nodes in slave mode.
@@ -141,6 +143,33 @@ func (s *Service) UpdateEncodingGroupUsed(egID ID, used uint64) error {
 	return nil
 }
 
+// UpdateEncodingGroupUnencoded updates the unencoded field of encoding group.
+func (s *Service) UpdateEncodingGroupUnencoded(eg EncodingGroup) error {
+	vol, err := s.cMapManager.SearchCallVolume().ID(eg.Vols[len(eg.Vols)-1]).Do()
+	if err != nil {
+		return fmt.Errorf("no such volume: %v", err)
+	}
+	node, err := s.cMapManager.SearchCallNode().ID(vol.Node).Do()
+	if node.Name != s.cfg.Name {
+		return fmt.Errorf("only can update eg which this the leader volume")
+	}
+
+	s.cMapManager.mu.Lock()
+	defer s.cMapManager.mu.Unlock()
+
+	cm := s.cMapManager.latestCMap()
+	for i, found := range cm.EncGrps {
+		if found.ID != eg.ID {
+			continue
+		}
+
+		cm.EncGrps[i].Uenc = eg.Uenc
+		cm.EncGrps[i].Incr = cm.EncGrps[i].Incr + 1
+	}
+
+	return nil
+}
+
 // GetLatestCMap returns the latest cluster map.
 func (s *Service) GetLatestCMap() CMap {
 	return s.cMapManager.LatestCMap()
@@ -182,4 +211,25 @@ func (s *Service) GetStateChangedNoti() <-chan interface{} {
 // the higher version of cluster map is created.
 func (s *Service) GetUpdatedNoti(ver Version) <-chan interface{} {
 	return s.cMapManager.GetUpdatedNoti(ver)
+}
+
+// FindEncodingGroupByLeader finds encoding groups owned by given leader node.
+func (s *Service) FindEncodingGroupByLeader(leaderNode ID) []EncodingGroup {
+	m := s.cMapManager.LatestCMap()
+
+	vmap := make(map[ID]Volume, 0)
+	for _, v := range m.Vols {
+		if v.Node == leaderNode {
+			vmap[v.ID] = v
+		}
+	}
+
+	egs := make([]EncodingGroup, 0)
+	for _, eg := range m.EncGrps {
+		if _, ok := vmap[eg.Vols[len(eg.Vols)-1]]; ok {
+			egs = append(egs, eg)
+		}
+	}
+
+	return egs
 }

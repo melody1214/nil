@@ -3,11 +3,14 @@ package object
 import (
 	"fmt"
 	"io"
+	"log"
+	"net/rpc"
 	"strconv"
 	"time"
 
 	"github.com/chanyoung/nil/app/ds/repository"
 	"github.com/chanyoung/nil/pkg/cmap"
+	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/pkg/errors"
 )
@@ -262,14 +265,67 @@ func (e *endec) _genLocalParity(c chunk, stop <-chan interface{}) <-chan error {
 			e.store.Push(deleteReqArr[i])
 		}
 
+		if err := e.renameToL(c); err != nil {
+			fmt.Printf("%+v\n\n", err)
+		}
+
 		notiC <- nil
 	}(notiC, stop)
 
 	return notiC
 }
 
+func (e *endec) renameToL(c chunk) error {
+	egID, _ := strconv.ParseInt(string(c.encodingGroup), 10, 64)
+	eg, err := e.cmapAPI.SearchCallEncGrp().ID(cmap.ID(egID)).Do()
+	if err != nil {
+		return errors.Wrap(err, "failed to find such encoding group")
+	}
+
+	vols := make([]cmap.Volume, len(eg.Vols))
+	for i := 0; i < len(eg.Vols); i++ {
+		v, err := e.cmapAPI.SearchCallVolume().ID(eg.Vols[i]).Do()
+		if err != nil {
+			return errors.Wrap(err, "failed to find such volume")
+		}
+		vols[i] = v
+	}
+
+	nodes := make([]cmap.Node, len(eg.Vols))
+	for i := 0; i < len(eg.Vols); i++ {
+		n, err := e.cmapAPI.SearchCallNode().ID(vols[i].Node).Do()
+		if err != nil {
+			return errors.Wrap(err, "failed to find such volume")
+		}
+		nodes[i] = n
+	}
+
+	for i, n := range nodes {
+		conn, err := nilrpc.Dial(n.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer conn.Close()
+
+		req := &nilrpc.DGERenameChunkRequest{
+			Vol:      vols[i].ID.String(),
+			EncGrp:   string(c.encodingGroup),
+			OldChunk: string(c.id),
+			NewChunk: "L_" + string(c.id),
+		}
+		res := &nilrpc.DGERenameChunkResponse{}
+
+		cli := rpc.NewClient(conn)
+		if err := cli.Call(nilrpc.DsGencodingRenameChunk.String(), req, res); err != nil {
+			return errors.Wrap(err, "failed to truncate remote chunk")
+		}
+	}
+
+	return nil
+}
+
 func (e *endec) truncateAllChunks(c chunk) error {
-	// TODO: truncates remote copies.
+	// Truncate locals.
 	truncateReq := &repository.Request{
 		Op:     repository.Write,
 		Vol:    string(c.volume),
@@ -289,5 +345,52 @@ func (e *endec) truncateAllChunks(c chunk) error {
 			return err
 		}
 	}
+
+	// Truncate remotes.
+	egID, _ := strconv.ParseInt(string(c.encodingGroup), 10, 64)
+	eg, err := e.cmapAPI.SearchCallEncGrp().ID(cmap.ID(egID)).Do()
+	if err != nil {
+		return errors.Wrap(err, "failed to find such encoding group")
+	}
+
+	vols := make([]cmap.Volume, len(eg.Vols)-1)
+	for i := 1; i < len(eg.Vols); i++ {
+		v, err := e.cmapAPI.SearchCallVolume().ID(eg.Vols[i]).Do()
+		if err != nil {
+			return errors.Wrap(err, "failed to find such volume")
+		}
+		vols[i-1] = v
+	}
+
+	nodes := make([]cmap.Node, len(eg.Vols)-1)
+	for i := 0; i < len(eg.Vols)-1; i++ {
+		n, err := e.cmapAPI.SearchCallNode().ID(vols[i].Node).Do()
+		if err != nil {
+			return errors.Wrap(err, "failed to find such volume")
+		}
+		nodes[i] = n
+	}
+
+	for i, n := range nodes {
+		conn, err := nilrpc.Dial(n.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		req := &nilrpc.DGETruncateChunkRequest{
+			Vol:    vols[i].ID.String(),
+			EncGrp: string(c.encodingGroup),
+			Chunk:  string(c.id),
+		}
+		res := &nilrpc.DGETruncateChunkResponse{}
+
+		cli := rpc.NewClient(conn)
+		if err := cli.Call(nilrpc.DsGencodingTruncateChunk.String(), req, res); err != nil {
+			return errors.Wrap(err, "failed to truncate remote chunk")
+		}
+
+		conn.Close()
+	}
+
 	return nil
 }

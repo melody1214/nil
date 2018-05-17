@@ -10,6 +10,7 @@ import (
 
 	"github.com/chanyoung/nil/app/ds/repository"
 	"github.com/chanyoung/nil/app/ds/usecase/cluster"
+	"github.com/chanyoung/nil/app/ds/usecase/gencoding"
 	"github.com/chanyoung/nil/app/ds/usecase/object"
 )
 
@@ -581,7 +582,7 @@ func (s *service) CountEncChunk(Vol string, LocGid string) (int, error) {
 			err := fmt.Errorf("prevent panic by handling failure accessing a path %q: %v", dir, err)
 			return err
 		}
-		ok, err := regexp.MatchString(LocGid+"/g_", path)
+		ok, err := regexp.MatchString(LocGid+"/L_", path)
 		if ok {
 			count++
 		}
@@ -602,5 +603,10 @@ func NewClusterRepository(store repository.Service) cluster.Repository {
 
 // NewObjectRepository returns a new lv store inteface in a view of object domain.
 func NewObjectRepository(store repository.Service) object.Repository {
+	return store
+}
+
+// NewGencodingRepository returns a new part store inteface in a view of gencoding domain.
+func NewGencodingRepository(store repository.Service) gencoding.Repository {
 	return store
 }

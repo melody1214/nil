@@ -11,6 +11,7 @@ import (
 
 	"github.com/chanyoung/nil/app/ds/repository"
 	"github.com/chanyoung/nil/app/ds/usecase/cluster"
+	"github.com/chanyoung/nil/app/ds/usecase/gencoding"
 	"github.com/chanyoung/nil/app/ds/usecase/object"
 )
 
@@ -441,7 +442,7 @@ func (s *service) writeAll(r *repository.Request) {
 	defer fChunk.Close()
 
 	// Write the object into the chunk if it will not be full.
-	n, err := io.Copy(fChunk, r.In)
+	n, err := io.CopyN(fChunk, r.In, pg.ChunkSize)
 	if err != nil || n != pg.ChunkSize {
 		r.Err = err
 		return
@@ -632,7 +633,7 @@ func (s *service) CountEncChunk(Vol string, LocGid string) (int, error) {
 	}
 
 	dir := pg.MntPoint
-	encPath := LocGid + "/g_"
+	encPath := LocGid + "/L_"
 	count := 0
 
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -643,7 +644,6 @@ func (s *service) CountEncChunk(Vol string, LocGid string) (int, error) {
 		ok, err := regexp.MatchString(encPath, path)
 		if ok {
 			count++
-			fmt.Printf("%d %s", count, path)
 		}
 		return nil
 	})
@@ -662,5 +662,10 @@ func NewClusterRepository(store repository.Service) cluster.Repository {
 
 // NewObjectRepository returns a new part store inteface in a view of object domain.
 func NewObjectRepository(store repository.Service) object.Repository {
+	return store
+}
+
+// NewGencodingRepository returns a new part store inteface in a view of gencoding domain.
+func NewGencodingRepository(store repository.Service) gencoding.Repository {
 	return store
 }

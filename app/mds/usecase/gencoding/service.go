@@ -78,7 +78,7 @@ func (s *service) createGlobalEncodingJob() {
 	}
 
 	if err := s.store.Make(); err != nil {
-		fmt.Printf("\n\n%v\n\n", err)
+		// fmt.Printf("\n\n%v\n\n", err)
 	}
 }
 

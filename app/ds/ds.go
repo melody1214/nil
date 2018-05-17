@@ -11,6 +11,7 @@ import (
 	"github.com/chanyoung/nil/app/ds/repository/lvstore"
 	"github.com/chanyoung/nil/app/ds/repository/partstore"
 	"github.com/chanyoung/nil/app/ds/usecase/cluster"
+	"github.com/chanyoung/nil/app/ds/usecase/gencoding"
 	"github.com/chanyoung/nil/app/ds/usecase/object"
 	"github.com/chanyoung/nil/pkg/client/request"
 	"github.com/chanyoung/nil/pkg/cmap"
@@ -39,18 +40,21 @@ func Bootstrap(cfg config.Ds) error {
 
 	// Setup repository.
 	var (
-		store        repository.Service
-		clusterStore cluster.Repository
-		objectStore  object.Repository
+		store          repository.Service
+		clusterStore   cluster.Repository
+		objectStore    object.Repository
+		gencodingStore gencoding.Repository
 	)
 	if cfg.Store == "lv" {
 		store = lvstore.NewService(cfg.WorkDir)
 		clusterStore = lvstore.NewClusterRepository(store)
 		objectStore = lvstore.NewObjectRepository(store)
+		gencodingStore = lvstore.NewGencodingRepository(store)
 	} else if cfg.Store == "part" {
 		store = partstore.NewService(cfg.WorkDir)
 		clusterStore = partstore.NewClusterRepository(store)
 		objectStore = partstore.NewObjectRepository(store)
+		gencodingStore = partstore.NewGencodingRepository(store)
 	} else {
 		return fmt.Errorf("not supported store type: %s", cfg.Store)
 	}
@@ -74,9 +78,10 @@ func Bootstrap(cfg config.Ds) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to setup object handler")
 	}
+	gencodingService := gencoding.NewService(&cfg, cmapService.SlaveAPI(), gencodingStore)
 
 	// Setup delivery service.
-	delivery, err := delivery.SetupDeliveryService(&cfg, clusterService, objectHandlers, cmapService)
+	delivery, err := delivery.SetupDeliveryService(&cfg, clusterService, objectHandlers, cmapService, gencodingService)
 	if err != nil {
 		return errors.Wrap(err, "failed to setup delivery")
 	}

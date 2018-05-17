@@ -15,7 +15,8 @@ const (
 	MdsObjectPrefix    = "MDS_OBJECT"
 	MdsGencodingPrefix = "MDS_GENCODING"
 
-	DsClusterPrefix = "DS_CLUSTER"
+	DsClusterPrefix   = "DS_CLUSTER"
+	DsGencodingPrefix = "DS_GENCODING"
 )
 
 // MethodName indicates what procedure will be called.
@@ -44,6 +45,10 @@ const (
 
 	// DS cluster domain methods.
 	DsClusterAddVolume
+
+	// Ds gencoding domain methods.
+	DsGencodingRenameChunk
+	DsGencodingTruncateChunk
 )
 
 func (m MethodName) String() string {
@@ -78,6 +83,12 @@ func (m MethodName) String() string {
 
 	case DsClusterAddVolume:
 		return DsClusterPrefix + "." + "AddVolume"
+
+	case DsGencodingRenameChunk:
+		return DsGencodingPrefix + "." + "RenameChunk"
+	case DsGencodingTruncateChunk:
+		return DsGencodingPrefix + "." + "TruncateChunk"
+
 	default:
 		return "unknown"
 	}
