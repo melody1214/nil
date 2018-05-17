@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"regexp"
 	"time"
 
 	"github.com/chanyoung/nil/app/ds/repository"
@@ -556,6 +558,41 @@ func (s *service) RenameChunk(src string, dest string, Vol string, LocGid string
 	}
 
 	return nil
+}
+
+func (s *service) CountEncChunk(Vol string, LocGid string) (int, error) {
+	if Vol == "" || LocGid == "" {
+		err := fmt.Errorf("invalid arguements: %s, %s", Vol, LocGid)
+		return -1, err
+	}
+
+	lv, ok := s.lvs[Vol]
+	if !ok {
+		err := fmt.Errorf("no such partition group: %s", Vol)
+		return -1, err
+	}
+
+	dir := lv.MntPoint
+
+	count := 0
+
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			err := fmt.Errorf("prevent panic by handling failure accessing a path %q: %v", dir, err)
+			return err
+		}
+		ok, err := regexp.MatchString(LocGid+"/g_", path)
+		if ok {
+			count++
+		}
+		return nil
+	})
+
+	if err != nil {
+		return -1, err
+	}
+
+	return count, nil
 }
 
 // NewClusterRepository returns a new lv store inteface in a view of cluster domain.

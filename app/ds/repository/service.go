@@ -20,4 +20,5 @@ type Service interface {
 	GetObjectHeaderSize() int64
 
 	RenameChunk(src string, dest string, Vol string, LocGid string) error
+	CountEncChunk(Vol string, LocGid string) (int, error)
 }

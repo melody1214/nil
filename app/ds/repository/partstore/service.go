@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -404,17 +406,27 @@ func (s *service) writeAll(r *repository.Request) {
 		return
 	}
 
-	// Check if the requested object is in the object map.
-	pg.Lock.Obj.RLock()
-	_, ok = pg.ObjMap[r.Oid]
-	pg.Lock.Obj.RUnlock()
+	pg.Lock.Chk.RLock()
+	chk, ok := pg.ChunkMap[r.Cid]
+	pg.Lock.Chk.RUnlock()
 	if ok {
-		r.Err = fmt.Errorf("same name of the chunk is existed: %s", r.Oid)
+		r.Err = fmt.Errorf("chunk is already exists: %s", r.Cid)
 		return
 	}
 
+	pg.DiskSched = pg.DiskSched%pg.NumOfPart + 1
+	pg.Lock.Chk.Lock()
+	pg.ChunkMap[r.Cid] = repository.ChunkMap{
+		PartID: "part" + strconv.Itoa(int(pg.DiskSched)),
+	}
+	pg.Lock.Chk.Unlock()
+
+	pg.Lock.Chk.RLock()
+	chk = pg.ChunkMap[r.Cid]
+	pg.Lock.Chk.RUnlock()
+
 	// Create a directory for a local group if not exist.
-	lgDir := pg.MntPoint + "/" + r.LocGid
+	lgDir := pg.MntPoint + "/" + chk.PartID + "/" + r.LocGid
 	_, err := os.Stat(lgDir)
 	if os.IsNotExist(err) {
 		os.MkdirAll(lgDir, 0775)
@@ -428,22 +440,14 @@ func (s *service) writeAll(r *repository.Request) {
 	}
 	defer fChunk.Close()
 
-	// Check whether the chunk is full or has not enough space to write the object.
-	if r.Osize != pg.ChunkSize {
-		r.Err = fmt.Errorf("write all must writes same length with the chunk size")
-		return
-	}
-
 	// Write the object into the chunk if it will not be full.
-	_, err = io.CopyN(fChunk, r.In, r.Osize)
-	if err != nil {
+	n, err := io.Copy(fChunk, r.In)
+	if err != nil || n != pg.ChunkSize {
 		r.Err = err
 		return
 	}
 
-	// Store mapping information between the object and the chunk.
-
-	// Complete to write the object into the chunk.
+	// Completely write the chunk.
 	r.Err = nil
 	return
 }
@@ -595,7 +599,60 @@ func (s *service) RenameChunk(src string, dest string, Vol string, LocGid string
 		return err
 	}
 
+	pg.Lock.Obj.Lock()
+	for key, value := range pg.ObjMap {
+		if value.Cid == src {
+			pg.ObjMap[key] = repository.ObjMap{
+				Cid: dest,
+			}
+		}
+	}
+	pg.Lock.Obj.Unlock()
+
+	pg.Lock.Chk.Lock()
+	pg.ChunkMap[dest] = repository.ChunkMap{
+		PartID: chk.PartID,
+	}
+	delete(pg.ChunkMap, src)
+	pg.Lock.Chk.Unlock()
+
 	return nil
+}
+
+func (s *service) CountEncChunk(Vol string, LocGid string) (int, error) {
+	if Vol == "" || LocGid == "" {
+		err := fmt.Errorf("invalid arguements: %s, %s", Vol, LocGid)
+		return -1, err
+	}
+
+	pg, ok := s.pgs[Vol]
+	if !ok {
+		err := fmt.Errorf("no such partition group: %s", Vol)
+		return -1, err
+	}
+
+	dir := pg.MntPoint
+	encPath := LocGid + "/g_"
+	count := 0
+
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			err := fmt.Errorf("prevent panic by handling failure accessing a path %q: %v", dir, err)
+			return err
+		}
+		ok, err := regexp.MatchString(encPath, path)
+		if ok {
+			count++
+			fmt.Printf("%d %s", count, path)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return -1, err
+	}
+
+	return count, nil
 }
 
 // NewClusterRepository returns a new part store inteface in a view of cluster domain.
