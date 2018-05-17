@@ -18,3 +18,13 @@ type DGETruncateChunkRequest struct {
 
 type DGETruncateChunkResponse struct {
 }
+
+type DGEEncodeRequest struct {
+	FirstRegion  string
+	SecondRegion string
+	ThirdRegion  string
+	TblID        int
+}
+
+type DGEEncodeResponse struct {
+}

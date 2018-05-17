@@ -51,6 +51,7 @@ const (
 	// Ds gencoding domain methods.
 	DsGencodingRenameChunk
 	DsGencodingTruncateChunk
+	DsGencodingEncode
 )
 
 func (m MethodName) String() string {
@@ -94,6 +95,8 @@ func (m MethodName) String() string {
 		return DsGencodingPrefix + "." + "RenameChunk"
 	case DsGencodingTruncateChunk:
 		return DsGencodingPrefix + "." + "TruncateChunk"
+	case DsGencodingEncode:
+		return DsGencodingPrefix + "." + "Encode"
 
 	default:
 		return "unknown"
