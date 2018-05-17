@@ -497,7 +497,6 @@ func (s *service) deleteReal(r *repository.Request) {
 	if ok {
 		lgDir := pg.MntPoint + "/" + chk.PartID + "/" + r.LocGid
 
-		pg.Lock.Obj.Lock()
 		// Remove all metadata of chunk
 		pg.Lock.Obj.Lock()
 		for key, value := range pg.ObjMap {

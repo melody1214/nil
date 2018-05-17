@@ -75,7 +75,7 @@ func (s *service) updateUnencoded() {
 }
 
 func (s *service) doUpdateUnencoded(eg cmap.EncodingGroup) error {
-	unenc, err := s.store.CountEncChunk(eg.Vols[len(eg.Vols)-1].String(), eg.ID.String())
+	unenc, err := s.store.CountNonCodedChunk(eg.Vols[len(eg.Vols)-1].String(), eg.ID.String())
 	if err != nil {
 		fmt.Println(err)
 		return err
