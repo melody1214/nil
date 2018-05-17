@@ -26,12 +26,15 @@ func (h *handlers) MakeBucketHandler(w http.ResponseWriter, r *http.Request) {
 	sk, err := h.authHandlers.GetSecretKey(req.AccessKey())
 	if err == auth.ErrInternal {
 		req.SendInternalError()
+		return
 	} else if err == auth.ErrNoSuchKey {
 		req.SendNoSuchKey()
+		return
 	}
 
 	if req.Auth(sk) == false {
 		req.SendIncorrectKey()
+		return
 	}
 
 	if err = h.makeBucket(
@@ -40,7 +43,10 @@ func (h *handlers) MakeBucketHandler(w http.ResponseWriter, r *http.Request) {
 		req.Bucket(),
 	); err != nil {
 		req.SendInternalError()
+		return
 	}
+
+	req.SendSuccess()
 }
 
 func (h *handlers) makeBucket(accessKey, region, bucket string) error {
