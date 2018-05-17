@@ -505,16 +505,14 @@ func (s *service) deleteReal(r *repository.Request) {
 	lgDir := lv.MntPoint + "/" + r.LocGid
 	chk := lgDir + "/" + r.Cid
 
-	// Remove chunk
-
+	lv.Lock.Obj.Lock()
 	// Remove all metadata of chunk
 	for key, value := range lv.ObjMap {
 		if value.Cid == r.Cid {
-			lv.Lock.Obj.Lock()
 			delete(lv.ObjMap, key)
-			lv.Lock.Obj.Unlock()
 		}
 	}
+	lv.Lock.Obj.Unlock()
 
 	err := os.Remove(chk)
 	if err != nil {
@@ -561,7 +559,7 @@ func (s *service) RenameChunk(src string, dest string, Vol string, LocGid string
 	return nil
 }
 
-func (s *service) CountEncChunk(Vol string, LocGid string) (int, error) {
+func (s *service) CountNonCodedChunk(Vol string, LocGid string) (int, error) {
 	if Vol == "" || LocGid == "" {
 		err := fmt.Errorf("invalid arguements: %s, %s", Vol, LocGid)
 		return -1, err
@@ -594,6 +592,49 @@ func (s *service) CountEncChunk(Vol string, LocGid string) (int, error) {
 	}
 
 	return count, nil
+}
+
+func (s *service) GetNonCodedChunk(Vol string, LocGid string) (string, error) {
+	if Vol == "" || LocGid == "" {
+		err := fmt.Errorf("invalid arguements: %s, %s", Vol, LocGid)
+		return "", err
+	}
+
+	lv, ok := s.lvs[Vol]
+	if !ok {
+		err := fmt.Errorf("no such partition group: %s", Vol)
+		return "", err
+	}
+
+	dir := lv.MntPoint
+	encPath := LocGid + "/L_"
+	var cid string
+
+	fmt.Println("getnoncodedchunk")
+
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err == nil {
+			if cid != "" {
+				return nil
+			}
+		}
+		if err != nil {
+			err := fmt.Errorf("prevent panic by handling failure accessing a path %q: %v", dir, err)
+			return err
+		}
+		ok, err := regexp.MatchString(encPath, path)
+		if ok {
+			cid = path
+			fmt.Println("cid : ", cid)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	return cid, nil
 }
 
 // NewClusterRepository returns a new lv store inteface in a view of cluster domain.

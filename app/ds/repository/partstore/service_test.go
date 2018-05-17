@@ -125,6 +125,8 @@ func TestServiceAPIs(t *testing.T) {
 		}
 	}
 
-	s.RenameChunk("chunk3", "g_chunk3", "pg1", "lg1")
-	s.RenameChunk("chunk4", "g_chunk4", "pg1", "lg1")
+	s.RenameChunk("chunk3", "L_chunk3", "pg1", "lg1")
+	s.RenameChunk("chunk4", "L_chunk4", "pg1", "lg1")
+
+	s.GetNonCodedChunk("pg1", "lg1")
 }
