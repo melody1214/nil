@@ -129,30 +129,64 @@ var generateSQLBase = []string{
 		)
 	`,
 	`
-		CREATE TABLE IF NOT EXISTS global_encoding_table (
-			get_id int unsigned NOT NULL AUTO_INCREMENT,
-			get_global_encoding_group int unsigned NOT NULL,
-			get_status int unsigned NOT NULL,
-			PRIMARY KEY (get_id),
-			FOREIGN KEY (get_global_encoding_group) REFERENCES global_encoding_group (geg_id)
+		CREATE TABLE IF NOT EXISTS global_encoded_chunk (
+			gec_id int unsigned NOT NULL AUTO_INCREMENT,
+			gec_global_encoding_group int unsigned NOT NULL,
+			gec_local_encoding_group_first int unsigned NOT NULL,
+			gec_local_encoding_group_second int unsigned NOT NULL,
+			gec_local_encoding_group_third int unsigned NOT NULL,
+			gec_local_encoding_group_parity int unsigned NOT NULL,
+			PRIMARY KEY (gec_id),
+			FOREIGN KEY (gec_global_encoding_group) REFERENCES global_encoding_group (geg_id)
 		)
 	`,
 	`
-		CREATE TABLE IF NOT EXISTS global_encoding_table_eg (
-			gete_id int unsigned NOT NULL AUTO_INCREMENT,
-			gete_table_idx int unsigned NOT NULL,
-			gete_encoding_group int unsigned NOT NULL,
-			PRIMARY KEY (gete_id),
-			FOREIGN KEY (gete_table_idx) REFERENCES global_encoding_table (get_id),
-			FOREIGN KEY (gete_encoding_group) REFERENCES encoding_group (eg_id)
+		CREATE TABLE IF NOT EXISTS global_encoding_job (
+			gej_id int unsigned NOT NULL AUTO_INCREMENT,
+			gej_status int unsigned NOT NULL,
+			PRIMARY KEY (gej_id)
 		)
 	`,
 	`
-		CREATE TABLE IF NOT EXISTS global_encoding_request (
-			ger_region int unsigned NOT NULL,
-			ger_encoding_group_chunk int unsigned NOT NULL,
-			PRIMARY KEY (ger_region),
-			FOREIGN KEY (ger_region) REFERENCES region (rg_id)
+		CREATE TABLE IF NOT EXISTS global_encoding_chunk (
+			guc_id int unsigned NOT NULL AUTO_INCREMENT,
+			guc_job int unsigned NOT NULL,
+			guc_role int unsigned NOT NULL,
+			guc_region int unsigned NOT NULL,
+			guc_node int unsigned NOT NULL,
+			guc_volume int unsigned NOT NULL,
+			guc_encgrp int unsigned NOT NULL,
+			guc_chunk varchar(32) CHARACTER SET ascii NOT NULL,
+			PRIMARY KEY (guc_id),
+			FOREIGN KEY (guc_job) REFERENCES global_encoding_job (gej_id),
+			FOREIGN KEY (guc_region) REFERENCES region (rg_id)
 		)
 	`,
+	// `
+	// 	CREATE TABLE IF NOT EXISTS global_encoding_table (
+	// 		get_id int unsigned NOT NULL AUTO_INCREMENT,
+	// 		get_global_encoding_group int unsigned NOT NULL,
+	// 		get_status int unsigned NOT NULL,
+	// 		PRIMARY KEY (get_id),
+	// 		FOREIGN KEY (get_global_encoding_group) REFERENCES global_encoding_group (geg_id)
+	// 	)
+	// `,
+	// `
+	// 	CREATE TABLE IF NOT EXISTS global_encoding_table_eg (
+	// 		gete_id int unsigned NOT NULL AUTO_INCREMENT,
+	// 		gete_table_idx int unsigned NOT NULL,
+	// 		gete_encoding_group int unsigned NOT NULL,
+	// 		PRIMARY KEY (gete_id),
+	// 		FOREIGN KEY (gete_table_idx) REFERENCES global_encoding_table (get_id),
+	// 		FOREIGN KEY (gete_encoding_group) REFERENCES encoding_group (eg_id)
+	// 	)
+	// `,
+	// `
+	// 	CREATE TABLE IF NOT EXISTS global_encoding_request (
+	// 		ger_region int unsigned NOT NULL,
+	// 		ger_encoding_group_chunk int unsigned NOT NULL,
+	// 		PRIMARY KEY (ger_region),
+	// 		FOREIGN KEY (ger_region) REFERENCES region (rg_id)
+	// 	)
+	// `,
 }

@@ -120,9 +120,9 @@ function purge() {
     rm -rf $DIR
 
     for region in ${REGIONS[@]}; do
-    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoding_request;"
-    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoding_table_eg;"
-    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoding_table;"
+    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoded_chunk;"
+    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoding_chunk;"
+    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoding_job;"
     mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoding_group;"
 	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS object;"
 	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS bucket;"
@@ -385,8 +385,8 @@ function main() {
         sleep 3
     done
 
-    # # Generate global encoding group.
-    # ggg 300
+    # Generate global encoding group.
+    ggg 300
 
     # # Execute pending command.
     # if [ -e $PENDINGCMD ]; then

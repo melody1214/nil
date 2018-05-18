@@ -53,15 +53,15 @@ func NewService(cfg *config.Mds, cmapAPI cmap.SlaveAPI, store Repository) (Servi
 	return s, nil
 }
 
-// // GGG stands for generate global encoding group.
-// // GGG generates the global encoding group with the given regions.
-// func (s *service) GGG(req *nilrpc.MGEGGGRequest, res *nilrpc.MGEGGGResponse) error {
-// 	if len(req.Regions) != s.regions+1 {
-// 		return fmt.Errorf("invalid region number, required %d number of regions", s.regions)
-// 	}
+// GGG stands for generate global encoding group.
+// GGG generates the global encoding group with the given regions.
+func (s *service) GGG(req *nilrpc.MGEGGGRequest, res *nilrpc.MGEGGGResponse) error {
+	if len(req.Regions) != s.regions+1 {
+		return fmt.Errorf("invalid region number, required %d number of regions", s.regions)
+	}
 
-// 	return s.store.GenerateGencodingGroup(req.Regions)
-// }
+	return s.store.GenerateGencodingGroup(req.Regions)
+}
 
 // func (s *service) run() {
 // // Check and create global encoding jobs in every 60 seconds.
@@ -281,7 +281,7 @@ func (s *service) HandleToken(req *nilrpc.MGEHandleTokenRequest, res *nilrpc.MGE
 // Service is the interface that provides global encoding domain's service
 type Service interface {
 	HandleToken(req *nilrpc.MGEHandleTokenRequest, res *nilrpc.MGEHandleTokenResponse) error
-	// GGG(req *nilrpc.MGEGGGRequest, res *nilrpc.MGEGGGResponse) error
+	GGG(req *nilrpc.MGEGGGRequest, res *nilrpc.MGEGGGResponse) error
 	// UpdateUnencodedChunk(req *nilrpc.MGEUpdateUnencodedChunkRequest, res *nilrpc.MGEUpdateUnencodedChunkResponse) error
 	// SelectEncodingGroup(req *nilrpc.MGESelectEncodingGroupRequest, res *nilrpc.MGESelectEncodingGroupResponse) error
 }
