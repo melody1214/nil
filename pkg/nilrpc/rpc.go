@@ -44,6 +44,7 @@ const (
 	MdsGencodingGGG
 	MdsGencodingUpdateUnencodedChunk
 	MdsGencodingSelectEncodingGroup
+	MdsGencodingHandleToken
 
 	// DS cluster domain methods.
 	DsClusterAddVolume
@@ -88,6 +89,8 @@ func (m MethodName) String() string {
 		return MdsGencodingPrefix + "." + "UpdateUnencodedChunk"
 	case MdsGencodingSelectEncodingGroup:
 		return MdsGencodingPrefix + "." + "SelectEncodingGroup"
+	case MdsGencodingHandleToken:
+		return MdsGencodingPrefix + "." + "HandleToken"
 
 	case DsClusterAddVolume:
 		return DsClusterPrefix + "." + "AddVolume"

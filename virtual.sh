@@ -385,31 +385,31 @@ function main() {
         sleep 3
     done
 
-    # Generate global encoding group.
-    ggg 300
+    # # Generate global encoding group.
+    # ggg 300
 
-    # Execute pending command.
-    if [ -e $PENDINGCMD ]; then
-        # Give some time to each cluster member can join the membership.
-        sleep 3
+    # # Execute pending command.
+    # if [ -e $PENDINGCMD ]; then
+    #     # Give some time to each cluster member can join the membership.
+    #     sleep 3
 
-        # Read line by line ...
-        while read cmd; do
-            $($cmd)
-        done < $PENDINGCMD
-    fi
+    #     # Read line by line ...
+    #     while read cmd; do
+    #         $($cmd)
+    #     done < $PENDINGCMD
+    # fi
 
-    # Create users.
-    sleep 3
-    createusers
+    # # Create users.
+    # sleep 3
+    # createusers
 
-    # Create buckets.
-    sleep 5
-    createbuckets
+    # # Create buckets.
+    # sleep 5
+    # createbuckets
 
-    # Put objects.
-    sleep 15
-    putobjects
+    # # Put objects.
+    # sleep 15
+    # putobjects
 
     # Test local recovery
     if [ $TESTLOCALRECOVERY = true ]; then

@@ -7,6 +7,7 @@ import (
 
 	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/app/mds/usecase/gencoding"
+	"github.com/chanyoung/nil/app/mds/usecase/gencoding/token"
 	"github.com/go-sql-driver/mysql"
 	"github.com/hashicorp/raft"
 	"github.com/pkg/errors"
@@ -257,4 +258,45 @@ func (s *gencodingStore) RegionEndpoint(regionID int) (endpoint string) {
 
 	s.QueryRow(repository.NotTx, q).Scan(&endpoint)
 	return
+}
+
+func (s *gencodingStore) GetRoutes(leaderEndpoint string) (*token.Leg, error) {
+	q := fmt.Sprintf(
+		`
+		SELECT rg_name, rg_end_point FROM region
+		`,
+	)
+
+	rows, err := s.Query(repository.NotTx, q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	l := &token.Leg{
+		CurrentIdx: 0,
+		Stops:      make([]token.Stop, 0),
+	}
+
+	for rows.Next() {
+		s := token.Stop{}
+
+		if err := rows.Scan(&s.RegionName, &s.Endpoint); err != nil {
+			return nil, err
+		}
+
+		l.Stops = append(l.Stops, s)
+	}
+
+	for i, s := range l.Stops {
+		if string(s.Endpoint) != leaderEndpoint {
+			continue
+		}
+
+		// Swap to make leader come to the first.
+		l.Stops[i] = l.Stops[0]
+		l.Stops[0] = s
+	}
+
+	return l, nil
 }

@@ -1,5 +1,7 @@
 package nilrpc
 
+import "github.com/chanyoung/nil/app/mds/usecase/gencoding/token"
+
 // MGEGGGRequest requests to generate global encoding group
 // with the given regions
 type MGEGGGRequest struct {
@@ -21,3 +23,9 @@ type MGESelectEncodingGroupRequest struct {
 }
 
 type MGESelectEncodingGroupResponse struct{}
+
+type MGEHandleTokenRequest struct {
+	token.Token
+}
+
+type MGEHandleTokenResponse struct{}

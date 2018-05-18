@@ -2,6 +2,7 @@ package gencoding
 
 import (
 	"github.com/chanyoung/nil/app/mds/repository"
+	"github.com/chanyoung/nil/app/mds/usecase/gencoding/token"
 )
 
 // Repository provides access to gencoding database.
@@ -15,4 +16,5 @@ type Repository interface {
 	LeaderEndpoint() string
 	Make() (*Table, error)
 	RegionEndpoint(regionID int) (endpoint string)
+	GetRoutes(leaderEndpoint string) (*token.Leg, error)
 }
