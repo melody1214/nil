@@ -683,7 +683,7 @@ func (s *service) GetNonCodedChunk(Vol string, LocGid string) (string, error) {
 		}
 		ok, err := regexp.MatchString(encPath, path)
 		if ok {
-			cid = path
+			cid = filepath.Base(path)
 		}
 		return nil
 	})

@@ -7,4 +7,5 @@ type Repository interface {
 	Push(r *repository.Request) error
 	CountNonCodedChunk(Vol string, LocGid string) (int, error)
 	RenameChunk(src string, dest string, Vol string, LocGid string) error
+	GetNonCodedChunk(Vol string, LocGid string) (string, error)
 }

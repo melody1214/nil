@@ -1,5 +1,7 @@
 package nilrpc
 
+import "github.com/chanyoung/nil/pkg/cmap"
+
 type DGERenameChunkRequest struct {
 	Vol      string
 	EncGrp   string
@@ -28,3 +30,11 @@ type DGEEncodeRequest struct {
 
 type DGEEncodeResponse struct {
 }
+
+type DGEPrepareEncodingRequest struct {
+	Vol   cmap.ID
+	EG    cmap.ID
+	Chunk string
+}
+
+type DGEPrepareEncodingResponse struct{}

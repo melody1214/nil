@@ -2,6 +2,7 @@ package gencoding
 
 import (
 	"io"
+	"net/rpc"
 	"time"
 
 	"fmt"
@@ -115,8 +116,60 @@ func (s *service) TruncateChunk(req *nilrpc.DGETruncateChunkRequest, res *nilrpc
 	return nil
 }
 
+// PrepareEncoding selects an unencoded chunk from the given encoding group.
+// Makes selected chunk ready to encode.
+func (s *service) PrepareEncoding(req *nilrpc.DGEPrepareEncodingRequest, res *nilrpc.DGEPrepareEncodingResponse) error {
+	chunk, err := s.store.GetNonCodedChunk(req.Vol.String(), req.EG.String())
+	if err != nil {
+		return err
+	}
+	if chunk == "" {
+		fmt.Printf("Server: %s\nVol: %s, EG: %s\n", s.cfg.ID, req.Vol, req.EG)
+		return fmt.Errorf("no unencoded chunk")
+	}
+
+	eg, err := s.cmapAPI.SearchCallEncGrp().ID(req.EG).Do()
+	if err != nil {
+		return err
+	}
+
+	for _, vID := range eg.Vols {
+		v, err := s.cmapAPI.SearchCallVolume().ID(vID).Do()
+		if err != nil {
+			return err
+		}
+
+		n, err := s.cmapAPI.SearchCallNode().ID(v.Node).Do()
+		if err != nil {
+			return err
+		}
+
+		conn, err := nilrpc.Dial(n.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
+		if err != nil {
+			return err
+		}
+		defer conn.Close()
+
+		renameReq := &nilrpc.DGERenameChunkRequest{
+			Vol:      vID.String(),
+			EncGrp:   eg.ID.String(),
+			OldChunk: chunk,
+			NewChunk: "E_" + req.Chunk,
+		}
+		renameRes := &nilrpc.DGERenameChunkResponse{}
+
+		cli := rpc.NewClient(conn)
+		if err := cli.Call(nilrpc.DsGencodingRenameChunk.String(), renameReq, renameRes); err != nil {
+			return errors.Wrap(err, "failed to rename chunk")
+		}
+	}
+
+	return nil
+}
+
 // Service provides handlers for global encoding.
 type Service interface {
 	RenameChunk(req *nilrpc.DGERenameChunkRequest, res *nilrpc.DGERenameChunkResponse) error
 	TruncateChunk(req *nilrpc.DGETruncateChunkRequest, res *nilrpc.DGETruncateChunkResponse) error
+	PrepareEncoding(req *nilrpc.DGEPrepareEncodingRequest, res *nilrpc.DGEPrepareEncodingResponse) error
 }

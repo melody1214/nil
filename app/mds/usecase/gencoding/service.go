@@ -2,6 +2,7 @@ package gencoding
 
 import (
 	"fmt"
+	"log"
 	"net/rpc"
 	"strconv"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -98,7 +100,9 @@ func (s *service) fillTbl(tbl *Table) error {
 	for i := range tbl.RegionIDs {
 		regionEndpoint := s.store.RegionEndpoint(tbl.RegionIDs[i])
 
-		req := &nilrpc.MGESelectEncodingGroupRequest{}
+		req := &nilrpc.MGESelectEncodingGroupRequest{
+			TblID: tbl.ID,
+		}
 		res := &nilrpc.MGESelectEncodingGroupResponse{}
 
 		conn, err := nilrpc.Dial(regionEndpoint, nilrpc.RPCNil, time.Duration(2*time.Second))
@@ -119,6 +123,50 @@ func (s *service) fillTbl(tbl *Table) error {
 
 func (s *service) SelectEncodingGroup(req *nilrpc.MGESelectEncodingGroupRequest, res *nilrpc.MGESelectEncodingGroupResponse) error {
 	// TODO: Get Encoding group and rename unencoded chunk to given tbl id.
+	m := s.cmapAPI.GetLatestCMap()
+
+	max := 0
+	var target *cmap.EncodingGroup
+	for i, eg := range m.EncGrps {
+		if max < eg.Uenc {
+			max = eg.Uenc
+			target = &m.EncGrps[i]
+		}
+	}
+
+	// There is no unencoded chunk.
+	if target == nil {
+		return fmt.Errorf("no unencoded chunk")
+	}
+
+	v, err := s.cmapAPI.SearchCallVolume().ID(target.Vols[0]).Do()
+	if err != nil {
+		return err
+	}
+
+	n, err := s.cmapAPI.SearchCallNode().ID(v.Node).Do()
+	if err != nil {
+		return err
+	}
+
+	conn, err := nilrpc.Dial(n.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	prepareReq := &nilrpc.DGEPrepareEncodingRequest{
+		Chunk: strconv.FormatInt(req.TblID, 10),
+		Vol:   v.ID,
+		EG:    target.ID,
+	}
+	prepareRes := &nilrpc.DGEPrepareEncodingResponse{}
+
+	cli := rpc.NewClient(conn)
+	if err := cli.Call(nilrpc.DsGencodingPrepareEncoding.String(), prepareReq, prepareRes); err != nil {
+		return errors.Wrap(err, "failed to rename chunk")
+	}
+
 	return nil
 }
 
@@ -176,4 +224,5 @@ func (s *service) UpdateUnencodedChunk(req *nilrpc.MGEUpdateUnencodedChunkReques
 type Service interface {
 	GGG(req *nilrpc.MGEGGGRequest, res *nilrpc.MGEGGGResponse) error
 	UpdateUnencodedChunk(req *nilrpc.MGEUpdateUnencodedChunkRequest, res *nilrpc.MGEUpdateUnencodedChunkResponse) error
+	SelectEncodingGroup(req *nilrpc.MGESelectEncodingGroupRequest, res *nilrpc.MGESelectEncodingGroupResponse) error
 }

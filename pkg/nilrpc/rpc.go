@@ -52,6 +52,7 @@ const (
 	DsGencodingRenameChunk
 	DsGencodingTruncateChunk
 	DsGencodingEncode
+	DsGencodingPrepareEncoding
 )
 
 func (m MethodName) String() string {
@@ -97,6 +98,8 @@ func (m MethodName) String() string {
 		return DsGencodingPrefix + "." + "TruncateChunk"
 	case DsGencodingEncode:
 		return DsGencodingPrefix + "." + "Encode"
+	case DsGencodingPrepareEncoding:
+		return DsGencodingPrefix + "." + "PrepareEncoding"
 
 	default:
 		return "unknown"
