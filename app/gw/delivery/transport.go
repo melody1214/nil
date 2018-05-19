@@ -12,8 +12,12 @@ func makeHandler(ch client.Handlers) http.Handler {
 
 	// API routers.
 	ar := r.PathPrefix("/").Subrouter()
+	cr := ar.PathPrefix("/chunk").Subrouter()
 	br := ar.PathPrefix("/{bucket}").Subrouter()
 	or := br.PathPrefix("/{object:.+}").Subrouter()
+
+	// Chunk request handlers
+	cr.Methods("GET").HandlerFunc(ch.GetChunkHandler)
 
 	// Bucket request handlers
 	br.Methods("PUT").HandlerFunc(ch.MakeBucketHandler)

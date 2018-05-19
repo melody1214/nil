@@ -69,4 +69,6 @@ type Handlers interface {
 	PutObjectHandler(w http.ResponseWriter, r *http.Request)
 	GetObjectHandler(w http.ResponseWriter, r *http.Request)
 	DeleteObjectHandler(w http.ResponseWriter, r *http.Request)
+
+	GetChunkHandler(w http.ResponseWriter, r *http.Request)
 }

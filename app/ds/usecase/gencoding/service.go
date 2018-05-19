@@ -2,11 +2,13 @@ package gencoding
 
 import (
 	"io"
+	"strconv"
 	"time"
 
 	"fmt"
 
 	"github.com/chanyoung/nil/app/ds/repository"
+	"github.com/chanyoung/nil/app/mds/usecase/gencoding/token"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -115,6 +117,22 @@ func (s *service) TruncateChunk(req *nilrpc.DGETruncateChunkRequest, res *nilrpc
 	return nil
 }
 
+func (s *service) Encode(req *nilrpc.DGEEncodeRequest, res *nilrpc.DGEEncodeResponse) error {
+	s.encode(req.Token)
+	return nil
+}
+
+func (s *service) encode(t token.Token) {
+	localShards, err := strconv.Atoi(s.cfg.LocalParityShards)
+	if err != nil {
+		return
+	}
+
+	// Downloads all chunks.
+	for i := 0; i < (localShards)*4; i++ {
+	}
+}
+
 // PrepareEncoding selects an unencoded chunk from the given encoding group.
 // Makes selected chunk ready to encode.
 func (s *service) PrepareEncoding(req *nilrpc.DGEPrepareEncodingRequest, res *nilrpc.DGEPrepareEncodingResponse) (err error) {
@@ -173,4 +191,5 @@ type Service interface {
 	RenameChunk(req *nilrpc.DGERenameChunkRequest, res *nilrpc.DGERenameChunkResponse) error
 	TruncateChunk(req *nilrpc.DGETruncateChunkRequest, res *nilrpc.DGETruncateChunkResponse) error
 	PrepareEncoding(req *nilrpc.DGEPrepareEncodingRequest, res *nilrpc.DGEPrepareEncodingResponse) error
+	Encode(req *nilrpc.DGEEncodeRequest, res *nilrpc.DGEEncodeResponse) error
 }

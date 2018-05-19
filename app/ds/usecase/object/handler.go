@@ -82,6 +82,25 @@ func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GetChunkHandler handles the client request for downloading a chunk.
+func (h *handlers) GetChunkHandler(w http.ResponseWriter, r *http.Request) {
+	storeReq := &repository.Request{
+		Op:     repository.ReadAll,
+		Vol:    r.Header.Get("Volume"),
+		LocGid: r.Header.Get("Encoding-Group"),
+		Cid:    r.Header.Get("Chunk-Name"),
+		Osize:  h.chunkPool.chunkSize,
+		Out:    w,
+	}
+
+	h.store.Push(storeReq)
+	err := storeReq.Wait()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
 func (h *handlers) writeToPrimary(req client.RequestEvent) {
 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.writeToPrimary")
 
@@ -394,4 +413,5 @@ type Handlers interface {
 	PutObjectHandler(w http.ResponseWriter, r *http.Request)
 	GetObjectHandler(w http.ResponseWriter, r *http.Request)
 	DeleteObjectHandler(w http.ResponseWriter, r *http.Request)
+	GetChunkHandler(w http.ResponseWriter, r *http.Request)
 }

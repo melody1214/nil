@@ -1,6 +1,9 @@
 package nilrpc
 
-import "github.com/chanyoung/nil/pkg/cmap"
+import (
+	"github.com/chanyoung/nil/app/mds/usecase/gencoding/token"
+	"github.com/chanyoung/nil/pkg/cmap"
+)
 
 type DGERenameChunkRequest struct {
 	Vol      string
@@ -22,10 +25,7 @@ type DGETruncateChunkResponse struct {
 }
 
 type DGEEncodeRequest struct {
-	FirstRegion  string
-	SecondRegion string
-	ThirdRegion  string
-	TblID        int
+	Token token.Token
 }
 
 type DGEEncodeResponse struct {

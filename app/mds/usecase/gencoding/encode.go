@@ -5,6 +5,8 @@ import (
 	"net/rpc"
 	"time"
 
+	"github.com/chanyoung/nil/pkg/cmap"
+
 	"github.com/chanyoung/nil/app/mds/usecase/gencoding/token"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 )
@@ -40,7 +42,6 @@ func (s *service) encode() {
 			fmt.Printf("\n\n%+v\n\n", err)
 			return
 		}
-		defer conn.Close()
 
 		req := &nilrpc.MGEGetEncodingJobRequest{
 			Region: s.cfg.Raft.LocalClusterRegion,
@@ -52,9 +53,36 @@ func (s *service) encode() {
 			fmt.Printf("\n\n%+v\n\n", err)
 			return
 		}
-		cli.Close()
 		t = res.Token
+
+		cli.Close()
+		conn.Close()
 	}
 
 	fmt.Printf("\n\nEncoding Token: %+v\n\n", t)
+
+	primary, err := s.cmapAPI.SearchCallNode().ID(t.Primary.Node).Status(cmap.Alive).Do()
+	if err != nil {
+		// TODO: error handling.
+	}
+	conn, err := nilrpc.Dial(primary.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
+	if err != nil {
+		// TODO: error handling.
+		fmt.Printf("\n\n%+v\n\n", err)
+		return
+	}
+	defer conn.Close()
+
+	req := &nilrpc.DGEEncodeRequest{
+		Token: t,
+	}
+	res := &nilrpc.DGEEncodeResponse{}
+
+	cli := rpc.NewClient(conn)
+	if err := cli.Call(nilrpc.DsGencodingEncode.String(), req, res); err != nil {
+		// TODO: error handling.
+		fmt.Printf("\n\n%+v\n\n", err)
+		return
+	}
+	defer cli.Close()
 }
