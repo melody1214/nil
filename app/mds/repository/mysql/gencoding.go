@@ -3,6 +3,7 @@ package mysql
 import (
 	"fmt"
 	"math/rand"
+	"strconv"
 	"time"
 
 	"github.com/chanyoung/nil/app/mds/repository"
@@ -315,6 +316,138 @@ func (s *gencodingStore) LeaderEndpoint() (endpoint string) {
 
 	s.QueryRow(repository.NotTx, q).Scan(&endpoint)
 	return
+}
+
+func (s *gencodingStore) GetJob(regionName string) (*token.Token, error) {
+	q := fmt.Sprintf(
+		`
+		SELECT rg_id
+		FROM region
+		WHERE rg_name='%s'
+		`, regionName,
+	)
+
+	var regionID int64
+	if err := s.QueryRow(repository.NotTx, q).Scan(&regionID); err != nil {
+		return nil, err
+	}
+
+	q = fmt.Sprintf(
+		`
+		SELECT guc_job
+		FROM global_encoding_chunk
+		WHERE guc_role=%d AND guc_region=%d
+		`, 3, regionID,
+	)
+
+	rows, err := s.Query(repository.NotTx, q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var jobID int64
+	for rows.Next() {
+		if err := rows.Scan(&jobID); err != nil {
+			return nil, err
+		}
+
+		q = fmt.Sprintf(
+			`
+			UPDATE global_encoding_job
+			SET gej_status=IF(gej_status=%d,%d,gej_status)
+			WHERE gej_id=%d
+			`, gencoding.Ready, gencoding.Run, jobID,
+		)
+
+		r, err := s.PublishCommand("execute", q)
+		if err != nil {
+			return nil, err
+		}
+		if affected, err := r.RowsAffected(); err != nil {
+			return nil, err
+		} else if affected == 1 {
+			break
+		}
+		jobID = 0
+	}
+
+	if jobID == 0 {
+		return nil, fmt.Errorf("no jobs for you")
+	}
+
+	t := &token.Token{}
+
+	q = fmt.Sprintf(
+		`
+		SELECT guc_role, guc_region, guc_node, guc_volume, guc_encgrp, guc_chunk
+		FROM global_encoding_chunk
+		WHERE guc_job=%d
+		`, jobID,
+	)
+	rows, err = s.Query(repository.NotTx, q)
+	if err != nil {
+		q = fmt.Sprintf(
+			`
+			UPDATE global_encoding_job
+			SET gej_status=%d
+			WHERE gej_id=%d
+			`, gencoding.Fail, jobID,
+		)
+		s.PublishCommand("execute", q)
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		role := 0
+		var c token.Unencoded
+		if err := rows.Scan(&role, &c.Region.RegionID, &c.Node, &c.Volume, &c.EncGrp, &c.ChunkID); err != nil {
+			q = fmt.Sprintf(
+				`
+				UPDATE global_encoding_job
+				SET gej_status=%d
+				WHERE gej_id=%d
+				`, gencoding.Fail, jobID,
+			)
+			s.PublishCommand("execute", q)
+			return nil, err
+		}
+
+		q = fmt.Sprintf(
+			`
+			SELECT rg_name, rg_end_point
+			FROM region
+			WHERE rg_id=%d
+			`, c.Region.RegionID,
+		)
+		if err := s.QueryRow(repository.NotTx, q).Scan(&c.Region.RegionName, &c.Region.Endpoint); err != nil {
+			return nil, err
+		}
+
+		if role == 0 {
+			t.First = c
+		} else if role == 1 {
+			t.Second = c
+		} else if role == 2 {
+			t.Third = c
+		} else if role == 3 {
+			t.Primary = c
+			t.Primary.ChunkID = strconv.FormatInt(jobID, 10)
+		} else {
+			q = fmt.Sprintf(
+				`
+				UPDATE global_encoding_job
+				SET gej_status=%d
+				WHERE gej_id=%d
+				`, gencoding.Fail, jobID,
+			)
+			s.PublishCommand("execute", q)
+			return nil, fmt.Errorf("unknown encoding chunk role")
+		}
+	}
+
+	return t, nil
 }
 
 func (s *gencodingStore) RegionEndpoint(regionID int) (endpoint string) {

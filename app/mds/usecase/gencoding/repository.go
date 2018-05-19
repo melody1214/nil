@@ -18,4 +18,5 @@ type Repository interface {
 	RegionEndpoint(regionID int) (endpoint string)
 	GetRoutes(leaderEndpoint string) (*token.Leg, error)
 	MakeGlobalEncodingJob(token *token.Token, primary *token.Unencoded) error
+	GetJob(regionName string) (*token.Token, error)
 }

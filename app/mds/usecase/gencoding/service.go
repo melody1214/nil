@@ -421,10 +421,21 @@ func (s *service) findPrimary(region token.Stop) (token.Unencoded, error) {
 	}, nil
 }
 
+func (s *service) GetEncodingJob(req *nilrpc.MGEGetEncodingJobRequest, res *nilrpc.MGEGetEncodingJobResponse) error {
+	t, err := s.store.GetJob(req.Region)
+	if err != nil {
+		return err
+	}
+
+	res.Token = *t
+	return nil
+}
+
 // Service is the interface that provides global encoding domain's service
 type Service interface {
 	HandleToken(req *nilrpc.MGEHandleTokenRequest, res *nilrpc.MGEHandleTokenResponse) error
 	GGG(req *nilrpc.MGEGGGRequest, res *nilrpc.MGEGGGResponse) error
+	GetEncodingJob(req *nilrpc.MGEGetEncodingJobRequest, res *nilrpc.MGEGetEncodingJobResponse) error
 	// UpdateUnencodedChunk(req *nilrpc.MGEUpdateUnencodedChunkRequest, res *nilrpc.MGEUpdateUnencodedChunkResponse) error
 	// SelectEncodingGroup(req *nilrpc.MGESelectEncodingGroupRequest, res *nilrpc.MGESelectEncodingGroupResponse) error
 }

@@ -29,3 +29,11 @@ type MGEHandleTokenRequest struct {
 }
 
 type MGEHandleTokenResponse struct{}
+
+type MGEGetEncodingJobRequest struct {
+	Region string
+}
+
+type MGEGetEncodingJobResponse struct {
+	Token token.Token
+}
