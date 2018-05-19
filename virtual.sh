@@ -238,29 +238,56 @@ function ggg() {
         return
     fi
 
-    for i in $(seq 1 $try); do
-        local copiedRegions=("${REGIONS[@]}")
-        local selectedRegions=""
-
-        while [ ${#copiedRegions[@]} -ne $((${#REGIONS[@]} - $numRegions)) ]; do
-            local duplicated=${#copiedRegions[@]}
-
-            local idx=$(($RANDOM % ${#REGIONS[@]}))
-            local selected=${copiedRegions[$idx]}
-            unset copiedRegions[$idx]
-            if [ ${#copiedRegions[@]} -eq $duplicated ]; then
-                sleep 0.01
+    # Make encoding group all the cases.
+    for first in ${REGIONS[@]}; do 
+        for second in ${REGIONS[@]}; do
+            if [ "$first" = "$second" ]; then
+                sleep 0.001
                 continue
             fi
 
-            selectedRegions+=$selected
-            if [ ${#copiedRegions[@]} -ne $((${#REGIONS[@]} - $numRegions)) ]; then
-                selectedRegions+=","
-            fi
-        done
+            for third in ${REGIONS[@]}; do
+                if [ "$first" = "$third" ] || [ "$second" = "$third" ]; then
+                    sleep 0.001
+                    continue
+                fi
 
-        $NIL mds ggg $selectedRegions
+                for fourth in ${REGIONS[@]}; do
+                    if [ "$first" = "$fourth" ] || [ "$second" = "$fourth" ] || [ "$third" = "$fourth" ]; then
+                        sleep 0.001
+                        continue
+                    fi
+
+                    local selectedRegions=$first,$second,$third,$fourth
+                    $NIL mds ggg $selectedRegions
+                done
+            done
+        done
     done
+
+    # for i in $(seq 1 $try); do
+    #     local copiedRegions=("${REGIONS[@]}")
+    #     local selectedRegions=""
+
+    #     while [ ${#copiedRegions[@]} -ne $((${#REGIONS[@]} - $numRegions)) ]; do
+    #         local duplicated=${#copiedRegions[@]}
+
+    #         local idx=$(($RANDOM % ${#REGIONS[@]}))
+    #         local selected=${copiedRegions[$idx]}
+    #         unset copiedRegions[$idx]
+    #         if [ ${#copiedRegions[@]} -eq $duplicated ]; then
+    #             sleep 0.01
+    #             continue
+    #         fi
+
+    #         selectedRegions+=$selected
+    #         if [ ${#copiedRegions[@]} -ne $((${#REGIONS[@]} - $numRegions)) ]; then
+    #             selectedRegions+=","
+    #         fi
+    #     done
+
+    #     $NIL mds ggg $selectedRegions
+    # done
 }
 
 function createusers() {
