@@ -32,9 +32,10 @@ type DGEEncodeResponse struct {
 }
 
 type DGEPrepareEncodingRequest struct {
-	Vol   cmap.ID
-	EG    cmap.ID
-	Chunk string
+	Vol cmap.ID
+	EG  cmap.ID
 }
 
-type DGEPrepareEncodingResponse struct{}
+type DGEPrepareEncodingResponse struct {
+	Chunk string
+}

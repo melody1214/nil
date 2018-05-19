@@ -2,7 +2,9 @@ package gencoding
 
 import (
 	"fmt"
+	"log"
 	"net/rpc"
+	"runtime"
 	"strconv"
 	"time"
 
@@ -11,6 +13,7 @@ import (
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -222,7 +225,7 @@ func (s *service) GGG(req *nilrpc.MGEGGGRequest, res *nilrpc.MGEGGGResponse) err
 // }
 
 func (s *service) run() {
-	issueTokenTicker := time.NewTicker(10 * time.Second)
+	issueTokenTicker := time.NewTicker(30 * time.Second)
 
 	for {
 		select {
@@ -239,31 +242,33 @@ func (s *service) run() {
 
 			token := s.tokenM.NewToken(*leg)
 			fmt.Printf("\n\n%v\n\n", token)
-			if err = s.sendToken(token); err != nil {
-				fmt.Printf("\n\n%v\n\n", err)
-				break
-			}
+			s.sendToken(token)
 		}
 	}
 }
 
-func (s *service) sendToken(t *token.Token) error {
+func (s *service) sendToken(t *token.Token) {
 	nextRoute := t.Routing.Next()
-	fmt.Printf("\nHead to %s: %s\n", nextRoute.RegionName, nextRoute.Endpoint)
+	// fmt.Printf("\nHead to %s: %s\n", nextRoute.RegionName, nextRoute.Endpoint)
 
 	req := &nilrpc.MGEHandleTokenRequest{
 		Token: *t,
 	}
 	res := &nilrpc.MGEHandleTokenResponse{}
 
-	conn, err := nilrpc.Dial(string(nextRoute.Endpoint), nilrpc.RPCNil, time.Duration(2*time.Second))
+	conn, err := nilrpc.Dial(string(nextRoute.Endpoint), nilrpc.RPCNil, time.Duration(15*time.Second))
 	if err != nil {
-		return err
+		// fmt.Printf("\n%+v\n", err)
+		return
 	}
-	defer conn.Close()
 
 	cli := rpc.NewClient(conn)
-	return cli.Call(nilrpc.MdsGencodingHandleToken.String(), req, res)
+	go func() {
+		cli.Call(nilrpc.MdsGencodingHandleToken.String(), req, res)
+		cli.Close()
+		conn.Close()
+	}()
+	runtime.Gosched()
 }
 
 func (s *service) HandleToken(req *nilrpc.MGEHandleTokenRequest, res *nilrpc.MGEHandleTokenResponse) error {
@@ -273,9 +278,78 @@ func (s *service) HandleToken(req *nilrpc.MGEHandleTokenRequest, res *nilrpc.MGE
 		return nil
 	}
 
-	// Handling.
-	go s.sendToken(&req.Token)
+	tkn, err := s.findCandidate()
+	if err != nil {
+		// Give up, and send to other region.
+		// fmt.Printf("\n%+v\n", err)
+		s.sendToken(&req.Token)
+		return nil
+	}
+
+	// fmt.Printf("Token: %v\n", tkn)
+
+	// Try to add our unencoded chunk into the global encoding request token.
+	req.Token.Add(tkn)
+	s.sendToken(&req.Token)
 	return nil
+}
+
+// findCandidate finds a candidate chunk for global encoding.
+func (s *service) findCandidate() (token.Unencoded, error) {
+	m := s.cmapAPI.GetLatestCMap()
+
+	priority := 0
+	var target *cmap.EncodingGroup
+	for i, eg := range m.EncGrps {
+		if priority < eg.Uenc {
+			priority = eg.Uenc
+			target = &m.EncGrps[i]
+		}
+	}
+
+	// There is no unencoded chunk.
+	if target == nil {
+		return token.Unencoded{}, fmt.Errorf("no unencoded chunk")
+	}
+
+	v, err := s.cmapAPI.SearchCallVolume().ID(target.Vols[0]).Do()
+	if err != nil {
+		return token.Unencoded{}, err
+	}
+
+	n, err := s.cmapAPI.SearchCallNode().ID(v.Node).Do()
+	if err != nil {
+		return token.Unencoded{}, err
+	}
+
+	conn, err := nilrpc.Dial(n.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	prepareReq := &nilrpc.DGEPrepareEncodingRequest{
+		Vol: v.ID,
+		EG:  target.ID,
+	}
+	prepareRes := &nilrpc.DGEPrepareEncodingResponse{}
+
+	cli := rpc.NewClient(conn)
+	if err := cli.Call(nilrpc.DsGencodingPrepareEncoding.String(), prepareReq, prepareRes); err != nil {
+		return token.Unencoded{}, errors.Wrap(err, "failed to rename chunk")
+	}
+	if prepareRes.Chunk == "" {
+		return token.Unencoded{}, fmt.Errorf("no unencoded chunk")
+	}
+
+	return token.Unencoded{
+		Region:   token.Endpoint(s.cfg.Raft.LocalClusterAddr),
+		Node:     n.ID,
+		Volume:   v.ID,
+		EncGrp:   target.ID,
+		ChunkID:  prepareRes.Chunk,
+		Priority: priority,
+	}, nil
 }
 
 // Service is the interface that provides global encoding domain's service
