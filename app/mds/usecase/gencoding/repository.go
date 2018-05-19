@@ -11,10 +11,11 @@ type Repository interface {
 	Rollback(repository.TxID) error
 	Commit(repository.TxID) error
 	GenerateGencodingGroup(regions []string) error
-	UpdateUnencodedChunks(regionName string, unencoded int) error
+	// UpdateUnencodedChunks(regionName string, unencoded int) error
 	AmILeader() bool
 	LeaderEndpoint() string
-	Make() (*Table, error)
+	// Make() (*Table, error)
 	RegionEndpoint(regionID int) (endpoint string)
 	GetRoutes(leaderEndpoint string) (*token.Leg, error)
+	MakeGlobalEncodingJob(token *token.Token, primary *token.Unencoded) error
 }

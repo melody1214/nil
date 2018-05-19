@@ -226,6 +226,7 @@ func (s *service) GGG(req *nilrpc.MGEGGGRequest, res *nilrpc.MGEGGGResponse) err
 
 func (s *service) run() {
 	issueTokenTicker := time.NewTicker(30 * time.Second)
+	encodeTicker := time.NewTicker(60 * time.Second)
 
 	for {
 		select {
@@ -243,6 +244,9 @@ func (s *service) run() {
 			token := s.tokenM.NewToken(*leg)
 			fmt.Printf("\n\n%v\n\n", token)
 			s.sendToken(token)
+
+		case <-encodeTicker.C:
+			s.encode()
 		}
 	}
 }
@@ -275,10 +279,12 @@ func (s *service) HandleToken(req *nilrpc.MGEHandleTokenRequest, res *nilrpc.MGE
 	fmt.Printf("Here token: %v\n", req.Token)
 	// Traverse finish and the token returns.
 	if req.Token.Routing.CurrentIdx == len(req.Token.Routing.Stops) {
+		// Start encoding.
+		s.makeGlobalEncodingJob(req.Token)
 		return nil
 	}
 
-	tkn, err := s.findCandidate()
+	tkn, err := s.findCandidate(req.Token.Routing.Current())
 	if err != nil {
 		// Give up, and send to other region.
 		// fmt.Printf("\n%+v\n", err)
@@ -294,8 +300,8 @@ func (s *service) HandleToken(req *nilrpc.MGEHandleTokenRequest, res *nilrpc.MGE
 	return nil
 }
 
-// findCandidate finds a candidate chunk for global encoding.
-func (s *service) findCandidate() (token.Unencoded, error) {
+// findCandidate finds a candidate chunk for global encoding in current region.
+func (s *service) findCandidate(region token.Stop) (token.Unencoded, error) {
 	m := s.cmapAPI.GetLatestCMap()
 
 	priority := 0
@@ -343,12 +349,75 @@ func (s *service) findCandidate() (token.Unencoded, error) {
 	}
 
 	return token.Unencoded{
-		Region:   token.Endpoint(s.cfg.Raft.LocalClusterAddr),
+		Region:   region,
 		Node:     n.ID,
 		Volume:   v.ID,
 		EncGrp:   target.ID,
 		ChunkID:  prepareRes.Chunk,
 		Priority: priority,
+	}, nil
+}
+
+func (s *service) makeGlobalEncodingJob(t token.Token) {
+	// Check is timeout.
+	if t.Timeout.Before(time.Now()) {
+		fmt.Printf("\n\nTimeout to encode\n\n")
+		return
+	}
+
+	// Check is enough to encode.
+	unencodedChunks := [3]token.Unencoded{t.First, t.Second, t.Third}
+	for _, c := range unencodedChunks {
+		if c.ChunkID == "" || c.EncGrp == cmap.ID(0) || c.Node == cmap.ID(0) || c.Region.RegionID == 0 {
+			fmt.Printf("\n\nNot enough to encode: %+v\n\n", c)
+			return
+		}
+	}
+
+	// Find a proper primary encoding group.
+	p, err := s.findPrimary(t.Routing.Current())
+	if err != nil {
+		fmt.Printf("failed to find primary: %v\n", err)
+	}
+
+	if err = s.store.MakeGlobalEncodingJob(&t, &p); err != nil {
+		fmt.Printf("failed to make gbl job: %v\n", err)
+	}
+}
+
+// findPrimary finds a proper encoding group for acting primary.
+func (s *service) findPrimary(region token.Stop) (token.Unencoded, error) {
+	m := s.cmapAPI.GetLatestCMap()
+
+	min := 999
+	var target *cmap.EncodingGroup
+	for i, eg := range m.EncGrps {
+		if min > eg.Uenc {
+			min = eg.Uenc
+			target = &m.EncGrps[i]
+		}
+	}
+
+	// There is no unencoded chunk.
+	if target == nil {
+		return token.Unencoded{}, fmt.Errorf("no proper primary candidate")
+	}
+
+	v, err := s.cmapAPI.SearchCallVolume().ID(target.Vols[0]).Do()
+	if err != nil {
+		return token.Unencoded{}, err
+	}
+
+	n, err := s.cmapAPI.SearchCallNode().ID(v.Node).Do()
+	if err != nil {
+		return token.Unencoded{}, err
+	}
+
+	return token.Unencoded{
+		Region: region,
+		Node:   n.ID,
+		Volume: v.ID,
+		EncGrp: target.ID,
 	}, nil
 }
 

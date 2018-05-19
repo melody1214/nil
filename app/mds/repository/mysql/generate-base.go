@@ -158,6 +158,7 @@ var generateSQLBase = []string{
 			guc_encgrp int unsigned NOT NULL,
 			guc_chunk varchar(32) CHARACTER SET ascii NOT NULL,
 			PRIMARY KEY (guc_id),
+			UNIQUE KEY (guc_region, guc_encgrp, guc_chunk),
 			FOREIGN KEY (guc_job) REFERENCES global_encoding_job (gej_id),
 			FOREIGN KEY (guc_region) REFERENCES region (rg_id)
 		)

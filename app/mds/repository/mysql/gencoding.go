@@ -81,130 +81,200 @@ func (s *gencodingStore) AmILeader() bool {
 	return s.raft.State() == raft.Leader
 }
 
-func (s *gencodingStore) Make() (*gencoding.Table, error) {
-	if s.raft == nil {
-		return nil, fmt.Errorf("raft is nil")
-	}
-
+// MakeGlobalEncodingJob creates the global encoding job by the given token information.
+func (s *gencodingStore) MakeGlobalEncodingJob(t *token.Token, p *token.Unencoded) error {
+	// Make global encoding job.
 	q := fmt.Sprintf(
 		`
-		SELECT
-			ger_region, ger_encoding_group_chunk
-		FROM
-			global_encoding_request
-		ORDER BY ger_encoding_group_chunk DESC
-		`,
-	)
-
-	rows, err := s.Query(repository.NotTx, q)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	type ger struct {
-		region int
-		chunk  int
-	}
-
-	rs := make([]ger, 0)
-	for rows.Next() {
-		var r ger
-
-		if err = rows.Scan(&r.region, &r.chunk); err != nil {
-			return nil, err
-		}
-
-		rs = append(rs, r)
-	}
-
-	if len(rs) < 4 {
-		return nil, fmt.Errorf("not enough request information")
-	}
-
-	for i, r := range rs {
-		if i < 3 && r.chunk == 0 {
-			return nil, fmt.Errorf("not enough chunk to encode")
-		}
-	}
-
-	tbl := &gencoding.Table{
-		RegionIDs: make([]int, 4),
-		Status:    gencoding.Ready,
-	}
-
-	var gegID = 0
-	for i := 0; i < 20; i++ {
-		randIdx := s.random.Perm(len(rs) - 3)
-
-		q = fmt.Sprintf(
-			`
-		SELECT
-			geg_id
-		FROM
-			global_encoding_group
-		WHERE
-			geg_region_first = %d AND geg_region_second = %d AND geg_region_third = %d AND geg_region_parity = %d
-		`, rs[0].region, rs[1].region, rs[2].region, rs[3+randIdx[0]].region,
-		)
-
-		if err := s.QueryRow(repository.NotTx, q).Scan(&gegID); err != nil {
-			continue
-		}
-
-		tbl.RegionIDs[0] = rs[0].region
-		tbl.RegionIDs[1] = rs[1].region
-		tbl.RegionIDs[2] = rs[2].region
-		tbl.RegionIDs[3] = rs[3+randIdx[0]].region
-		break
-	}
-
-	if gegID == 0 {
-		return nil, fmt.Errorf("failed to find the global encoding group with the selected regions")
-	}
-
-	q = fmt.Sprintf(
-		`
-		INSERT INTO global_encoding_table (get_global_encoding_group, get_status)
-		VALUES ('%d', '%d')
-		`, gegID, gencoding.Ready,
+		INSERT INTO global_encoding_job (gej_status)
+		VALUES (%d)
+		`, gencoding.Ready,
 	)
 	r, err := s.PublishCommand("execute", q)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	tbl.ID, err = r.LastInsertId()
+	gblChunkID, err := r.LastInsertId()
 	if err != nil {
-		return nil, err
-	}
-
-	return tbl, err
-}
-
-func (s *gencodingStore) UpdateUnencodedChunks(regionName string, unencoded int) error {
-	q := fmt.Sprintf(
-		`
-		SELECT rg_id
-		FROM region
-		WHERE rg_name='%s'
-		`, regionName,
-	)
-	var regionID int
-	if err := s.QueryRow(repository.NotTx, q).Scan(&regionID); err != nil {
 		return err
 	}
 
+	rollback := false
+	// Register unencoded chunks.
+	unencodedChunks := [3]token.Unencoded{t.First, t.Second, t.Third}
+	for i, c := range unencodedChunks {
+		q = fmt.Sprintf(
+			`
+			INSERT INTO global_encoding_chunk (guc_job, guc_role, guc_region, guc_node, guc_volume, guc_encgrp, guc_chunk)
+			VALUES ('%d', '%d', '%d', '%d', '%d', '%d', '%s')
+			`, gblChunkID, i, c.Region.RegionID, c.Node, c.Volume, c.EncGrp, c.ChunkID,
+		)
+		_, err = s.PublishCommand("execute", q)
+		if err != nil {
+			rollback = true
+			fmt.Printf("%+v\n\n", err)
+			break
+		}
+	}
+
+	// Add primary information.
 	q = fmt.Sprintf(
 		`
-		INSERT INTO global_encoding_request (ger_region, ger_encoding_group_chunk)
-		VALUES (%d, %d)
-		ON DUPLICATE KEY UPDATE ger_region=%d, ger_encoding_group_chunk=%d
-		`, regionID, unencoded, regionID, unencoded,
+		INSERT INTO global_encoding_chunk (guc_job, guc_role, guc_region, guc_node, guc_volume, guc_encgrp, guc_chunk)
+		VALUES ('%d', '%d', '%d', '%d', '%d', '%d', '%s')
+		`, gblChunkID, 3, p.Region.RegionID, p.Node, p.Volume, p.EncGrp, "",
 	)
+	_, err = s.PublishCommand("execute", q)
+	if err != nil {
+		fmt.Printf("%+v\n\n", err)
+		rollback = true
+	}
 
-	_, err := s.PublishCommand("execute", q)
-	return err
+	// Check if errors are occured.
+	if rollback {
+		q = fmt.Sprintf(
+			`
+			DELETE FROM global_encoding_chunk
+			WHERE guc_job=%d
+			`, gblChunkID,
+		)
+		s.PublishCommand("execute", q)
+		q = fmt.Sprintf(
+			`
+			DELETE FROM global_encoding_job
+			WHERE gej_id=%d
+			`, gblChunkID,
+		)
+		s.PublishCommand("execute", q)
+	}
+
+	return nil
 }
+
+// func (s *gencodingStore) Make() (*gencoding.Table, error) {
+// 	if s.raft == nil {
+// 		return nil, fmt.Errorf("raft is nil")
+// 	}
+
+// 	q := fmt.Sprintf(
+// 		`
+// 		SELECT
+// 			ger_region, ger_encoding_group_chunk
+// 		FROM
+// 			global_encoding_request
+// 		ORDER BY ger_encoding_group_chunk DESC
+// 		`,
+// 	)
+
+// 	rows, err := s.Query(repository.NotTx, q)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	defer rows.Close()
+
+// 	type ger struct {
+// 		region int
+// 		chunk  int
+// 	}
+
+// 	rs := make([]ger, 0)
+// 	for rows.Next() {
+// 		var r ger
+
+// 		if err = rows.Scan(&r.region, &r.chunk); err != nil {
+// 			return nil, err
+// 		}
+
+// 		rs = append(rs, r)
+// 	}
+
+// 	if len(rs) < 4 {
+// 		return nil, fmt.Errorf("not enough request information")
+// 	}
+
+// 	for i, r := range rs {
+// 		if i < 3 && r.chunk == 0 {
+// 			return nil, fmt.Errorf("not enough chunk to encode")
+// 		}
+// 	}
+
+// 	tbl := &gencoding.Table{
+// 		RegionIDs: make([]int, 4),
+// 		Status:    gencoding.Ready,
+// 	}
+
+// 	var gegID = 0
+// 	for i := 0; i < 20; i++ {
+// 		randIdx := s.random.Perm(len(rs) - 3)
+
+// 		q = fmt.Sprintf(
+// 			`
+// 		SELECT
+// 			geg_id
+// 		FROM
+// 			global_encoding_group
+// 		WHERE
+// 			geg_region_first = %d AND geg_region_second = %d AND geg_region_third = %d AND geg_region_parity = %d
+// 		`, rs[0].region, rs[1].region, rs[2].region, rs[3+randIdx[0]].region,
+// 		)
+
+// 		if err := s.QueryRow(repository.NotTx, q).Scan(&gegID); err != nil {
+// 			continue
+// 		}
+
+// 		tbl.RegionIDs[0] = rs[0].region
+// 		tbl.RegionIDs[1] = rs[1].region
+// 		tbl.RegionIDs[2] = rs[2].region
+// 		tbl.RegionIDs[3] = rs[3+randIdx[0]].region
+// 		break
+// 	}
+
+// 	if gegID == 0 {
+// 		return nil, fmt.Errorf("failed to find the global encoding group with the selected regions")
+// 	}
+
+// 	q = fmt.Sprintf(
+// 		`
+// 		INSERT INTO global_encoding_table (get_global_encoding_group, get_status)
+// 		VALUES ('%d', '%d')
+// 		`, gegID, gencoding.Ready,
+// 	)
+// 	r, err := s.PublishCommand("execute", q)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	tbl.ID, err = r.LastInsertId()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	return tbl, err
+// }
+
+// func (s *gencodingStore) UpdateUnencodedChunks(regionName string, unencoded int) error {
+// 	q := fmt.Sprintf(
+// 		`
+// 		SELECT rg_id
+// 		FROM region
+// 		WHERE rg_name='%s'
+// 		`, regionName,
+// 	)
+// 	var regionID int
+// 	if err := s.QueryRow(repository.NotTx, q).Scan(&regionID); err != nil {
+// 		return err
+// 	}
+
+// 	q = fmt.Sprintf(
+// 		`
+// 		INSERT INTO global_encoding_request (ger_region, ger_encoding_group_chunk)
+// 		VALUES (%d, %d)
+// 		ON DUPLICATE KEY UPDATE ger_region=%d, ger_encoding_group_chunk=%d
+// 		`, regionID, unencoded, regionID, unencoded,
+// 	)
+
+// 	_, err := s.PublishCommand("execute", q)
+// 	return err
+// }
 
 func (s *gencodingStore) LeaderEndpoint() (endpoint string) {
 	if s.raft == nil {
@@ -263,7 +333,7 @@ func (s *gencodingStore) RegionEndpoint(regionID int) (endpoint string) {
 func (s *gencodingStore) GetRoutes(leaderEndpoint string) (*token.Leg, error) {
 	q := fmt.Sprintf(
 		`
-		SELECT rg_name, rg_end_point FROM region
+		SELECT rg_id, rg_name, rg_end_point FROM region
 		`,
 	)
 
@@ -281,7 +351,7 @@ func (s *gencodingStore) GetRoutes(leaderEndpoint string) (*token.Leg, error) {
 	for rows.Next() {
 		s := token.Stop{}
 
-		if err := rows.Scan(&s.RegionName, &s.Endpoint); err != nil {
+		if err := rows.Scan(&s.RegionID, &s.RegionName, &s.Endpoint); err != nil {
 			return nil, err
 		}
 

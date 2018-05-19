@@ -18,6 +18,7 @@ type Token struct {
 	First   Unencoded
 	Second  Unencoded
 	Third   Unencoded
+	Primary Unencoded
 }
 
 // Add adds the new unencoded token if the priority is higher than old one.
@@ -64,15 +65,24 @@ func (l *Leg) Next() Stop {
 	return l.Stops[l.CurrentIdx]
 }
 
+// Current returns the current stop.
+func (l *Leg) Current() Stop {
+	if l.CurrentIdx >= len(l.Stops) {
+		return l.Stops[0]
+	}
+	return l.Stops[l.CurrentIdx]
+}
+
 // Stop represents the specific region information for routing.
 type Stop struct {
+	RegionID   int64
 	RegionName string
 	Endpoint   Endpoint
 }
 
 // Unencoded contains the global encoding candidate chunk information.
 type Unencoded struct {
-	Region   Endpoint
+	Region   Stop
 	Node     cmap.ID
 	Volume   cmap.ID
 	EncGrp   cmap.ID
