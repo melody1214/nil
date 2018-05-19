@@ -97,6 +97,7 @@ func (h *handlers) GetChunkHandler(w http.ResponseWriter, r *http.Request) {
 	err := storeReq.Wait()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	w.WriteHeader(http.StatusOK)
 }
