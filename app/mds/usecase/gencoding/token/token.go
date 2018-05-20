@@ -22,13 +22,13 @@ type Token struct {
 }
 
 // Add adds the new unencoded token if the priority is higher than old one.
-func (t *Token) Add(new Unencoded) {
+func (t *Token) Add(new *Unencoded) {
 	candidates := [3]*Unencoded{&t.First, &t.Second, &t.Third}
 	for _, c := range candidates {
 		if new.Priority <= c.Priority {
 			continue
 		}
-		*c = new
+		*c = *new
 		break
 	}
 }

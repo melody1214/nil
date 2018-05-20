@@ -31,11 +31,11 @@ type DGEEncodeRequest struct {
 type DGEEncodeResponse struct {
 }
 
-type DGEPrepareEncodingRequest struct {
+type DGEGetCandidateChunkRequest struct {
 	Vol cmap.ID
 	EG  cmap.ID
 }
 
-type DGEPrepareEncodingResponse struct {
+type DGEGetCandidateChunkResponse struct {
 	Chunk string
 }

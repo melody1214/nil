@@ -46,6 +46,7 @@ const (
 	MdsGencodingSelectEncodingGroup
 	MdsGencodingHandleToken
 	MdsGencodingGetEncodingJob
+	MdsGencodingSetJobStatus
 
 	// DS cluster domain methods.
 	DsClusterAddVolume
@@ -54,7 +55,7 @@ const (
 	DsGencodingRenameChunk
 	DsGencodingTruncateChunk
 	DsGencodingEncode
-	DsGencodingPrepareEncoding
+	DsGencodingGetCandidateChunk
 )
 
 func (m MethodName) String() string {
@@ -94,6 +95,8 @@ func (m MethodName) String() string {
 		return MdsGencodingPrefix + "." + "HandleToken"
 	case MdsGencodingGetEncodingJob:
 		return MdsGencodingPrefix + "." + "GetEncodingJob"
+	case MdsGencodingSetJobStatus:
+		return MdsGencodingPrefix + "." + "SetJobStatus"
 
 	case DsClusterAddVolume:
 		return DsClusterPrefix + "." + "AddVolume"
@@ -104,8 +107,8 @@ func (m MethodName) String() string {
 		return DsGencodingPrefix + "." + "TruncateChunk"
 	case DsGencodingEncode:
 		return DsGencodingPrefix + "." + "Encode"
-	case DsGencodingPrepareEncoding:
-		return DsGencodingPrefix + "." + "PrepareEncoding"
+	case DsGencodingGetCandidateChunk:
+		return DsGencodingPrefix + "." + "GetCandidateChunk"
 
 	default:
 		return "unknown"

@@ -37,3 +37,11 @@ type MGEGetEncodingJobRequest struct {
 type MGEGetEncodingJobResponse struct {
 	Token token.Token
 }
+
+type MGESetJobStatusRequest struct {
+	ID     int64
+	Status int
+}
+
+type MGESetJobStatusResponse struct {
+}
