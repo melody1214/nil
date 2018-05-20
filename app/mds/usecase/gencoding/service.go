@@ -296,6 +296,35 @@ func (s *service) SetJobStatus(req *nilrpc.MGESetJobStatusRequest, res *nilrpc.M
 	return s.store.SetJobStatus(req.ID, Status(req.Status))
 }
 
+func (s *service) JobFinished(req *nilrpc.MGEJobFinishedRequest, res *nilrpc.MGEJobFinishedResponse) error {
+	if !s.store.AmILeader() {
+		s.jobFinished(&req.Token)
+	}
+	return s.store.JobFinished(&req.Token)
+}
+
+func (s *service) jobFinished(t *token.Token) error {
+	leaderAddr := s.store.LeaderEndpoint()
+	conn, err := nilrpc.Dial(leaderAddr, nilrpc.RPCNil, time.Duration(2*time.Second))
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	req := &nilrpc.MGEJobFinishedRequest{
+		Token: *t,
+	}
+	res := &nilrpc.MGEJobFinishedResponse{}
+
+	cli := rpc.NewClient(conn)
+	if err := cli.Call(nilrpc.MdsGencodingJobFinished.String(), req, res); err != nil {
+		return err
+	}
+	defer cli.Close()
+
+	return nil
+}
+
 func (s *service) garbageCollect() {
 	// Remove failed or timeouted jobs.
 	if !s.store.AmILeader() {
@@ -311,4 +340,5 @@ type Service interface {
 	GGG(req *nilrpc.MGEGGGRequest, res *nilrpc.MGEGGGResponse) error
 	GetEncodingJob(req *nilrpc.MGEGetEncodingJobRequest, res *nilrpc.MGEGetEncodingJobResponse) error
 	SetJobStatus(req *nilrpc.MGESetJobStatusRequest, res *nilrpc.MGESetJobStatusResponse) error
+	JobFinished(req *nilrpc.MGEJobFinishedRequest, res *nilrpc.MGEJobFinishedResponse) error
 }

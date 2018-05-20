@@ -1,10 +1,9 @@
 package gencoding
 
 import (
+	"fmt"
 	"io"
 	"time"
-
-	"fmt"
 
 	"github.com/chanyoung/nil/app/ds/repository"
 	"github.com/chanyoung/nil/pkg/cmap"

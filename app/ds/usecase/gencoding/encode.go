@@ -1,7 +1,9 @@
 package gencoding
 
 import (
+	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/rpc"
 	"strconv"
@@ -214,11 +216,32 @@ func (s *service) encode(t token.Token) {
 		}
 	}
 
+	// Rename downloaded chunks.
+	if err = s.renameEncodedChunks(&t); err != nil {
+		// TODO: handling error
+		ctxLogger.Error(errors.Wrap(err, "failed to rename encoded chunk"))
+		goto ROLLBACK
+	}
+
 	// Move generated parities to other nodes.
+	err = s.sendEncodedChunks(generated)
+	if err != nil {
+		// TODO: handling error
+		ctxLogger.Error(errors.Wrap(err, "failed to move encoded chunks"))
+		goto ROLLBACK
+	}
 
 	// Register encoded parity to global cluster.
+	if err = s.finishJob(&t); err != nil {
+		// TODO: handling error
+		ctxLogger.Error(errors.Wrap(err, "failed to finish global encoding job"))
+		goto ROLLBACK
+	}
 
-	// Change encoding job status.
+	// Removes generated chunks.
+	for _, g := range generated {
+		s.store.Push(g)
+	}
 
 	return
 
@@ -335,5 +358,136 @@ func (s *service) setJobStatus(id int64, status mdsgencoding.Status) error {
 	}
 	defer cli.Close()
 
+	return nil
+}
+
+func (s *service) sendEncodedChunks(encoded []*repository.Request) error {
+	if len(encoded) == 0 {
+		return fmt.Errorf("no encoded chunks")
+	}
+
+	egID, err := strconv.ParseInt(encoded[0].LocGid, 10, 64)
+	if err != nil {
+		return err
+	}
+	eg, err := s.cmapAPI.SearchCallEncGrp().ID(cmap.ID(egID)).Do()
+	if err != nil {
+		return err
+	}
+
+	if len(encoded) != len(eg.Vols)-1 {
+		return fmt.Errorf("encoded chunks number is not matched with the encoding group volume number")
+	}
+
+	for i, vID := range eg.Vols {
+		if i == 0 {
+			// Jump leader. (it's me)
+			continue
+		}
+		idx := i - 1
+
+		v, err := s.cmapAPI.SearchCallVolume().ID(vID).Do()
+		if err != nil {
+			// TODO: remove sent chunks.
+			return err
+		}
+
+		n, err := s.cmapAPI.SearchCallNode().ID(v.Node).Status(cmap.Alive).Do()
+		if err != nil {
+			// TODO: remove sent chunks.
+			return err
+		}
+
+		r, w := io.Pipe()
+		storeReq := &repository.Request{
+			Op:     repository.ReadAll,
+			Vol:    encoded[idx].Vol,
+			LocGid: encoded[idx].LocGid,
+			Cid:    encoded[idx].Cid,
+			Out:    w,
+		}
+		if err = s.store.Push(storeReq); err != nil {
+			// TODO: remove sent chunks.
+			return err
+		}
+		go func(rr *repository.Request, pw *io.PipeWriter) {
+			rr.Wait()
+			w.Close()
+		}(storeReq, w)
+
+		req, err := http.NewRequest(
+			"PUT",
+			"https://"+n.Addr.String()+"/chunk",
+			r,
+		)
+		if err != nil {
+			return err
+		}
+
+		req.Header.Add("Volume", vID.String())
+		req.Header.Add("Encoding-Group", encoded[idx].LocGid)
+		// ex. G_1_0 -> G_1
+		req.Header.Add("Chunk-Name", encoded[idx].Cid[:len(encoded[idx].Cid)-2])
+		req.Header.Add("Content-Length", s.cfg.ChunkSize)
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		ioutil.ReadAll(resp.Body)
+	}
+
+	return nil
+}
+
+func (s *service) finishJob(t *token.Token) error {
+	mds, err := s.cmapAPI.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
+	if err != nil {
+		return err
+	}
+
+	conn, err := nilrpc.Dial(mds.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	req := &nilrpc.MGEJobFinishedRequest{
+		Token: *t,
+	}
+	res := &nilrpc.MGEJobFinishedResponse{}
+
+	cli := rpc.NewClient(conn)
+	if err := cli.Call(nilrpc.MdsGencodingJobFinished.String(), req, res); err != nil {
+		return err
+	}
+	defer cli.Close()
+
+	return nil
+}
+
+func (s *service) renameEncodedChunks(t *token.Token) error {
+	shards := [3]*token.Unencoded{
+		&t.First, &t.Second, &t.Third,
+	}
+
+	for _, shard := range shards {
+		req, err := http.NewRequest(
+			"PUT",
+			"https://"+string(shard.Region.Endpoint)+"/chunk",
+			nil,
+		)
+
+		req.Header.Add("Encoding-Group", shard.EncGrp.String())
+		req.Header.Add("Old-Chunk-Name", shard.ChunkID)
+		req.Header.Add("New-Chunk-Name", "G_"+t.Primary.ChunkID)
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+	}
 	return nil
 }

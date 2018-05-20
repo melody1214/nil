@@ -388,6 +388,45 @@ func (s *gencodingStore) SetJobStatus(id int64, status gencoding.Status) error {
 	return err
 }
 
+func (s *gencodingStore) JobFinished(t *token.Token) error {
+	q := fmt.Sprintf(
+		`
+		SELECT geg_id
+		FROM global_encoding_group
+		WHERE geg_region_first=%d AND geg_region_second=%d AND geg_region_third=%d AND geg_region_parity=%d
+		`, t.First.Region.RegionID, t.Second.Region.RegionID, t.Third.Region.RegionID, t.Primary.Region.RegionID,
+	)
+	var gblEncodingGroupID int64
+	if err := s.QueryRow(repository.NotTx, q).Scan(&gblEncodingGroupID); err != nil {
+		return errors.Wrap(err, "failed to find global encoding group id")
+	}
+
+	q = fmt.Sprintf(
+		`
+		INSERT INTO global_encoded_chunk (gec_chunk_id, gec_global_encoding_group, gec_local_encoding_group_first, gec_local_encoding_group_second, gec_local_encoding_group_third, gec_local_encoding_group_parity)
+		VALUES (%s, %d, %d, %d, %d, %d)
+		`, t.Primary.ChunkID, gblEncodingGroupID, t.First.EncGrp, t.Second.EncGrp, t.Third.EncGrp, t.Primary.EncGrp,
+	)
+	_, err := s.PublishCommand("execute", q)
+	if err != nil {
+		return errors.Wrap(err, "failed to insert global encoding chunk")
+	}
+
+	q = fmt.Sprintf(
+		`
+		UPDATE global_encoding_job
+		SET gej_status=%d
+		WHERE gej_id=%s
+		`, gencoding.Done, t.Primary.ChunkID,
+	)
+	_, err = s.PublishCommand("execute", q)
+	if err != nil {
+		return errors.Wrap(err, "failed to update job status to done")
+	}
+
+	return nil
+}
+
 func (s *gencodingStore) RemoveFailedJobs() error {
 	q := fmt.Sprintf(
 		`

@@ -21,4 +21,5 @@ type Repository interface {
 	GetJob(regionName string) (*token.Token, error)
 	SetJobStatus(id int64, status Status) error
 	RemoveFailedJobs() error
+	JobFinished(*token.Token) error
 }

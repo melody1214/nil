@@ -71,4 +71,5 @@ type Handlers interface {
 	DeleteObjectHandler(w http.ResponseWriter, r *http.Request)
 
 	GetChunkHandler(w http.ResponseWriter, r *http.Request)
+	RenameChunkHandler(w http.ResponseWriter, r *http.Request)
 }

@@ -45,3 +45,9 @@ type MGESetJobStatusRequest struct {
 
 type MGESetJobStatusResponse struct {
 }
+
+type MGEJobFinishedRequest struct {
+	Token token.Token
+}
+
+type MGEJobFinishedResponse struct{}

@@ -102,6 +102,27 @@ func (h *handlers) GetChunkHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// PutChunkHandler handles the client request for uploading a chunk.
+func (h *handlers) PutChunkHandler(w http.ResponseWriter, r *http.Request) {
+	storeReq := &repository.Request{
+		Op:     repository.WriteAll,
+		Vol:    r.Header.Get("Volume"),
+		LocGid: r.Header.Get("Encoding-Group"),
+		Cid:    r.Header.Get("Chunk-Name"),
+		Osize:  h.chunkPool.chunkSize,
+		In:     r.Body,
+	}
+
+	h.store.Push(storeReq)
+	err := storeReq.Wait()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	r.Body.Close()
+	w.WriteHeader(http.StatusOK)
+}
+
 func (h *handlers) writeToPrimary(req client.RequestEvent) {
 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.writeToPrimary")
 
@@ -415,4 +436,5 @@ type Handlers interface {
 	GetObjectHandler(w http.ResponseWriter, r *http.Request)
 	DeleteObjectHandler(w http.ResponseWriter, r *http.Request)
 	GetChunkHandler(w http.ResponseWriter, r *http.Request)
+	PutChunkHandler(w http.ResponseWriter, r *http.Request)
 }

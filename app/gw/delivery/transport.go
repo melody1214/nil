@@ -18,6 +18,7 @@ func makeHandler(ch client.Handlers) http.Handler {
 
 	// Chunk request handlers
 	cr.Methods("GET").HandlerFunc(ch.GetChunkHandler)
+	cr.Methods("PUT").HandlerFunc(ch.RenameChunkHandler)
 
 	// Bucket request handlers
 	br.Methods("PUT").HandlerFunc(ch.MakeBucketHandler)

@@ -4,10 +4,13 @@ import (
 	"log"
 	"net/http"
 	"net/http/httputil"
+	"net/rpc"
 	"net/url"
 	"strconv"
+	"time"
 
 	"github.com/chanyoung/nil/pkg/cmap"
+	"github.com/chanyoung/nil/pkg/nilrpc"
 )
 
 // GetChunkHandler handles the client request for downloading a chunk.
@@ -73,4 +76,70 @@ func (h *handlers) GetChunkHandler(w http.ResponseWriter, r *http.Request) {
 	proxy := httputil.NewSingleHostReverseProxy(rpURL)
 	proxy.ErrorLog = log.New(logger.Writer(), "http reverse proxy", log.Lshortfile)
 	proxy.ServeHTTP(w, r)
+}
+
+func (h *handlers) RenameChunkHandler(w http.ResponseWriter, r *http.Request) {
+	encGrp := r.Header.Get("Encoding-Group")
+	if encGrp == "" {
+		http.Error(w, "invalid header", http.StatusBadRequest)
+		return
+	}
+	iEncGrp, err := strconv.ParseInt(encGrp, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid header", http.StatusBadRequest)
+		return
+	}
+
+	oldChunkName := r.Header.Get("Old-Chunk-Name")
+	if oldChunkName == "" {
+		http.Error(w, "invalid header", http.StatusBadRequest)
+		return
+	}
+
+	newChunkName := r.Header.Get("New-Chunk-Name")
+	if newChunkName == "" {
+		http.Error(w, "invalid header", http.StatusBadRequest)
+		return
+	}
+
+	eg, err := h.cmapAPI.SearchCallEncGrp().ID(cmap.ID(iEncGrp)).Status(cmap.EGAlive).Do()
+	if err != nil {
+		http.Error(w, "invalid header", http.StatusBadRequest)
+		return
+	}
+
+	for _, vID := range eg.Vols {
+		v, err := h.cmapAPI.SearchCallVolume().ID(vID).Status(cmap.Active).Do()
+		if err != nil {
+			http.Error(w, "invalid header", http.StatusBadRequest)
+			return
+		}
+
+		n, err := h.cmapAPI.SearchCallNode().ID(cmap.ID(v.Node)).Status(cmap.Alive).Do()
+		if err != nil {
+			http.Error(w, "invalid header", http.StatusBadRequest)
+			return
+		}
+
+		conn, err := nilrpc.Dial(n.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
+		if err != nil {
+			http.Error(w, "invalid header", http.StatusBadRequest)
+			return
+		}
+		defer conn.Close()
+
+		req := &nilrpc.DGERenameChunkRequest{
+			Vol:      vID.String(),
+			EncGrp:   eg.ID.String(),
+			OldChunk: oldChunkName,
+			NewChunk: newChunkName,
+		}
+		res := &nilrpc.DGERenameChunkResponse{}
+
+		cli := rpc.NewClient(conn)
+		if err := cli.Call(nilrpc.DsGencodingRenameChunk.String(), req, res); err != nil {
+			http.Error(w, "invalid header", http.StatusBadRequest)
+			return
+		}
+	}
 }

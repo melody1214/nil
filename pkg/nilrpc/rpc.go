@@ -47,6 +47,7 @@ const (
 	MdsGencodingHandleToken
 	MdsGencodingGetEncodingJob
 	MdsGencodingSetJobStatus
+	MdsGencodingJobFinished
 
 	// DS cluster domain methods.
 	DsClusterAddVolume
@@ -97,6 +98,8 @@ func (m MethodName) String() string {
 		return MdsGencodingPrefix + "." + "GetEncodingJob"
 	case MdsGencodingSetJobStatus:
 		return MdsGencodingPrefix + "." + "SetJobStatus"
+	case MdsGencodingJobFinished:
+		return MdsGencodingPrefix + "." + "JobFinished"
 
 	case DsClusterAddVolume:
 		return DsClusterPrefix + "." + "AddVolume"

@@ -17,6 +17,7 @@ func makeHandler(oh object.Handlers) http.Handler {
 	or := br.PathPrefix("/{object:.+}").Subrouter()
 
 	// Chunk request handlers
+	cr.Methods("PUT").HandlerFunc(oh.PutChunkHandler)
 	cr.Methods("GET").HandlerFunc(oh.GetChunkHandler)
 
 	// Bucket request handlers

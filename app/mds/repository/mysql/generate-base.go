@@ -131,6 +131,7 @@ var generateSQLBase = []string{
 	`
 		CREATE TABLE IF NOT EXISTS global_encoded_chunk (
 			gec_id int unsigned NOT NULL AUTO_INCREMENT,
+			gec_chunk_id int unsigned NOT NULL,
 			gec_global_encoding_group int unsigned NOT NULL,
 			gec_local_encoding_group_first int unsigned NOT NULL,
 			gec_local_encoding_group_second int unsigned NOT NULL,
