@@ -242,7 +242,7 @@ func (s *service) run() {
 			}
 
 			token := s.tokenM.NewToken(*leg)
-			fmt.Printf("\n\n%v\n\n", token)
+			// fmt.Printf("\n\n%v\n\n", token)
 			s.sendToken(token)
 
 		case <-encodeTicker.C:
@@ -276,7 +276,7 @@ func (s *service) sendToken(t *token.Token) {
 }
 
 func (s *service) HandleToken(req *nilrpc.MGEHandleTokenRequest, res *nilrpc.MGEHandleTokenResponse) error {
-	fmt.Printf("Here token: %v\n", req.Token)
+	// fmt.Printf("Here token: %v\n", req.Token)
 	// Traverse finish and the token returns.
 	if req.Token.Routing.CurrentIdx == len(req.Token.Routing.Stops) {
 		// Start encoding.

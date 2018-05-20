@@ -2,6 +2,7 @@ package gencoding
 
 import (
 	"io"
+	"net/http"
 	"strconv"
 	"time"
 
@@ -118,19 +119,229 @@ func (s *service) TruncateChunk(req *nilrpc.DGETruncateChunkRequest, res *nilrpc
 }
 
 func (s *service) Encode(req *nilrpc.DGEEncodeRequest, res *nilrpc.DGEEncodeResponse) error {
-	s.encode(req.Token)
+	go s.encode(req.Token)
 	return nil
 }
 
 func (s *service) encode(t token.Token) {
+	rollback := func(reqs []*repository.Request) {
+		for _, r := range reqs {
+			s.store.Push(r)
+		}
+	}
+
 	localShards, err := strconv.Atoi(s.cfg.LocalParityShards)
 	if err != nil {
 		return
 	}
 
-	// Downloads all chunks.
-	for i := 0; i < (localShards)*4; i++ {
+	rollbackReq := make([]*repository.Request, 0)
+
+	fmt.Println("Download first chunk")
+	// Downloads the first chunk.
+	for i := 1; i <= localShards; i++ {
+		req, err := http.NewRequest(
+			"GET",
+			"https://"+string(t.First.Region.Endpoint)+"/chunk",
+			nil,
+		)
+
+		req.Header.Add("Encoding-Group", t.First.EncGrp.String())
+		req.Header.Add("Chunk-Name", t.First.ChunkID)
+		req.Header.Add("Shard-Number", strconv.Itoa(i))
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			// TODO: fail handling.
+			fmt.Printf("\n\n%+v\n\n", err)
+			rollback(rollbackReq)
+			return
+		}
+
+		storeReq := &repository.Request{
+			Op:     repository.WriteAll,
+			Vol:    t.Primary.Volume.String(),
+			LocGid: t.Primary.EncGrp.String(),
+			Cid:    "E_" + t.Primary.ChunkID + "_" + strconv.Itoa(i),
+			In:     resp.Body,
+		}
+
+		if err = s.store.Push(storeReq); err != nil {
+			// TODO: fail handling.
+			fmt.Printf("\n\n%+v\n\n", err)
+			rollback(rollbackReq)
+			return
+		}
+		if err = storeReq.Wait(); err != nil {
+			// TODO: fail handling.
+			fmt.Printf("\n\n%+v\n\n", err)
+			rollback(rollbackReq)
+			return
+		}
+
+		rollbackReq = append(rollbackReq, &repository.Request{
+			Op:     repository.DeleteReal,
+			Vol:    t.Primary.Volume.String(),
+			LocGid: t.Primary.EncGrp.String(),
+			Cid:    "E_" + t.Primary.ChunkID + "_" + strconv.Itoa(i),
+		})
 	}
+
+	fmt.Println("Download second chunk")
+	// Downloads the second chunk.
+	for i := 1; i <= localShards; i++ {
+		req, err := http.NewRequest(
+			"GET",
+			"https://"+string(t.Second.Region.Endpoint)+"/chunk",
+			nil,
+		)
+
+		req.Header.Add("Encoding-Group", t.Second.EncGrp.String())
+		req.Header.Add("Chunk-Name", t.Second.ChunkID)
+		req.Header.Add("Shard-Number", strconv.Itoa(i))
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			// TODO: fail handling.
+			fmt.Printf("\n\n%+v\n\n", err)
+			rollback(rollbackReq)
+			return
+		}
+
+		storeReq := &repository.Request{
+			Op:     repository.WriteAll,
+			Vol:    t.Primary.Volume.String(),
+			LocGid: t.Primary.EncGrp.String(),
+			Cid:    "E_" + t.Primary.ChunkID + "_" + strconv.Itoa(i+localShards),
+			In:     resp.Body,
+		}
+
+		if err = s.store.Push(storeReq); err != nil {
+			// TODO: fail handling.
+			fmt.Printf("\n\n%+v\n\n", err)
+			rollback(rollbackReq)
+			return
+		}
+		if err = storeReq.Wait(); err != nil {
+			// TODO: fail handling.
+			fmt.Printf("\n\n%+v\n\n", err)
+			rollback(rollbackReq)
+			return
+		}
+
+		rollbackReq = append(rollbackReq, &repository.Request{
+			Op:     repository.DeleteReal,
+			Vol:    t.Primary.Volume.String(),
+			LocGid: t.Primary.EncGrp.String(),
+			Cid:    "E_" + t.Primary.ChunkID + "_" + strconv.Itoa(i+localShards),
+		})
+	}
+
+	fmt.Println("Download third chunk")
+	// Downloads the second chunk.
+	for i := 1; i <= localShards; i++ {
+		req, err := http.NewRequest(
+			"GET",
+			"https://"+string(t.Third.Region.Endpoint)+"/chunk",
+			nil,
+		)
+
+		req.Header.Add("Encoding-Group", t.Third.EncGrp.String())
+		req.Header.Add("Chunk-Name", t.Third.ChunkID)
+		req.Header.Add("Shard-Number", strconv.Itoa(i))
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			// TODO: fail handling.
+			fmt.Printf("\n\n%+v\n\n", err)
+			rollback(rollbackReq)
+			return
+		}
+
+		storeReq := &repository.Request{
+			Op:     repository.WriteAll,
+			Vol:    t.Primary.Volume.String(),
+			LocGid: t.Primary.EncGrp.String(),
+			Cid:    "E_" + t.Primary.ChunkID + "_" + strconv.Itoa(i+(localShards*2)),
+			In:     resp.Body,
+		}
+
+		if err = s.store.Push(storeReq); err != nil {
+			// TODO: fail handling.
+			fmt.Printf("\n\n%+v\n\n", err)
+			rollback(rollbackReq)
+			return
+		}
+		if err = storeReq.Wait(); err != nil {
+			// TODO: fail handling.
+			fmt.Printf("\n\n%+v\n\n", err)
+			rollback(rollbackReq)
+			return
+		}
+
+		rollbackReq = append(rollbackReq, &repository.Request{
+			Op:     repository.DeleteReal,
+			Vol:    t.Primary.Volume.String(),
+			LocGid: t.Primary.EncGrp.String(),
+			Cid:    "E_" + t.Primary.ChunkID + "_" + strconv.Itoa(i+(localShards*2)),
+		})
+	}
+
+	// input := make([]io.Reader, 15)
+	// for i := range input {
+	// 	r, w := io.Pipe()
+	// 	storeReq := &repository.Request{
+	// 		Op:     repository.ReadAll,
+	// 		Vol:    t.Primary.Volume.String(),
+	// 		LocGid: t.Primary.EncGrp.String(),
+	// 		Cid:    "E_" + t.Primary.ChunkID + "_" + strconv.Itoa(i+1),
+	// 		Out:    w,
+	// 	}
+	// 	if err := s.store.Push(storeReq); err != nil {
+	// 		rollback(rollbackReq)
+	// 		return
+	// 	}
+	// 	input[i] = r
+	// }
+
+	// parity := make([]io.Writer, 5)
+	// for i := range parity {
+	// 	r, w := io.Pipe()
+	// 	storeReq := &repository.Request{
+	// 		Op:     repository.WriteAll,
+	// 		Vol:    t.Primary.Volume.String(),
+	// 		LocGid: t.Primary.EncGrp.String(),
+	// 		Cid:    "G_" + t.Primary.ChunkID + "_" + strconv.Itoa(i),
+	// 		In:     r,
+	// 	}
+	// 	if err := s.store.Push(storeReq); err != nil {
+	// 		rollback(rollbackReq)
+	// 		return
+	// 	}
+	// 	rollbackReq = append(rollbackReq, &repository.Request{
+	// 		Op:     repository.DeleteReal,
+	// 		Vol:    t.Primary.Volume.String(),
+	// 		LocGid: t.Primary.EncGrp.String(),
+	// 		Cid:    "G_" + t.Primary.ChunkID + "_" + strconv.Itoa(i),
+	// 	})
+	// 	parity[i] = w
+	// }
+
+	// fmt.Println("1111")
+	// enc, err := reedsolomon.NewStream(15, 10)
+	// if err != nil {
+	// 	fmt.Printf("%+v\n\n", err)
+	// 	rollback(rollbackReq)
+	// 	return
+	// }
+
+	// fmt.Println("2222")
+	// err = enc.Encode(input, parity)
+	// if err != nil {
+	// 	fmt.Printf("%+v\n\n", err)
+	// 	rollback(rollbackReq)
+	// 	return
+	// }
 }
 
 // PrepareEncoding selects an unencoded chunk from the given encoding group.
