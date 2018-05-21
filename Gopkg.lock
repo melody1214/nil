@@ -20,6 +20,12 @@
   version = "v1.3.1"
 
 [[projects]]
+  name = "github.com/chanyoung/reedsolomon"
+  packages = ["."]
+  revision = "6bb6130ff6a76a904c1841707d65603aec9cc288"
+  version = "v1.6"
+
+[[projects]]
   name = "github.com/go-sql-driver/mysql"
   packages = ["."]
   revision = "a0583e0143b1624142adab07e0e97fe106d99561"
@@ -74,6 +80,12 @@
   version = "v1.0"
 
 [[projects]]
+  name = "github.com/klauspost/cpuid"
+  packages = ["."]
+  revision = "ae7887de9fa5d2db4eaa8174a7eff2c1ac00f2da"
+  version = "v1.1"
+
+[[projects]]
   name = "github.com/pkg/errors"
   packages = ["."]
   revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
@@ -118,6 +130,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "bad4be6890704b2fb08703906761fd68a0fe919c4910a1cdf7f289cea7462df4"
+  inputs-digest = "09391a6d037242eff8c17b3987c5c8e26284c0d996fc716f4091fa3d73b8f99b"
   solver-name = "gps-cdcl"
   solver-version = 1
