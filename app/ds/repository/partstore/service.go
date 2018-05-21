@@ -633,7 +633,7 @@ func (s *service) CountNonCodedChunk(Vol string, LocGid string) (int, error) {
 	}
 
 	dir := pg.MntPoint
-	encPath := LocGid + "/L_"
+	encPath := "/" + LocGid + "/L_"
 	count := 0
 
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -668,7 +668,7 @@ func (s *service) GetNonCodedChunk(Vol string, LocGid string) (string, error) {
 	}
 
 	dir := pg.MntPoint
-	encPath := LocGid + "/L_"
+	encPath := "/" + LocGid + "/L_"
 	var cid string
 
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {

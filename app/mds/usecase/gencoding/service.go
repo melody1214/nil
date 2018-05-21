@@ -298,7 +298,7 @@ func (s *service) SetJobStatus(req *nilrpc.MGESetJobStatusRequest, res *nilrpc.M
 
 func (s *service) JobFinished(req *nilrpc.MGEJobFinishedRequest, res *nilrpc.MGEJobFinishedResponse) error {
 	if !s.store.AmILeader() {
-		s.jobFinished(&req.Token)
+		return s.jobFinished(&req.Token)
 	}
 	return s.store.JobFinished(&req.Token)
 }
