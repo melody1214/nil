@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/rpc"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/chanyoung/nil/app/ds/repository"
@@ -88,7 +89,7 @@ func (s *service) encode(t token.Token) {
 			Op:     repository.WriteAll,
 			Vol:    t.Primary.Volume.String(),
 			LocGid: t.Primary.EncGrp.String(),
-			Cid:    "G_" + t.Primary.ChunkID + "_" + strconv.Itoa(i),
+			Cid:    "E_" + t.Primary.ChunkID + "_" + strconv.Itoa(i),
 			In:     r,
 		}
 		if err := s.store.Push(storeReq); err != nil {
@@ -99,7 +100,7 @@ func (s *service) encode(t token.Token) {
 			Op:     repository.DeleteReal,
 			Vol:    t.Primary.Volume.String(),
 			LocGid: t.Primary.EncGrp.String(),
-			Cid:    "G_" + t.Primary.ChunkID + "_" + strconv.Itoa(i),
+			Cid:    "E_" + t.Primary.ChunkID + "_" + strconv.Itoa(i),
 		})
 		parity = append(parity, w)
 		openedReadStreams = append(openedReadStreams, r)
@@ -306,14 +307,14 @@ func (s *service) downloadChunk(src, dst *token.Unencoded) (rollbacks []*reposit
 			Op:     repository.WriteAll,
 			Vol:    dst.Volume.String(),
 			LocGid: dst.EncGrp.String(),
-			Cid:    "E_" + src.ChunkID + "_" + strconv.Itoa(i),
+			Cid:    "U_" + src.ChunkID + "_" + strconv.Itoa(i),
 			In:     resp.Body,
 		}
 		rollbacks = append(rollbacks, &repository.Request{
 			Op:     repository.DeleteReal,
 			Vol:    dst.Volume.String(),
 			LocGid: dst.EncGrp.String(),
-			Cid:    "E_" + src.ChunkID + "_" + strconv.Itoa(i),
+			Cid:    "U_" + src.ChunkID + "_" + strconv.Itoa(i),
 		})
 
 		if err = s.store.Push(storeReq); err != nil {
@@ -426,8 +427,8 @@ func (s *service) sendEncodedChunks(encoded []*repository.Request) error {
 
 		req.Header.Add("Volume", vID.String())
 		req.Header.Add("Encoding-Group", encoded[idx].LocGid)
-		// ex. G_1_0 -> G_1
-		req.Header.Add("Chunk-Name", encoded[idx].Cid[:len(encoded[idx].Cid)-2])
+		// ex. E_1_0 -> G_1
+		req.Header.Add("Chunk-Name", strings.Replace(encoded[idx].Cid[:len(encoded[idx].Cid)-2], "E", "G", 1))
 		req.Header.Add("Content-Length", s.cfg.ChunkSize)
 
 		resp, err := http.DefaultClient.Do(req)
