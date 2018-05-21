@@ -109,6 +109,7 @@ func (e *endec) genLocalParity(c chunk) error {
 			if err != nil {
 				return errors.Wrap(err, "error occured in calculating local parity")
 			}
+			return nil
 		case <-cmapChangedC:
 			cmapVer = e.cmapAPI.GetLatestCMapVersion()
 			newEg, err := e.cmapAPI.SearchCallEncGrp().ID(cmap.ID(egID)).Do()
