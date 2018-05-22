@@ -365,16 +365,24 @@ function putobjects() {
 }
 
 function getobjects() {
-    for i in $(seq 1 $TOTALUSERS); do
-        local ak=user$i[accesskey]
-        local sk=user$i[secretkey]
-        local region=user$i[bucketregion]
-
+    for i in $(seq 1 50); do
         for j in $(seq 1 $BUCKETS); do
-            local bucket="user$i-bucket$j"
+            for k in $(seq 1 $TOTALUSERS); do
+                local ak=user$k[accesskey]
+                local sk=user$k[secretkey]
+                local region=user$k[bucketregion]
+                local bucket="user$k-bucket$j"
 
-            for k in $(seq 1 10); do
-                s3cmd get s3://$bucket/obj$k $DIR/$bucket-obj$k --access_key=${!ak} --secret_key=${!sk} --region=${!region} --no-check-hostname
+                for z in $(seq 1 ${#REGIONS[@]}); do
+                    local idx=$(($z-1))
+                    if [ ${REGIONS[$idx]} = ${!region} ]; then
+                        host=$idx
+                        break
+                    fi
+                done
+
+                local gwport=$((50000 + $host))
+                s3cmd get s3://$bucket/obj$k $DIR/$bucket-obj$k --access_key=${!ak} --secret_key=${!sk} --region=${!region} --no-check-hostname --host=https://localhost:$gwport --host-bucket=https://localhost:$gwport
             done
         done
     done
@@ -437,6 +445,10 @@ function main() {
     # Put objects.
     sleep 15
     putobjects
+
+    # # Get objects.
+    # sleep 5
+    # getobjects
 
     # Test local recovery
     if [ $TESTLOCALRECOVERY = true ]; then

@@ -405,6 +405,7 @@ func (h *handlers) GetObjectHandler(w http.ResponseWriter, r *http.Request) {
 		Vol:    r.Header.Get("Volume-Id"),
 		Oid:    strings.Replace(strings.Trim(r.URL.Path, "/"), "/", ".", -1),
 		LocGid: r.Header.Get("Local-Chain-Id"),
+		Osize:  size,
 
 		Out: w,
 	}
