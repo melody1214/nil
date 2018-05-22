@@ -6,7 +6,9 @@ import (
 
 	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/app/mds/usecase/user"
+	"github.com/chanyoung/nil/pkg/security"
 	"github.com/go-sql-driver/mysql"
+	"github.com/hashicorp/raft"
 )
 
 type userStore struct {
@@ -18,6 +20,29 @@ func NewUserRepository(s *Store) user.Repository {
 	return &userStore{
 		Store: s,
 	}
+}
+
+// AmILeader returns true if I am the global cluster leader mds.
+func (s *userStore) AmILeader() bool {
+	return s.raft.State() == raft.Leader
+}
+
+func (s *userStore) LeaderEndpoint() (endpoint string) {
+	return s.leaderEndPoint()
+}
+
+func (s *userStore) AddUser(name string, ak security.APIKey) error {
+	q := fmt.Sprintf(
+		`
+		INSERT INTO user (user_name, user_access_key, user_secret_key)
+		SELECT * FROM (SELECT '%s' AS un, '%s' AS ak, '%s' AS sk) AS tmp
+		WHERE NOT EXISTS (
+			SELECT user_name FROM user WHERE user_name = '%s'
+		) LIMIT 1;
+		`, name, ak.AccessKey(), ak.SecretKey(), name,
+	)
+	_, err := s.PublishCommand("execute", q)
+	return err
 }
 
 func (s *userStore) MakeBucket(bucketName, accessKey, region string) (err error) {

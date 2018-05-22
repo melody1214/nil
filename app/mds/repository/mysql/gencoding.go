@@ -150,44 +150,7 @@ func (s *gencodingStore) MakeGlobalEncodingJob(t *token.Token, p *token.Unencode
 }
 
 func (s *gencodingStore) LeaderEndpoint() (endpoint string) {
-	if s.raft == nil {
-		return
-	}
-
-	future := s.raft.GetConfiguration()
-	if err := future.Error(); err != nil {
-		return
-	}
-
-	servers := future.Configuration().Servers
-	// Not joined yet.
-	if len(servers) == 1 {
-		return
-	}
-
-	var leader *raft.Server
-	leaderAddress := s.raft.Leader()
-	for _, s := range servers {
-		if s.Address == leaderAddress {
-			leader = &s
-			break
-		}
-	}
-
-	if leader == nil {
-		return
-	}
-
-	q := fmt.Sprintf(
-		`
-		SELECT rg_end_point
-		FROM region
-		WHERE rg_name='%s'
-		`, string(leader.ID),
-	)
-
-	s.QueryRow(repository.NotTx, q).Scan(&endpoint)
-	return
+	return s.leaderEndPoint()
 }
 
 func (s *gencodingStore) GetJob(regionName string) (*token.Token, error) {

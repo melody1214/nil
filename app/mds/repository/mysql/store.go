@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -178,6 +179,48 @@ func (s *Store) Rollback(txid repository.TxID) error {
 // Auto remove the transaction only when the transaction has been succeeded.
 func (s *Store) Commit(txid repository.TxID) error {
 	return s.db.commit(txid)
+}
+
+// leaderEndPoint returns the endpoint of global cluster region.
+func (s *Store) leaderEndPoint() (endpoint string) {
+	if s.raft == nil {
+		return
+	}
+
+	future := s.raft.GetConfiguration()
+	if err := future.Error(); err != nil {
+		return
+	}
+
+	servers := future.Configuration().Servers
+	// Not joined yet.
+	if len(servers) == 1 {
+		return
+	}
+
+	var leader *raft.Server
+	leaderAddress := s.raft.Leader()
+	for _, s := range servers {
+		if s.Address == leaderAddress {
+			leader = &s
+			break
+		}
+	}
+
+	if leader == nil {
+		return
+	}
+
+	q := fmt.Sprintf(
+		`
+		SELECT rg_end_point
+		FROM region
+		WHERE rg_name='%s'
+		`, string(leader.ID),
+	)
+
+	s.QueryRow(repository.NotTx, q).Scan(&endpoint)
+	return
 }
 
 // NewObjectRepository returns a new instance of a mysql object repository.

@@ -2,6 +2,8 @@ package user
 
 import (
 	"fmt"
+	"net/rpc"
+	"time"
 
 	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/pkg/nilrpc"
@@ -29,41 +31,66 @@ func NewService(cfg *config.Mds, s Repository) Service {
 	}
 }
 
-// TODO: CQRS
-
 // AddUser adds a new user with the given name.
 func (s *service) AddUser(req *nilrpc.MUSAddUserRequest, res *nilrpc.MUSAddUserResponse) error {
-	ak := security.NewAPIKey()
+	// User is the globally shared metadata.
+	// If this node is not a leader but has received a request, it forwards
+	// the request to the leader node instead.
+	if !s.store.AmILeader() {
+		leaderEndpoint := s.store.LeaderEndpoint()
+		if leaderEndpoint == "" {
+			return fmt.Errorf("This node is not leader, and the leader is not exist in global cluster")
+		}
 
-	q := fmt.Sprintf(
-		`
-		INSERT INTO user (user_name, user_access_key, user_secret_key)
-		SELECT * FROM (SELECT '%s' AS un, '%s' AS ak, '%s' AS sk) AS tmp
-		WHERE NOT EXISTS (
-			SELECT user_name FROM user WHERE user_name = '%s'
-		) LIMIT 1;
-		`, req.Name, ak.AccessKey(), ak.SecretKey(), req.Name,
-	)
-	_, err := s.store.PublishCommand("execute", q)
-	if err != nil {
-		return err
+		conn, err := nilrpc.Dial(leaderEndpoint, nilrpc.RPCNil, time.Duration(2*time.Second))
+		if err != nil {
+			return err
+		}
+		defer conn.Close()
+
+		cli := rpc.NewClient(conn)
+		defer cli.Close()
+
+		return cli.Call(nilrpc.MdsUserAddUser.String(), req, res)
 	}
+
+	ak := security.NewAPIKey()
+	s.store.AddUser(req.Name, ak)
 
 	res.AccessKey = ak.AccessKey()
 	res.SecretKey = ak.SecretKey()
-
 	return nil
 }
 
 // MakeBucket creates a bucket with the given name.
 func (s *service) MakeBucket(req *nilrpc.MUSMakeBucketRequest, res *nilrpc.MUSMakeBucketResponse) error {
+	// Bucket is the globally shared metadata.
+	// If this node is not a leader but has received a request, it forwards
+	// the request to the leader node instead.
+	if !s.store.AmILeader() {
+		leaderEndpoint := s.store.LeaderEndpoint()
+		if leaderEndpoint == "" {
+			return fmt.Errorf("This node is not leader, and the leader is not exist in global cluster")
+		}
+
+		conn, err := nilrpc.Dial(leaderEndpoint, nilrpc.RPCNil, time.Duration(2*time.Second))
+		if err != nil {
+			return err
+		}
+		defer conn.Close()
+
+		cli := rpc.NewClient(conn)
+		defer cli.Close()
+
+		return cli.Call(nilrpc.MdsUserMakeBucket.String(), req, res)
+	}
+
 	err := s.store.MakeBucket(req.BucketName, req.AccessKey, req.Region)
 	if err == repository.ErrDuplicateEntry {
 		res.S3ErrCode = s3.ErrBucketAlreadyExists
 	} else if err != nil {
 		res.S3ErrCode = s3.ErrInternalError
 	}
-
 	return nil
 }
 
