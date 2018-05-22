@@ -68,20 +68,18 @@ func (w *worker) rbMakeEG() fsm {
 		return w.rbFinish
 	}
 
-	return w.rbUpdateMap
-}
-
-// rbUpdateMap updates the cluster map with the updated db.
-func (w *worker) rbUpdateMap() fsm {
-	if err := w.updateClusterMap(); err != nil {
-		// TODO: handling error
-	}
-
-	return w.rbFinish
+	w.job.mapChanged = true
+	return w.rbMakeEG
 }
 
 // rbFinish cleanup the job.
 func (w *worker) rbFinish() fsm {
+	if w.job.mapChanged {
+		if err := w.updateClusterMap(); err != nil {
+			// TODO: handling error
+		}
+	}
+
 	w.job.FinishedAt = TimeNow()
 
 	if w.job.err == errNextTime {
@@ -122,7 +120,7 @@ type ByFreeChain []cmap.Volume
 func (c ByFreeChain) Len() int      { return len(c) }
 func (c ByFreeChain) Swap(i, j int) { c[i], c[j] = c[j], c[i] }
 func (c ByFreeChain) Less(i, j int) bool {
-	return c[i].MaxEG-len(c[i].EncGrps) < c[j].MaxEG-len(c[j].EncGrps)
+	return c[i].MaxEG-len(c[i].EncGrps) > c[j].MaxEG-len(c[j].EncGrps)
 }
 
 func needRebalance(vols []cmap.Volume) bool {
@@ -165,23 +163,15 @@ func (w *worker) rebalanceWithinSameVolumeSpeedGroup(vols []cmap.Volume) error {
 }
 
 func (w *worker) rebalanceVolumeGroup(vols []cmap.Volume) error {
-	doRebalance := false
 	for _, v := range vols {
-		if isUnbalanced(v) == false {
+		if !isUnbalanced(v) {
 			continue
 		}
 
-		if err := w.doRebalance(v, vols); err != nil {
-			return err
-		}
-		doRebalance = true
+		return w.doRebalance(v, vols)
 	}
 
-	if doRebalance == false {
-		return fmt.Errorf("there is no rebalanceable volume set")
-	}
-
-	return nil
+	return fmt.Errorf("there is no rebalanceable volume set")
 }
 
 func (w *worker) doRebalance(target cmap.Volume, group []cmap.Volume) (err error) {
@@ -252,7 +242,7 @@ func (w *worker) pickOneNewEncodingGroupVolume(picked []cmap.Volume, candidates 
 			continue
 		}
 
-		if len(c.EncGrps) > c.MaxEG {
+		if len(c.EncGrps) >= c.MaxEG {
 			continue
 		}
 

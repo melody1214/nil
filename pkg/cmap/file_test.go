@@ -45,22 +45,22 @@ func TestEncodeDecode(t *testing.T) {
 			{
 				Addr: "localhost:1000",
 				Type: MDS,
-				Stat: Alive,
+				Stat: NodeAlive,
 			},
 			{
 				Addr: "localhost:2000",
 				Type: DS,
-				Stat: Alive,
+				Stat: NodeAlive,
 			},
 			{
 				Addr: "localhost:3000",
 				Type: DS,
-				Stat: Faulty,
+				Stat: NodeFaulty,
 			},
 			{
 				Addr: "localhost:4000",
 				Type: GW,
-				Stat: Alive,
+				Stat: NodeAlive,
 			},
 		},
 		Vols: []Volume{

@@ -13,28 +13,28 @@ func TestSearchCallNode(t *testing.T) {
 			Name: NodeName("node0"),
 			Addr: NodeAddress("localhost:1000"),
 			Type: MDS,
-			Stat: Alive,
+			Stat: NodeAlive,
 		},
 		{
 			ID:   ID(1),
 			Name: NodeName("node1"),
 			Addr: NodeAddress("localhost:2000"),
 			Type: DS,
-			Stat: Alive,
+			Stat: NodeAlive,
 		},
 		{
 			ID:   ID(2),
 			Name: NodeName("node2"),
 			Addr: NodeAddress("localhost:3000"),
 			Type: DS,
-			Stat: Faulty,
+			Stat: NodeFaulty,
 		},
 		{
 			ID:   ID(3),
 			Name: NodeName("node3"),
 			Addr: NodeAddress("localhost:4000"),
 			Type: GW,
-			Stat: Alive,
+			Stat: NodeAlive,
 		},
 	}
 

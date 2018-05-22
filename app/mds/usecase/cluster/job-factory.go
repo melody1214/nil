@@ -24,7 +24,8 @@ func newJobFactory(s jobRepository) *jobFactory {
 // create creates an event with a given event information.
 func (f *jobFactory) create(e *Event, private interface{}) (*Job, error) {
 	j := &Job{
-		Event: *e,
+		Event:      *e,
+		mapChanged: false,
 	}
 
 	switch e.Type {

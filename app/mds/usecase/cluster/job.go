@@ -99,6 +99,9 @@ type Job struct {
 
 	// Store errors that occur during execution.
 	err error
+
+	// Set when the map is changed.
+	mapChanged bool
 }
 
 func (j *Job) getPrivate() (interface{}, error) {

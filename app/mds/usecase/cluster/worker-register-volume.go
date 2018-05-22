@@ -87,3 +87,12 @@ func (w *worker) rvFinish() fsm {
 
 	return nil
 }
+
+func calcMaxEG(volumeSize uint64) int {
+	if volumeSize <= 0 {
+		return 0
+	}
+
+	// Test, eg per 10MB,
+	return int(volumeSize / 10)
+}
