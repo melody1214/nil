@@ -53,6 +53,34 @@ func (s *clusterStore) FindAllNodes(txid repository.TxID) (nodes []cmap.Node, er
 		nodes = append(nodes, n)
 	}
 
+	for i, n := range nodes {
+		q = fmt.Sprintf(
+			`
+			SELECT
+				vl_id
+			FROM
+				volume
+			WHERE
+				vl_node='%d'
+			`, n.ID,
+		)
+
+		var vID cmap.ID
+		rows, err = s.Query(txid, q)
+		if err != nil {
+			return nil, err
+		}
+
+		for rows.Next() {
+			if err = rows.Scan(&vID); err != nil {
+				rows.Close()
+				return nil, err
+			}
+			nodes[i].Vols = append(nodes[i].Vols, vID)
+		}
+		rows.Close()
+	}
+
 	return
 }
 
@@ -87,6 +115,34 @@ func (s *clusterStore) FindAllVolumes(txid repository.TxID) (vols []cmap.Volume,
 		}
 
 		vols = append(vols, v)
+	}
+
+	for i, v := range vols {
+		q = fmt.Sprintf(
+			`
+			SELECT
+				egv_encoding_group
+			FROM
+				encoding_group_volume
+			WHERE
+				egv_volume=%d
+			`, v.ID,
+		)
+
+		var egID cmap.ID
+		rows, err = s.Query(txid, q)
+		if err != nil {
+			return nil, err
+		}
+
+		for rows.Next() {
+			if err = rows.Scan(&egID); err != nil {
+				rows.Close()
+				return nil, err
+			}
+			vols[i].EncGrps = append(vols[i].EncGrps, egID)
+		}
+		rows.Close()
 	}
 
 	return

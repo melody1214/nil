@@ -164,31 +164,4 @@ var generateSQLBase = []string{
 			FOREIGN KEY (guc_region) REFERENCES region (rg_id)
 		)
 	`,
-	// `
-	// 	CREATE TABLE IF NOT EXISTS global_encoding_table (
-	// 		get_id int unsigned NOT NULL AUTO_INCREMENT,
-	// 		get_global_encoding_group int unsigned NOT NULL,
-	// 		get_status int unsigned NOT NULL,
-	// 		PRIMARY KEY (get_id),
-	// 		FOREIGN KEY (get_global_encoding_group) REFERENCES global_encoding_group (geg_id)
-	// 	)
-	// `,
-	// `
-	// 	CREATE TABLE IF NOT EXISTS global_encoding_table_eg (
-	// 		gete_id int unsigned NOT NULL AUTO_INCREMENT,
-	// 		gete_table_idx int unsigned NOT NULL,
-	// 		gete_encoding_group int unsigned NOT NULL,
-	// 		PRIMARY KEY (gete_id),
-	// 		FOREIGN KEY (gete_table_idx) REFERENCES global_encoding_table (get_id),
-	// 		FOREIGN KEY (gete_encoding_group) REFERENCES encoding_group (eg_id)
-	// 	)
-	// `,
-	// `
-	// 	CREATE TABLE IF NOT EXISTS global_encoding_request (
-	// 		ger_region int unsigned NOT NULL,
-	// 		ger_encoding_group_chunk int unsigned NOT NULL,
-	// 		PRIMARY KEY (ger_region),
-	// 		FOREIGN KEY (ger_region) REFERENCES region (rg_id)
-	// 	)
-	// `,
 }
