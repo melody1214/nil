@@ -290,12 +290,28 @@ func (h *handlers) writeCopy(req client.RequestEvent) {
 		return
 	}
 
+	tmp, err := strconv.ParseInt(req.Request().Header.Get("Volume-Id"), 10, 64)
+	if err != nil {
+		ctxLogger.Error(errors.Wrap(err, "failed to parse volume id"))
+		req.SendInternalError()
+		return
+	}
+	vol := cmap.ID(tmp)
+
+	tmp, err = strconv.ParseInt(req.Request().Header.Get("Local-Chain-Id"), 10, 64)
+	if err != nil {
+		ctxLogger.Error(errors.Wrap(err, "failed to parse encoding group id"))
+		req.SendInternalError()
+		return
+	}
+	encgrp := cmap.ID(tmp)
+
 	storeReq := &repository.Request{
 		Op:     repository.Write,
-		Vol:    req.Request().Header.Get("Volume-Id"),
+		Vol:    vol.String(),
 		Oid:    strings.Replace(strings.Trim(req.Request().URL.Path, "/"), "/", ".", -1),
 		Cid:    req.Request().Header.Get("Chunk-Id"),
-		LocGid: req.Request().Header.Get("Local-Chain-Id"),
+		LocGid: encgrp.String(),
 		Osize:  contentLength,
 		Md5:    req.Request().Header.Get("Md5"),
 
@@ -354,8 +370,8 @@ func (h *handlers) writeCopy(req client.RequestEvent) {
 	metaReq := &nilrpc.MOBObjectPutRequest{
 		Name:          storeReq.Oid,
 		Bucket:        strings.Split(strings.Trim(req.Request().URL.Path, "/"), "/")[0],
-		EncodingGroup: storeReq.LocGid,
-		Volume:        storeReq.Vol,
+		EncodingGroup: encgrp,
+		Volume:        vol,
 	}
 	metaRes := &nilrpc.MOBObjectPutResponse{}
 

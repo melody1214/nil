@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/chanyoung/nil/app/mds/repository"
-	"github.com/chanyoung/nil/app/mds/usecase/object"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
@@ -221,9 +220,4 @@ func (s *Store) leaderEndPoint() (endpoint string) {
 
 	s.QueryRow(repository.NotTx, q).Scan(&endpoint)
 	return
-}
-
-// NewObjectRepository returns a new instance of a mysql object repository.
-func NewObjectRepository(s *Store) object.Repository {
-	return s
 }

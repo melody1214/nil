@@ -1,9 +1,7 @@
 package object
 
 import (
-	"fmt"
-
-	"github.com/chanyoung/nil/app/mds/repository"
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/sirupsen/logrus"
@@ -24,81 +22,33 @@ func NewHandlers(s Repository) Handlers {
 	}
 }
 
+// ObjInfo holds the information which is required to access the object.
+type ObjInfo struct {
+	Name   string
+	Bucket string
+	EncGrp cmap.ID
+	Vol    cmap.ID
+	Node   cmap.ID
+}
+
 func (h *handlers) Put(req *nilrpc.MOBObjectPutRequest, res *nilrpc.MOBObjectPutResponse) error {
-	ctxLogger := mlog.GetMethodLogger(logger, "handlers.Put")
-
-	q := fmt.Sprintf(
-		`
-		INSERT INTO object (obj_name, obj_bucket, obj_encoding_group, obj_volume)
-		SELECT '%s', b.bk_id, '%s', '%s'
-		FROM bucket b
-		WHERE bk_name = '%s'
-		`, req.Name, req.EncodingGroup, req.Volume, req.Bucket,
-	)
-
-	r, err := h.store.Execute(repository.NotTx, q)
-	if err != nil {
-		ctxLogger.Error(err)
-		return err
-	}
-
-	a, err := r.RowsAffected()
-	if err != nil {
-		ctxLogger.Error(err)
-		return err
-	}
-
-	if a == 0 {
-		err = fmt.Errorf("no rows are affected")
-		ctxLogger.Errorf("%+v", req)
-		return err
-	}
-
-	return nil
+	return h.store.Put(&ObjInfo{
+		Name:   req.Name,
+		Bucket: req.Bucket,
+		EncGrp: req.EncodingGroup,
+		Vol:    req.Volume,
+	})
 }
 
 func (h *handlers) Get(req *nilrpc.MOBObjectGetRequest, res *nilrpc.MOBObjectGetResponse) error {
-	q := fmt.Sprintf(
-		`
-		SELECT
-			obj_encoding_group, obj_volume
-		FROM
-			object
-		WHERE
-			obj_name = '%s'
-		`, req.Name,
-	)
-
-	row := h.store.QueryRow(repository.NotTx, q)
-	if row == nil {
-		return fmt.Errorf("mysql not connected yet")
-	}
-
-	err := row.Scan(&res.EncodingGroupID, &res.VolumeID)
+	o, err := h.store.Get(req.Name)
 	if err != nil {
-		return err
+		return nil
 	}
 
-	q = fmt.Sprintf(
-		`
-		SELECT
-			vl_node
-		FROM
-			volume
-		WHERE
-			vl_id = '%d'
-		`, res.VolumeID,
-	)
-
-	row = h.store.QueryRow(repository.NotTx, q)
-	if row == nil {
-		return fmt.Errorf("mysql not connected yet")
-	}
-
-	err = row.Scan(&res.DsID)
-	if err != nil {
-		return err
-	}
+	res.EncodingGroupID = o.EncGrp
+	res.VolumeID = o.Vol
+	res.DsID = o.Node
 
 	return nil
 }

@@ -1,10 +1,12 @@
 package nilrpc
 
+import "github.com/chanyoung/nil/pkg/cmap"
+
 type MOBObjectPutRequest struct {
 	Name          string
 	Bucket        string
-	EncodingGroup string
-	Volume        string
+	EncodingGroup cmap.ID
+	Volume        cmap.ID
 }
 type MOBObjectPutResponse struct{}
 
@@ -13,7 +15,7 @@ type MOBObjectGetRequest struct {
 	Bucket string
 }
 type MOBObjectGetResponse struct {
-	EncodingGroupID int64
-	VolumeID        int64
-	DsID            int64
+	EncodingGroupID cmap.ID
+	VolumeID        cmap.ID
+	DsID            cmap.ID
 }

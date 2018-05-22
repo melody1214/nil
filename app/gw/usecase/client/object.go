@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"strconv"
 	"strings"
 
 	"github.com/chanyoung/nil/pkg/client"
@@ -128,8 +127,8 @@ func (h *handlers) GetObjectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	proxy := httputil.NewSingleHostReverseProxy(rpURL)
-	r.Header.Add("Volume-Id", strconv.FormatInt(res.VolumeID, 10))
-	r.Header.Add("Local-Chain-Id", strconv.FormatInt(res.EncodingGroupID, 10))
+	r.Header.Add("Volume-Id", res.VolumeID.String())
+	r.Header.Add("Local-Chain-Id", res.EncodingGroupID.String())
 	proxy.ErrorLog = log.New(logger.Writer(), "http reverse proxy", log.Lshortfile)
 	proxy.ServeHTTP(w, r)
 }
