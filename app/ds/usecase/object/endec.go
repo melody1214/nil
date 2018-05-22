@@ -3,7 +3,6 @@ package object
 import (
 	"fmt"
 	"io"
-	"log"
 	"net/rpc"
 	"strconv"
 	"time"
@@ -304,7 +303,7 @@ func (e *endec) renameToL(c chunk) error {
 	for i, n := range nodes {
 		conn, err := nilrpc.Dial(n.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
 		if err != nil {
-			log.Fatal(err)
+			return errors.Wrap(err, "failed to dial")
 		}
 		defer conn.Close()
 
@@ -375,7 +374,7 @@ func (e *endec) truncateAllChunks(c chunk) error {
 	for i, n := range nodes {
 		conn, err := nilrpc.Dial(n.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
 		if err != nil {
-			log.Fatal(err)
+			return errors.Wrap(err, "failed to dial")
 		}
 
 		req := &nilrpc.DGETruncateChunkRequest{
