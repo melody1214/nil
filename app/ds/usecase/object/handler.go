@@ -340,7 +340,7 @@ func (h *handlers) writeCopy(req client.RequestEvent) {
 		return
 	}
 
-	mds, err := h.cmapAPI.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
+	mds, err := h.cmapAPI.SearchCallNode().Type(cmap.MDS).Status(cmap.NodeAlive).Do()
 	if err != nil {
 		// Rollback writed data.
 		storeReq.Cid = ""

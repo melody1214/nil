@@ -117,7 +117,7 @@ func SetupDeliveryService(cfg *config.Mds, uss user.Service, cls cluster.Service
 		Node: cmap.Node{
 			Name: cmapConf.Name,
 			Type: cmapConf.Type,
-			Stat: cmap.Alive,
+			Stat: cmap.NodeAlive,
 			Addr: cmapConf.Address,
 		},
 	}

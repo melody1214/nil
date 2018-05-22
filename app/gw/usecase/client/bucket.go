@@ -53,7 +53,7 @@ func (h *handlers) makeBucket(accessKey, region, bucket string) error {
 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.makeBucket")
 
 	// 1. Lookup mds from cmap.
-	mds, err := h.cmapAPI.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
+	mds, err := h.cmapAPI.SearchCallNode().Type(cmap.MDS).Status(cmap.NodeAlive).Do()
 	if err != nil {
 		ctxLogger.Error(err)
 		return errInternal

@@ -35,7 +35,7 @@ func NewHandlers(cmapAPI cmap.SlaveAPI, f *request.RequestEventFactory, authHand
 }
 
 func (h *handlers) getObjectLocation(oid, bucket string) (*nilrpc.MOBObjectGetResponse, error) {
-	mds, err := h.cmapAPI.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
+	mds, err := h.cmapAPI.SearchCallNode().Type(cmap.MDS).Status(cmap.NodeAlive).Do()
 	if err != nil {
 		return nil, errors.Wrap(err, "find alive mds failed")
 	}

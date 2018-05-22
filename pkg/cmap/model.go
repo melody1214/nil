@@ -75,18 +75,18 @@ func (t NodeType) String() string {
 type NodeStatus string
 
 const (
-	// Alive : healthy node
-	Alive NodeStatus = "Alive"
-	// Suspect : maybe faulty
-	Suspect NodeStatus = "Suspect"
-	// Faulty : faulty
-	Faulty NodeStatus = "Faulty"
+	// NodeAlive : healthy node
+	NodeAlive NodeStatus = "Alive"
+	// NodeSuspect : maybe faulty
+	NodeSuspect NodeStatus = "Suspect"
+	// NodeFaulty : faulty
+	NodeFaulty NodeStatus = "Faulty"
 )
 
 // String returns a string of the node status.
 func (s NodeStatus) String() string {
 	switch s {
-	case Alive, Suspect, Faulty:
+	case NodeAlive, NodeSuspect, NodeFaulty:
 		return string(s)
 	default:
 		return unknown
@@ -129,17 +129,19 @@ func (s VolumeSpeed) String() string {
 type VolumeStatus string
 
 const (
-	// Prepared represents the volume is ready to run.
-	Prepared VolumeStatus = "Prepared"
-	// Active represents the volume is now running.
-	Active VolumeStatus = "Active"
-	// Failed represents the volume has some problems and stopped now.
-	Failed VolumeStatus = "Failed"
+	// VolPrepared represents the volume is ready to run.
+	VolPrepared VolumeStatus = "Prepared"
+	// VolActive represents the volume is now running.
+	VolActive VolumeStatus = "Active"
+	// VolSuspect represents the volume maybe failed.
+	VolSuspect VolumeStatus = "Suspect"
+	// VolFailed represents the volume has some problems and stopped now.
+	VolFailed VolumeStatus = "Failed"
 )
 
 func (s VolumeStatus) String() string {
 	switch s {
-	case Prepared, Active, Failed:
+	case VolPrepared, VolActive, VolSuspect, VolFailed:
 		return string(s)
 	default:
 		return unknown

@@ -336,7 +336,7 @@ func (s *service) GetCandidateChunk(req *nilrpc.DGEGetCandidateChunkRequest, res
 }
 
 func (s *service) setJobStatus(id int64, status mdsgencoding.Status) error {
-	mds, err := s.cmapAPI.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
+	mds, err := s.cmapAPI.SearchCallNode().Type(cmap.MDS).Status(cmap.NodeAlive).Do()
 	if err != nil {
 		return err
 	}
@@ -393,7 +393,7 @@ func (s *service) sendEncodedChunks(encoded []*repository.Request) error {
 			return err
 		}
 
-		n, err := s.cmapAPI.SearchCallNode().ID(v.Node).Status(cmap.Alive).Do()
+		n, err := s.cmapAPI.SearchCallNode().ID(v.Node).Status(cmap.NodeAlive).Do()
 		if err != nil {
 			// TODO: remove sent chunks.
 			return err
@@ -443,7 +443,7 @@ func (s *service) sendEncodedChunks(encoded []*repository.Request) error {
 }
 
 func (s *service) finishJob(t *token.Token) error {
-	mds, err := s.cmapAPI.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
+	mds, err := s.cmapAPI.SearchCallNode().Type(cmap.MDS).Status(cmap.NodeAlive).Do()
 	if err != nil {
 		return err
 	}

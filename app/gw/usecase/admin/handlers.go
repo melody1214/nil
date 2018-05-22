@@ -37,7 +37,7 @@ func (h *handlers) Proxying(conn net.Conn) {
 	tlsConfig := security.DefaultTLSConfig()
 
 	// 2. Lookup mds from cmap.
-	mds, err := h.cmapAPI.SearchCallNode().Type(cmap.MDS).Status(cmap.Alive).Do()
+	mds, err := h.cmapAPI.SearchCallNode().Type(cmap.MDS).Status(cmap.NodeAlive).Do()
 	if err != nil {
 		ctxLogger.Error(errors.Wrap(err, "find alive mds failed"))
 		return

@@ -377,7 +377,7 @@ func (s *clusterStore) RegisterVolume(txid repository.TxID, v *cmap.Volume) erro
 		`
 		INSERT INTO volume (vl_node, vl_status, vl_size, vl_encoding_group, vl_max_encoding_group, vl_speed)
 		VALUES(%d, '%s', '%d', '%d', '%d', '%s')
-		`, v.Node, cmap.Prepared, v.Size, 0, v.MaxEG, v.Speed,
+		`, v.Node, cmap.VolPrepared, v.Size, 0, v.MaxEG, v.Speed,
 	)
 
 	r, err := s.Execute(txid, q)

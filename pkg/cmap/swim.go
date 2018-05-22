@@ -34,7 +34,7 @@ func (s *server) ping() {
 		}
 
 		// Not faulty node.
-		if n.Stat == Faulty {
+		if n.Stat == NodeFaulty {
 			continue
 		}
 
@@ -57,7 +57,7 @@ func (s *server) ping() {
 	if err != nil {
 		logger.Warn(errors.Wrapf(err, "failed to send ping message to node %+v", fetched))
 
-		s.disseminate(fetched.ID, Suspect)
+		s.disseminate(fetched.ID, NodeSuspect)
 		// Wait for a minute and retry via ping request.
 		time.Sleep(1 * time.Minute)
 		s.pingRequest(fetched.ID)
@@ -76,10 +76,10 @@ func (s *server) pingRequest(dstID ID) {
 	dstNode, err := s.cMapManager.SearchCallNode().ID(dstID).Do()
 	if err != nil {
 		logger.Error(errors.Wrapf(err, "failed to find ping request destination node: %v", dstID))
-		s.disseminate(dstID, Faulty)
+		s.disseminate(dstID, NodeFaulty)
 		return
 	}
-	if dstNode.Stat != Suspect {
+	if dstNode.Stat != NodeSuspect {
 		// Already handled.
 		return
 	}
@@ -95,7 +95,7 @@ func (s *server) pingRequest(dstID ID) {
 		}
 
 		// Not faulty or suspect node.
-		if n.Stat == Faulty || n.Stat == Suspect {
+		if n.Stat == NodeFaulty || n.Stat == NodeSuspect {
 			continue
 		}
 
@@ -123,11 +123,11 @@ func (s *server) pingRequest(dstID ID) {
 	wg.Wait()
 
 	if alive {
-		// Suspected node will make themselves to alive.
+		// NodeSuspected node will make themselves to alive.
 		return
 	}
 
-	s.disseminate(dstID, Faulty)
+	s.disseminate(dstID, NodeFaulty)
 }
 
 // sendPing creates rpc client and send ping message by using it.
@@ -186,7 +186,7 @@ func (s *server) leave() {
 		return
 	}
 
-	s.disseminate(n.ID, Faulty)
+	s.disseminate(n.ID, NodeFaulty)
 }
 
 // Disseminate changes the status and asks broadcast it to other healthy node.
@@ -217,7 +217,7 @@ func (s *server) broadcast() {
 	// Too hard to broadcast without IP multicast.
 	cmap := s.cMapManager.LatestCMap()
 	for k := 0; k < 3; k++ {
-		n, err := s.cMapManager.SearchCallNode().Status(Alive).Random().Do()
+		n, err := s.cMapManager.SearchCallNode().Status(NodeAlive).Random().Do()
 		if err != nil {
 			continue
 		}

@@ -67,12 +67,12 @@ func (h *handlers) findRandomPlaceToWrite() (cmap.EncodingGroup, cmap.Node, erro
 	}
 
 	const primary = 0
-	vol, err := h.cmapAPI.SearchCallVolume().ID(eg.Vols[primary]).Status(cmap.Active).Do()
+	vol, err := h.cmapAPI.SearchCallVolume().ID(eg.Vols[primary]).Status(cmap.VolActive).Do()
 	if err != nil {
 		return cmap.EncodingGroup{}, cmap.Node{}, errors.Wrapf(err, "failed to search active volume %+v", eg.Vols[primary])
 	}
 
-	node, err := h.cmapAPI.SearchCallNode().ID(vol.Node).Status(cmap.Alive).Do()
+	node, err := h.cmapAPI.SearchCallNode().ID(vol.Node).Status(cmap.NodeAlive).Do()
 	if err != nil {
 		return cmap.EncodingGroup{}, cmap.Node{}, errors.Wrapf(err, "failed to search alive node %+v", vol.Node)
 	}

@@ -33,7 +33,7 @@ func newCMapManager(coordinator NodeAddress) (*cMapManager, error) {
 	cm.Nodes[0] = Node{
 		Addr: coordinator,
 		Type: MDS,
-		Stat: Alive,
+		Stat: NodeAlive,
 	}
 
 	// Save to file system.
@@ -245,7 +245,7 @@ func (m *cMapManager) getMdsAddr() (NodeAddress, error) {
 		cm = &m
 	}
 
-	mds, err := m.SearchCallNode().Type(MDS).Status(Alive).Do()
+	mds, err := m.SearchCallNode().Type(MDS).Status(NodeAlive).Do()
 	if err != nil {
 		return "", err
 	}
@@ -299,21 +299,21 @@ func mergeCMap(src, dst *CMap) bool {
 
 			merge := false
 			switch sn.Stat {
-			case Alive:
-				if dn.Stat == Alive && dn.Incr < sn.Incr {
+			case NodeAlive:
+				if dn.Stat == NodeAlive && dn.Incr < sn.Incr {
 					merge = true
 				}
-				if dn.Stat == Suspect && dn.Incr < sn.Incr {
+				if dn.Stat == NodeSuspect && dn.Incr < sn.Incr {
 					merge = true
 				}
-			case Suspect:
-				if dn.Stat == Alive && dn.Incr <= sn.Incr {
+			case NodeSuspect:
+				if dn.Stat == NodeAlive && dn.Incr <= sn.Incr {
 					merge = true
 				}
-				if dn.Stat == Suspect && dn.Incr < sn.Incr {
+				if dn.Stat == NodeSuspect && dn.Incr < sn.Incr {
 					merge = true
 				}
-			case Faulty:
+			case NodeFaulty:
 				merge = true
 			}
 
@@ -340,7 +340,7 @@ func mergeCMap(src, dst *CMap) bool {
 				break
 			}
 
-			if sv.Incr == dv.Incr && sv.Stat == Prepared {
+			if sv.Incr == dv.Incr && sv.Stat == VolPrepared {
 				break
 			}
 

@@ -79,9 +79,9 @@ func extractEventsFromCMap(old, new *cmap.CMap) []*Event {
 			}
 
 			switch newNode.Stat {
-			case cmap.Suspect:
+			case cmap.NodeSuspect:
 				// Make nodes rdonly.
-			case cmap.Faulty:
+			case cmap.NodeFaulty:
 				// Make recovery events.
 			}
 		}
@@ -98,13 +98,13 @@ func extractEventsFromCMap(old, new *cmap.CMap) []*Event {
 			}
 
 			switch oldVol.Stat {
-			case cmap.Prepared:
-				if newVol.Stat == cmap.Active {
+			case cmap.VolPrepared:
+				if newVol.Stat == cmap.VolActive {
 					needRebalance = true
-				} else if newVol.Stat == cmap.Failed {
+				} else if newVol.Stat == cmap.VolFailed {
 					// Make recovery events.
 				}
-			case cmap.Active:
+			case cmap.VolActive:
 				// Make recovery events.
 			}
 		}
