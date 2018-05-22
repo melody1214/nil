@@ -49,8 +49,6 @@ type CMap struct {
 	EncGrps []EncodingGroup `xml:"encgrp"`
 }
 
-const unknown = "Unknown"
-
 // HumanReadable returns a human readable map of the cluster.
 func (m *CMap) HumanReadable() string {
 	ids2str := func(ids []ID) string {
