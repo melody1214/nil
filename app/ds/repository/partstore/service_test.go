@@ -199,7 +199,10 @@ func TestServiceAPIs(t *testing.T) {
 		err := r.Wait()
 
 		if r.Op == repository.Read {
-			t.Logf("readed: %s", b.String())
+			t.Logf("readed: %s, length: %d", b.String(), b.Len())
+			t.Logf("readed: %v, length: %d", b, b.Len())
+			t.Logf("readed: %v", b.Bytes())
+			t.Logf("readed: %c %c %c %c %c %c\n", 98, 97, 110, 97, 110, 97)
 		}
 
 		if err != nil && c.result != nil {
