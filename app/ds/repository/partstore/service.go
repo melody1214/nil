@@ -173,7 +173,10 @@ func (s *service) MigrateData() error {
 					return err
 				}
 
-				fChunkDest.Close()
+				err = fChunkDest.Close()
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -194,7 +197,7 @@ func (s *service) GetObjectSize(pgID, objID string) (int64, bool) {
 		return 0, false
 	}
 
-	objSize := obj.ObjInfo.Size - 140
+	objSize := obj.ObjInfo.Size
 
 	return objSize, true
 }
@@ -269,14 +272,8 @@ func (s *service) read(r *repository.Request) {
 		return
 	}
 
-	// Create a directory for a local group if not exist.
-	lgDir := pg.MntPoint + "/" + chk.PartID + "/" + r.LocGid
-	_, err := os.Stat(lgDir)
-	if os.IsNotExist(err) {
-		os.MkdirAll(lgDir, 0775)
-	}
-
 	// Open a chunk requested by a client.
+	lgDir := pg.MntPoint + "/" + chk.PartID + "/" + r.LocGid
 	fChunk, err := os.Open(lgDir + "/" + obj.Cid)
 	if err != nil {
 		r.Err = err
@@ -324,16 +321,14 @@ func (s *service) readAll(r *repository.Request) {
 	}
 	pg.Lock.Chk.RLock()
 	chk, ok := pg.ChunkMap[r.Cid]
+	pg.Lock.Chk.RUnlock()
 	if !ok {
 		r.Err = fmt.Errorf("no chunk of such object: %s", r.Oid)
 		return
 	}
-	pg.Lock.Chk.RUnlock()
-
-	// Create a directory for a local group if not exist.
-	lgDir := pg.MntPoint + "/" + chk.PartID + "/" + r.LocGid
 
 	// Open a chunk requested by a client.
+	lgDir := pg.MntPoint + "/" + chk.PartID + "/" + r.LocGid
 	fChunk, err := os.Open(lgDir + "/" + r.Cid)
 	if err != nil {
 		r.Err = err
@@ -433,6 +428,7 @@ func (s *service) write(r *repository.Request) {
 
 		b := new(bytes.Buffer)
 		enc := gob.NewEncoder(b)
+		b.Reset()
 		err := enc.Encode(cHeader)
 		if err != nil {
 			r.Err = err
@@ -462,7 +458,7 @@ func (s *service) write(r *repository.Request) {
 		Magic:  [4]byte{0x7f, 'o', 'b', 'j'},
 		Name:   make([]byte, 32),
 		Size:   r.Osize,
-		Offset: fChunkLen + 140,
+		Offset: fChunkLen + s.GetObjectHeaderSize(),
 	}
 
 	oHeader.Name = append([]byte(r.Oid))
@@ -474,6 +470,7 @@ func (s *service) write(r *repository.Request) {
 
 	b := new(bytes.Buffer)
 	enc := gob.NewEncoder(b)
+	b.Reset()
 	err = enc.Encode(&oHeader)
 	if err != nil {
 		r.Err = err
@@ -486,8 +483,7 @@ func (s *service) write(r *repository.Request) {
 	if fChunkLen >= pg.ChunkSize {
 		r.Err = fmt.Errorf("chunk full")
 		return
-	}
-	if fChunkLen+int64(b.Len())+r.Osize > pg.ChunkSize {
+	} else if fChunkLen+int64(b.Len())+r.Osize > pg.ChunkSize {
 		err = fChunk.Truncate(pg.ChunkSize)
 		r.Err = fmt.Errorf("truncated")
 		return
@@ -527,7 +523,7 @@ func (s *service) write(r *repository.Request) {
 		Cid:    r.Cid,
 		Offset: fChunkLen,
 		ObjInfo: repository.ObjInfo{
-			Size: r.Osize + int64(n),
+			Size: r.Osize,
 			MD5:  r.Md5,
 		},
 	}
@@ -548,7 +544,7 @@ func (s *service) writeAll(r *repository.Request) {
 	}
 
 	pg.Lock.Chk.RLock()
-	chk, ok := pg.ChunkMap[r.Cid]
+	_, ok = pg.ChunkMap[r.Cid]
 	pg.Lock.Chk.RUnlock()
 	if ok {
 		r.Err = fmt.Errorf("chunk is already exists: %s", r.Cid)
@@ -559,29 +555,15 @@ func (s *service) writeAll(r *repository.Request) {
 	DiskSched := pg.SubPartGroup.Hot.DiskSched
 	PartID := "hot_part" + strconv.Itoa(int(DiskSched))
 
-	pg.Lock.Chk.Lock()
-	pg.ChunkMap[r.Cid] = repository.ChunkMap{
-		PartID: PartID,
-		ChunkInfo: repository.ChunkInfo{
-			Type:   r.Type,
-			LocGid: r.LocGid,
-		},
-	}
-	pg.Lock.Chk.Unlock()
-
-	pg.Lock.Chk.RLock()
-	chk = pg.ChunkMap[r.Cid]
-	pg.Lock.Chk.RUnlock()
-
 	// Create a directory for a local group if not exist.
-	lgDir := pg.MntPoint + "/" + chk.PartID + "/" + r.LocGid
+	lgDir := pg.MntPoint + "/" + PartID + "/" + r.LocGid
 	_, err := os.Stat(lgDir)
 	if os.IsNotExist(err) {
 		os.MkdirAll(lgDir, 0775)
 	}
 
 	// Open a chunk that objects will be written to.
-	fChunk, err := os.OpenFile(lgDir+"/"+r.Cid, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0775)
+	fChunk, err := os.OpenFile(lgDir+"/"+r.Cid, os.O_CREATE|os.O_WRONLY, 0775)
 	if err != nil {
 		r.Err = err
 		return
@@ -594,6 +576,16 @@ func (s *service) writeAll(r *repository.Request) {
 		r.Err = err
 		return
 	}
+
+	pg.Lock.Chk.Lock()
+	pg.ChunkMap[r.Cid] = repository.ChunkMap{
+		PartID: PartID,
+		ChunkInfo: repository.ChunkInfo{
+			Type:   r.Type,
+			LocGid: r.LocGid,
+		},
+	}
+	pg.Lock.Chk.Unlock()
 
 	// Completely write the chunk.
 	r.Err = nil
@@ -705,7 +697,7 @@ func (s *service) deleteReal(r *repository.Request) {
 	// Get current length of the chunk.
 	fChunkLen := fChunkInfo.Size()
 
-	if obj.Offset+obj.ObjInfo.Size != fChunkLen {
+	if obj.Offset+obj.ObjInfo.Size+s.GetObjectHeaderSize() != fChunkLen {
 		r.Err = fmt.Errorf("can remove only a last object of a chunk")
 		return
 	}
