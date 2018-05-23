@@ -23,7 +23,7 @@ func TestNewVol(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	v, err := NewVol(img)
+	v, err := NewVol(img, 5, 3)
 	if err != nil {
 		t.Fatal(err)
 	}
