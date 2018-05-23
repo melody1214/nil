@@ -1,8 +1,9 @@
 package partstore
 
 import (
+	"bufio"
 	"bytes"
-	"encoding/gob"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"os"
@@ -220,12 +221,12 @@ func (s *service) GetObjectMD5(pgID, objID string) (string, bool) {
 
 func (s *service) GetChunkHeaderSize() int64 {
 	// TODO: fill the method
-	return 135
+	return 8
 }
 
 func (s *service) GetObjectHeaderSize() int64 {
 	// TODO: fill the method
-	return 140
+	return 64
 }
 
 func (s *service) handleCall(r *repository.Request) {
@@ -289,9 +290,7 @@ func (s *service) read(r *repository.Request) {
 	}
 
 	oHeader := new(repository.ObjHeader)
-	dec := gob.NewDecoder(fChunk)
-	err = dec.Decode(oHeader)
-
+	err = binary.Read(fChunk, binary.LittleEndian, oHeader)
 	//fmt.Println(oHeader.Name, oHeader.Size, oHeader.Offset)
 
 	_, err = fChunk.Seek(oHeader.Offset, os.SEEK_SET)
@@ -419,17 +418,16 @@ func (s *service) write(r *repository.Request) {
 	if fChunkLen == 0 {
 		cHeader := repository.ChunkHeader{
 			Magic:   [4]byte{0x7f, 'c', 'h', 'k'},
-			Type:    make([]byte, 1),
+			Type:    [1]byte{},
 			State:   [1]byte{'P'},
 			Encoded: false,
 		}
 
-		cHeader.Type = append(cHeader.Type, 'D')
+		cHeader.Type[0] = 'D'
 
 		b := new(bytes.Buffer)
-		enc := gob.NewEncoder(b)
-		b.Reset()
-		err := enc.Encode(cHeader)
+		bufio.NewWriter(b)
+		err := binary.Write(b, binary.LittleEndian, cHeader)
 		if err != nil {
 			r.Err = err
 			return
@@ -456,22 +454,23 @@ func (s *service) write(r *repository.Request) {
 	// Create an object header for requested object.
 	oHeader := repository.ObjHeader{
 		Magic:  [4]byte{0x7f, 'o', 'b', 'j'},
-		Name:   make([]byte, 32),
+		Name:   [44]byte{},
 		Size:   r.Osize,
 		Offset: fChunkLen + s.GetObjectHeaderSize(),
 	}
 
-	oHeader.Name = append([]byte(r.Oid))
+	for i := 0; i < len(r.Oid); i++ {
+		oHeader.Name[i] = r.Oid[i]
+	}
 	//fmt.Println("len(r.Oid) : ", len(r.Oid))
 
-	for i := len(r.Oid); i <= 32; i++ {
-		oHeader.Name = append(oHeader.Name, byte(0))
+	for i := len(r.Oid); i < len(oHeader.Name); i++ {
+		oHeader.Name[i] = '0'
 	}
 
 	b := new(bytes.Buffer)
-	enc := gob.NewEncoder(b)
-	b.Reset()
-	err = enc.Encode(&oHeader)
+	bufio.NewWriter(b)
+	err = binary.Write(b, binary.LittleEndian, oHeader)
 	if err != nil {
 		r.Err = err
 		return
