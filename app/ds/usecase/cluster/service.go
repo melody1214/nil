@@ -38,7 +38,12 @@ func NewService(cfg *config.Ds, cmapAPI cmap.SlaveAPI, s Repository) Service {
 func (s *service) AddVolume(req *nilrpc.DCLAddVolumeRequest, res *nilrpc.DCLAddVolumeResponse) error {
 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.AddVolume")
 
-	lv, err := repository.NewVol(req.DevicePath)
+	const (
+		hot  = uint(5)
+		cold = uint(1)
+	)
+
+	vol, err := repository.NewVol(req.DevicePath, hot, cold)
 	if err != nil {
 		return err
 	}
@@ -62,8 +67,8 @@ func (s *service) AddVolume(req *nilrpc.DCLAddVolumeRequest, res *nilrpc.DCLAddV
 	registerReq := &nilrpc.MCLRegisterVolumeRequest{
 		Volume: cmap.Volume{
 			Node:  n.ID,
-			Stat:  cmap.VolumeStatus(lv.Status),
-			Speed: cmap.VolumeSpeed(lv.Speed),
+			Stat:  cmap.VolumeStatus(vol.Status),
+			Speed: cmap.VolumeSpeed(vol.Speed),
 		},
 	}
 	registerRes := &nilrpc.MCLRegisterVolumeResponse{}
@@ -73,18 +78,18 @@ func (s *service) AddVolume(req *nilrpc.DCLAddVolumeRequest, res *nilrpc.DCLAddV
 		return err
 	}
 
-	lv.Name = registerRes.ID.String()
-	lv.MntPoint = "vol-" + lv.Name
+	vol.Name = registerRes.ID.String()
+	vol.MntPoint = "vol-" + vol.Name
 	if chunkSize, err := strconv.ParseInt(s.cfg.ChunkSize, 10, 64); err != nil {
 		// Default 10MB.
 		// TODO: make default config of volume.
-		lv.ChunkSize = 10000000
+		vol.ChunkSize = 10000000
 	} else {
-		lv.ChunkSize = chunkSize
+		vol.ChunkSize = chunkSize
 	}
 
 	// 2) Add lv to the store service.
-	if err := s.store.AddVolume(lv); err != nil {
+	if err := s.store.AddVolume(vol); err != nil {
 		// TODO: remove added volume in the mds.
 		return err
 	}
@@ -100,9 +105,9 @@ func (s *service) AddVolume(req *nilrpc.DCLAddVolumeRequest, res *nilrpc.DCLAddV
 				<-notiC
 				continue
 			}
-			v.Size = lv.Size
-			v.Speed = cmap.VolumeSpeed(lv.Speed.String())
-			v.Stat = cmap.VolumeStatus(lv.Status.String())
+			v.Size = vol.Size
+			v.Speed = cmap.VolumeSpeed(vol.Speed.String())
+			v.Stat = cmap.VolumeStatus(vol.Status.String())
 			if err = s.cmapAPI.UpdateVolume(v); err != nil {
 				ctxLogger.Error(errors.Wrap(err, "failed to update volume"))
 			}
@@ -110,7 +115,7 @@ func (s *service) AddVolume(req *nilrpc.DCLAddVolumeRequest, res *nilrpc.DCLAddV
 		}
 	}()
 
-	ctxLogger.Infof("add volume %s succeeded", lv.Name)
+	ctxLogger.Infof("add volume %s succeeded", vol.Name)
 	return nil
 }
 

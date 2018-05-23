@@ -148,7 +148,7 @@ type Vol struct {
 	Used         uint64
 	Speed        VolumeSpeed
 	Status       Status
-	NumOfPart    uint8
+	NumOfPart    uint
 	SubPartGroup SubPartGroup
 
 	ChunkSize int64
@@ -159,7 +159,7 @@ type Vol struct {
 
 // NewVol collects information about the volume with the given
 // device path and returns a pointer of Vol.
-func NewVol(dev string) (v *Vol, err error) {
+func NewVol(dev string, hot, cold uint) (v *Vol, err error) {
 	// Get absolute device path.
 	if dev, err = filepath.Abs(dev); err != nil {
 		return nil, err
@@ -171,13 +171,13 @@ func NewVol(dev string) (v *Vol, err error) {
 		Status:    Prepared,
 		ObjMap:    make(map[string]ObjMap),
 		ChunkMap:  make(map[string]ChunkMap),
-		NumOfPart: 1,
+		NumOfPart: hot + cold,
 		SubPartGroup: SubPartGroup{
 			Cold: PartGrpInfo{
-				NumOfPart: 1,
+				NumOfPart: cold,
 			},
 			Hot: PartGrpInfo{
-				NumOfPart: 1,
+				NumOfPart: hot,
 			},
 		},
 	}
