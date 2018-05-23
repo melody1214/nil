@@ -1,11 +1,15 @@
 package lvstore
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/chanyoung/nil/app/ds/repository"
@@ -44,6 +48,7 @@ func newService(basePath string) *service {
 // Run starts to serve backend store service.
 func (s *service) Run() {
 	checkTicker := time.NewTicker(100 * time.Millisecond)
+	spinUpTicker := time.NewTicker(10 * time.Second)
 
 	// TODO: change to do not polling.
 	for {
@@ -56,6 +61,8 @@ func (s *service) Run() {
 			if c := s.requestQueue.pop(); c != nil {
 				go s.handleCall(c)
 			}
+		case <-spinUpTicker.C:
+			go s.MigrateData()
 		}
 	}
 }
@@ -108,6 +115,64 @@ func (s *service) AddVolume(v *repository.Vol) error {
 
 	// Set volume has running state.
 	v.Status = repository.Active
+
+	return nil
+}
+
+// MigrateData moves data from service to archive archive.
+func (s *service) MigrateData() error {
+	for _, lv := range s.lvs {
+		for key, value := range lv.ChunkMap {
+			// After check type of each chunks, migrate only parity chunk in hot storage into cold partition.
+			if value.ChunkInfo.Type == "Data" {
+				continue
+			}
+			PartID := value.PartID
+			if strings.HasPrefix(PartID, "hot_") {
+				fChunkSrc, err := os.OpenFile(lv.MntPoint+"/"+PartID+"/"+value.ChunkInfo.LocGid+"/"+key, os.O_RDWR, 0775)
+				if err != nil {
+					return err
+				}
+
+				// Scheduling for cold partitions.
+				lv.SubPartGroup.Cold.DiskSched = lv.SubPartGroup.Cold.DiskSched%lv.SubPartGroup.Cold.NumOfPart + 1
+				DiskSched := lv.SubPartGroup.Cold.DiskSched
+				DestPartID := "cold_part" + strconv.Itoa(int(DiskSched))
+
+				// Create a directory for a local group if not exist.
+				lgDir := lv.MntPoint + "/" + DestPartID + "/" + value.ChunkInfo.LocGid
+				_, err = os.Stat(lgDir)
+				if os.IsNotExist(err) {
+					os.MkdirAll(lgDir, 0775)
+				}
+
+				fChunkDest, err := os.OpenFile(lgDir+"/"+key, os.O_CREATE|os.O_WRONLY, 0775)
+				if err != nil {
+					return err
+				}
+
+				// Copy the chunk in the hot storage to the cold storage.
+				_, err = io.Copy(fChunkDest, fChunkSrc)
+
+				// Update ChunkMap for complitely migrated chunk.
+				value.PartID = DestPartID
+				lv.ChunkMap[key] = value
+
+				err = fChunkSrc.Close()
+				if err != nil {
+					return err
+				}
+
+				// Remove the chunk from the hot storage.
+				err = os.Remove(lv.MntPoint + "/" + PartID + "/" + value.ChunkInfo.LocGid + "/" + key)
+				if err != nil {
+					return err
+				}
+
+				fChunkDest.Close()
+			}
+		}
+	}
 
 	return nil
 }
@@ -212,7 +277,17 @@ func (s *service) read(r *repository.Request) {
 		return
 	}
 
+	oHeader := new(repository.ObjHeader)
+	dec := gob.NewDecoder(fChunk)
+	err = dec.Decode(oHeader)
+
 	// Read contents of the requested object from the chunk.
+	_, err = fChunk.Seek(oHeader.Offset, os.SEEK_SET)
+	if err != nil {
+		r.Err = err
+		return
+	}
+
 	_, err = io.CopyN(r.Out, fChunk, r.Osize)
 	if err != nil {
 		r.Err = err
@@ -267,6 +342,21 @@ func (s *service) write(r *repository.Request) {
 		return
 	}
 
+	lv.Lock.Chk.RLock()
+	_, ok = lv.ChunkMap[r.Cid]
+	lv.Lock.Chk.RUnlock()
+
+	if !ok {
+		lv.Lock.Chk.Lock()
+		lv.ChunkMap[r.Cid] = repository.ChunkMap{
+			ChunkInfo: repository.ChunkInfo{
+				Type:   r.Type,
+				LocGid: r.LocGid,
+			},
+		}
+		lv.Lock.Chk.Unlock()
+	}
+
 	// Create a directory for a local group if not exist.
 	lgDir := lv.MntPoint + "/" + r.LocGid
 	_, err := os.Stat(lgDir)
@@ -297,38 +387,70 @@ func (s *service) write(r *repository.Request) {
 
 	// If the chunk is newly generated, write a chunk header.
 	if fChunkLen == 0 {
-		cHeader := make([]byte, 1)
+		cHeader := repository.ChunkHeader{
+			Magic:   [4]byte{0x7f, 'c', 'h', 'k'},
+			Type:    make([]byte, 1),
+			State:   [1]byte{'P'},
+			Encoded: false,
+		}
 
-		// ToDo: implement more information of cHeader.
-		cHeader[0] = 0x01
-		n, err := fChunk.Write(cHeader)
+		if r.Type == "Parity" {
+			cHeader.Type = append(cHeader.Type, 'P')
+		}
+		if r.Type == "Data" {
+			cHeader.Type = append(cHeader.Type, 'D')
+		}
 
-		if n != len(cHeader) {
+		b := new(bytes.Buffer)
+		enc := gob.NewEncoder(b)
+		err := enc.Encode(cHeader)
+		if err != nil {
+			r.Err = err
+			return
+		}
+
+		n, err := fChunk.Write(b.Bytes())
+		//fmt.Printf("chunk written: %d\n", n)
+
+		fChunkLen = fChunkLen + int64(n)
+
+		if n != b.Len() {
 			r.Err = err
 			return
 		}
 	}
+
 	// Create an object header for requested object.
-	oHeader := make([]string, 8)
-	oHeader[0] = r.User
+	oHeader := repository.ObjHeader{
+		Magic:  [4]byte{0x7f, 'o', 'b', 'j'},
+		Name:   make([]byte, 32),
+		Size:   r.Osize,
+		Offset: fChunkLen + 140,
+	}
+
+	oHeader.Name = append([]byte(r.Oid))
+	//fmt.Println("len(r.Oid) : ", len(r.Oid))
+
+	for i := len(r.Oid); i <= 32; i++ {
+		oHeader.Name = append(oHeader.Name, byte(0))
+	}
+
+	b := new(bytes.Buffer)
+	enc := gob.NewEncoder(b)
+	err = enc.Encode(&oHeader)
+	if err != nil {
+		r.Err = err
+		return
+	}
 
 	// Check whether the chunk is full or has not enough space to write the object.
 	if fChunkLen >= lv.ChunkSize {
 		r.Err = fmt.Errorf("chunk full")
 		return
 	}
-	if fChunkLen+int64(len(oHeader))+r.Osize > lv.ChunkSize {
+	if fChunkLen+int64(b.Len())+r.Osize > lv.ChunkSize {
 		err = fChunk.Truncate(lv.ChunkSize)
 		r.Err = fmt.Errorf("truncated")
-		return
-	}
-
-	// Write the object header into the chunk.
-	n, err := fChunk.WriteString(oHeader[0])
-
-	// ToDo: implement more information of cHeader.
-	if n != len(oHeader[0]) {
-		r.Err = err
 		return
 	}
 
@@ -341,6 +463,15 @@ func (s *service) write(r *repository.Request) {
 
 	// Get current length of the chunk.
 	fChunkLen = fChunkInfo.Size()
+
+	// Write the object header into the chunk.
+	n, err := fChunk.Write(b.Bytes())
+
+	// ToDo: implement more information of cHeader.
+	if n != b.Len() {
+		r.Err = err
+		return
+	}
 
 	// Write the object into the chunk if it will not be full.
 	_, err = io.CopyN(fChunk, r.In, r.Osize)
@@ -356,7 +487,7 @@ func (s *service) write(r *repository.Request) {
 		Cid:    r.Cid,
 		Offset: fChunkLen,
 		ObjInfo: repository.ObjInfo{
-			Size: r.Osize,
+			Size: r.Osize + int64(n),
 			MD5:  r.Md5,
 		},
 	}
@@ -377,11 +508,22 @@ func (s *service) writeAll(r *repository.Request) {
 	}
 
 	// Check if the requested object is in the object map.
+	lv.Lock.Obj.RLock()
 	_, ok = lv.ObjMap[r.Oid]
+	lv.Lock.Obj.RUnlock()
 	if ok {
-		r.Err = fmt.Errorf("same name of the chunk is existed: %s", r.Oid)
+		r.Err = fmt.Errorf("chunk is already existed: %s", r.Oid)
 		return
 	}
+
+	lv.Lock.Chk.Lock()
+	lv.ChunkMap[r.Cid] = repository.ChunkMap{
+		ChunkInfo: repository.ChunkInfo{
+			Type:   r.Type,
+			LocGid: r.LocGid,
+		},
+	}
+	lv.Lock.Chk.Unlock()
 
 	// Create a directory for a local group if not exist.
 	lgDir := lv.MntPoint + "/" + r.LocGid
@@ -405,21 +547,11 @@ func (s *service) writeAll(r *repository.Request) {
 	}
 
 	// Write the object into the chunk if it will not be full.
-	_, err = io.CopyN(fChunk, r.In, r.Osize)
-	if err != nil {
+	n, err := io.CopyN(fChunk, r.In, lv.ChunkSize)
+	if err != nil || n != lv.ChunkSize {
 		r.Err = err
 		return
 	}
-
-	// Store mapping information between the object and the chunk.
-	lv.Lock.Obj.Lock()
-
-	lv.ObjMap[r.Oid] = repository.ObjMap{
-		Cid:    r.Cid,
-		Offset: 0,
-	}
-
-	lv.Lock.Obj.Unlock()
 
 	// Complete to write the object into the chunk.
 	r.Err = nil
@@ -435,13 +567,13 @@ func (s *service) delete(r *repository.Request) {
 	}
 
 	// Check if the requested object is in the object map.
+	lv.Lock.Obj.RLock()
 	_, ok = lv.ObjMap[r.Oid]
+	lv.Lock.Obj.RUnlock()
 	if !ok {
 		r.Err = fmt.Errorf("no such object: %s", r.Oid)
 		return
 	}
-
-	// TODO: delete object info.
 
 	// Delete the object from the map.
 	lv.Lock.Obj.Lock()
@@ -556,6 +688,25 @@ func (s *service) RenameChunk(src string, dest string, Vol string, LocGid string
 		return err
 	}
 
+	lv.Lock.Obj.Lock()
+	for key, value := range lv.ObjMap {
+		if value.Cid == src {
+			value.Cid = dest
+			lv.ObjMap[key] = value
+		}
+	}
+	lv.Lock.Obj.Unlock()
+
+	lv.Lock.Chk.Lock()
+	lv.ChunkMap[dest] = repository.ChunkMap{
+		ChunkInfo: repository.ChunkInfo{
+			Type:   chk.ChunkInfo.Type,
+			LocGid: chk.ChunkInfo.LocGid,
+		},
+	}
+	delete(lv.ChunkMap, src)
+	lv.Lock.Chk.Unlock()
+
 	return nil
 }
 
@@ -624,8 +775,7 @@ func (s *service) GetNonCodedChunk(Vol string, LocGid string) (string, error) {
 		}
 		ok, err := regexp.MatchString(encPath, path)
 		if ok {
-			cid = path
-			fmt.Println("cid : ", cid)
+			cid = filepath.Base(path)
 		}
 		return nil
 	})

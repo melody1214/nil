@@ -67,7 +67,49 @@ type ObjInfo struct {
 
 // ChunkMap contains mapping information between chunks to partitions.
 type ChunkMap struct {
-	PartID string
+	PartID    string
+	ChunkInfo ChunkInfo
+}
+
+// ChunkInfo contains information of chunks.
+type ChunkInfo struct {
+	Type   string
+	LocGid string
+}
+
+// ChunkHeader contains identification and information of chunk.
+type ChunkHeader struct {
+	Magic   [4]byte
+	Type    []byte
+	State   [1]byte
+	Encoded bool
+	_       [1]byte // padding
+}
+
+// ObjHeader contains identification and information of object.
+type ObjHeader struct {
+	Magic  [4]byte
+	Name   []byte
+	Size   int64
+	Offset int64
+}
+
+// PartType is purpose of disk partition to be used.
+type PartType string
+
+const (
+	// ArchivePart is a storage, which sometimes should be spined-down to reduce power consumption.
+	ArchivePart PartType = "ArchivePart"
+
+	// ServicePart is a storage, which is always spinning-up.
+	ServicePart = "ServicePart"
+)
+
+// FsStatus contains space information of file system.
+type FsStatus struct {
+	All  uint64
+	Used uint64
+	Free uint64
 }
 
 // Lock contains locks for object and chunk respectively.
@@ -76,18 +118,38 @@ type Lock struct {
 	Chk sync.RWMutex
 }
 
+// PartInfo contains information of each partition.
+type PartInfo struct {
+	Size uint64
+	Free uint64
+	Used uint64
+}
+
+// PartGrpInfo contains
+type PartGrpInfo struct {
+	DiskSched uint
+	NumOfPart uint
+	PartInfo  map[string]PartInfo
+}
+
+// SubPartGroup contains information of partition groups related to be schedule.
+type SubPartGroup struct {
+	Cold PartGrpInfo
+	Hot  PartGrpInfo
+}
+
 // Vol contains information about the volume.
 type Vol struct {
-	Name      string
-	Dev       string
-	MntPoint  string
-	Size      uint64
-	Free      uint64
-	Used      uint64
-	Speed     VolumeSpeed
-	Status    Status
-	DiskSched uint8
-	NumOfPart uint8
+	Name         string
+	Dev          string
+	MntPoint     string
+	Size         uint64
+	Free         uint64
+	Used         uint64
+	Speed        VolumeSpeed
+	Status       Status
+	NumOfPart    uint8
+	SubPartGroup SubPartGroup
 
 	ChunkSize int64
 	ObjMap    map[string]ObjMap
@@ -110,6 +172,14 @@ func NewVol(dev string) (v *Vol, err error) {
 		ObjMap:    make(map[string]ObjMap),
 		ChunkMap:  make(map[string]ChunkMap),
 		NumOfPart: 1,
+		SubPartGroup: SubPartGroup{
+			Cold: PartGrpInfo{
+				NumOfPart: 1,
+			},
+			Hot: PartGrpInfo{
+				NumOfPart: 1,
+			},
+		},
 	}
 
 	// Checks the given device path is valid.

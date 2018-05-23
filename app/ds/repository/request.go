@@ -34,6 +34,7 @@ type Request struct {
 	LocGid string // Local group ID
 	Oid    string // Object ID
 	Cid    string // Chunk ID
+	Type   string // Chunk type (Data or Parity)
 
 	Osize int64  // Object Size
 	Md5   string // MD5 string
