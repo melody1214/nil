@@ -358,7 +358,7 @@ function putobjects() {
                 done
 
                 local gwport=$((50000 + $host))
-                s3cmd put ${dummyarray[$RANDOM % ${#dummyarray[@]}]} s3://$bucket/obj$k --access_key=${!ak} --secret_key=${!sk} --region=${!region} --no-check-hostname --host=https://localhost:$gwport --host-bucket=https://localhost:$gwport
+                s3cmd put ${dummyarray[$RANDOM % ${#dummyarray[@]}]} s3://$bucket/obj$i --access_key=${!ak} --secret_key=${!sk} --region=${!region} --no-check-hostname --host=https://localhost:$gwport --host-bucket=https://localhost:$gwport
             done
         done
     done
@@ -382,7 +382,7 @@ function getobjects() {
                 done
 
                 local gwport=$((50000 + $host))
-                s3cmd get s3://$bucket/obj$k $DIR/$bucket-obj$k --access_key=${!ak} --secret_key=${!sk} --region=${!region} --no-check-hostname --host=https://localhost:$gwport --host-bucket=https://localhost:$gwport
+                s3cmd get s3://$bucket/obj$k $DIR/$bucket-obj$i --access_key=${!ak} --secret_key=${!sk} --region=${!region} --no-check-hostname --host=https://localhost:$gwport --host-bucket=https://localhost:$gwport
             done
         done
     done
@@ -446,9 +446,9 @@ function main() {
     sleep 15
     putobjects
 
-    # # Get objects.
-    # sleep 5
-    # getobjects
+    # Get objects.
+    sleep 5
+    getobjects
 
     # Test local recovery
     if [ $TESTLOCALRECOVERY = true ]; then
