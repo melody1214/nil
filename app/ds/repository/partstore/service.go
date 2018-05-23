@@ -194,7 +194,9 @@ func (s *service) GetObjectSize(pgID, objID string) (int64, bool) {
 		return 0, false
 	}
 
-	return obj.ObjInfo.Size, true
+	objSize := obj.ObjInfo.Size - 140
+
+	return objSize, true
 }
 
 func (s *service) GetObjectMD5(pgID, objID string) (string, bool) {
@@ -356,6 +358,14 @@ func (s *service) write(r *repository.Request) {
 	pg, ok := s.pgs[r.Vol]
 	if !ok {
 		r.Err = fmt.Errorf("no such partition group: %s", r.Vol)
+		return
+	}
+
+	pg.Lock.Obj.RLock()
+	_, ok = pg.ObjMap[r.Oid]
+	pg.Lock.Obj.RUnlock()
+	if ok {
+		r.Err = fmt.Errorf("object is already existed: %s", r.Oid)
 		return
 	}
 
