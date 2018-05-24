@@ -24,4 +24,5 @@ type Service interface {
 	GetNonCodedChunk(Vol string, LocGid string) (string, error)
 
 	MigrateData() error
+	BuildObjectMap(Vol string, cid string) error
 }
