@@ -87,6 +87,7 @@ func (h *handlers) GetObjectHandler(w http.ResponseWriter, r *http.Request) {
 	req, err := h.requestEventFactory.CreateRequestEvent(w, r)
 	if err == client.ErrInvalidProtocol {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	bucketAndObject := strings.SplitN(strings.Trim(r.RequestURI, "/"), "/", 2)

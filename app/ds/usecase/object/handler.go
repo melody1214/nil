@@ -395,9 +395,10 @@ func (h *handlers) writeCopy(req client.RequestEvent) {
 func (h *handlers) GetObjectHandler(w http.ResponseWriter, r *http.Request) {
 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.GetObjectHandler")
 
-	req, err := h.requestEventFactory.CreateRequestEvent(w, r)
+	_, err := h.requestEventFactory.CreateRequestEvent(w, r)
 	if err == client.ErrInvalidProtocol {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	size, ok := h.store.GetObjectSize(r.Header.Get("Volume-Id"), strings.Replace(strings.Trim(r.URL.Path, "/"), "/", ".", -1))
@@ -434,7 +435,7 @@ func (h *handlers) GetObjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req.SendSuccess()
+	// req.SendSuccess()
 }
 
 // DeleteObjectHandler handles the client request for deleting an object.

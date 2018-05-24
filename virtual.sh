@@ -382,7 +382,7 @@ function getobjects() {
                 done
 
                 local gwport=$((50000 + $host))
-                s3cmd get s3://$bucket/obj$k $DIR/$bucket-obj$i --access_key=${!ak} --secret_key=${!sk} --region=${!region} --no-check-hostname --host=https://localhost:$gwport --host-bucket=https://localhost:$gwport
+                s3cmd get s3://$bucket/obj$i $DIR/$bucket-obj$i --access_key=${!ak} --secret_key=${!sk} --region=${!region} --no-check-hostname --host=https://localhost:$gwport --host-bucket=https://localhost:$gwport
             done
         done
     done
