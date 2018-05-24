@@ -80,7 +80,7 @@ type ChunkInfo struct {
 // ChunkHeader contains identification and information of chunk.
 type ChunkHeader struct {
 	Magic   [4]byte
-	Type    []byte
+	Type    [1]byte
 	State   [1]byte
 	Encoded bool
 	_       [1]byte // padding
@@ -89,7 +89,7 @@ type ChunkHeader struct {
 // ObjHeader contains identification and information of object.
 type ObjHeader struct {
 	Magic  [4]byte
-	Name   []byte
+	Name   [44]byte
 	Size   int64
 	Offset int64
 }

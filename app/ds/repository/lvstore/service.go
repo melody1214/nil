@@ -1,8 +1,9 @@
 package lvstore
 
 import (
+	"bufio"
 	"bytes"
-	"encoding/gob"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"os"
@@ -129,6 +130,9 @@ func (s *service) MigrateData() error {
 			}
 			PartID := value.PartID
 			if strings.HasPrefix(PartID, "hot_") {
+				if !strings.HasPrefix(key, "/G_") {
+					continue
+				}
 				fChunkSrc, err := os.OpenFile(lv.MntPoint+"/"+PartID+"/"+value.ChunkInfo.LocGid+"/"+key, os.O_RDWR, 0775)
 				if err != nil {
 					return err
@@ -211,12 +215,12 @@ func (s *service) GetObjectMD5(lvID, objID string) (string, bool) {
 
 func (s *service) GetChunkHeaderSize() int64 {
 	// TODO: fill the method
-	return 100
+	return 8
 }
 
 func (s *service) GetObjectHeaderSize() int64 {
 	// TODO: fill the method
-	return 100
+	return 64
 }
 
 func (s *service) handleCall(r *repository.Request) {
@@ -255,14 +259,8 @@ func (s *service) read(r *repository.Request) {
 		return
 	}
 
-	// Create a directory for a local group if not exist.
-	lgDir := lv.MntPoint + "/" + r.LocGid
-	_, err := os.Stat(lgDir)
-	if os.IsNotExist(err) {
-		os.MkdirAll(lgDir, 0775)
-	}
-
 	// Open a chunk requested by a client.
+	lgDir := lv.MntPoint + "/" + r.LocGid
 	fChunk, err := os.Open(lgDir + "/" + obj.Cid)
 	if err != nil {
 		r.Err = err
@@ -278,8 +276,11 @@ func (s *service) read(r *repository.Request) {
 	}
 
 	oHeader := new(repository.ObjHeader)
-	dec := gob.NewDecoder(fChunk)
-	err = dec.Decode(oHeader)
+	err = binary.Read(fChunk, binary.LittleEndian, oHeader)
+	if err != nil {
+		r.Err = err
+		return
+	}
 
 	// Read contents of the requested object from the chunk.
 	_, err = fChunk.Seek(oHeader.Offset, os.SEEK_SET)
@@ -307,14 +308,8 @@ func (s *service) readAll(r *repository.Request) {
 		return
 	}
 
-	// Create a directory for a local group if not exist.
-	lgDir := lv.MntPoint + "/" + r.LocGid
-	_, err := os.Stat(lgDir)
-	if os.IsNotExist(err) {
-		os.MkdirAll(lgDir, 0775)
-	}
-
 	// Open a chunk requested by a client.
+	lgDir := lv.MntPoint + "/" + r.LocGid
 	fChunk, err := os.Open(lgDir + "/" + r.Cid)
 	if err != nil {
 		r.Err = err
@@ -389,21 +384,16 @@ func (s *service) write(r *repository.Request) {
 	if fChunkLen == 0 {
 		cHeader := repository.ChunkHeader{
 			Magic:   [4]byte{0x7f, 'c', 'h', 'k'},
-			Type:    make([]byte, 1),
+			Type:    [1]byte{},
 			State:   [1]byte{'P'},
 			Encoded: false,
 		}
 
-		if r.Type == "Parity" {
-			cHeader.Type = append(cHeader.Type, 'P')
-		}
-		if r.Type == "Data" {
-			cHeader.Type = append(cHeader.Type, 'D')
-		}
+		cHeader.Type[0] = 'D'
 
 		b := new(bytes.Buffer)
-		enc := gob.NewEncoder(b)
-		err := enc.Encode(cHeader)
+		bufio.NewWriter(b)
+		err := binary.Write(b, binary.LittleEndian, cHeader)
 		if err != nil {
 			r.Err = err
 			return
@@ -419,25 +409,36 @@ func (s *service) write(r *repository.Request) {
 			return
 		}
 	}
+	// Get an information of the chunk.
+	fChunkInfo, err = os.Lstat(fChunkName)
+	if err != nil {
+		r.Err = err
+		return
+	}
+
+	// Get current length of the chunk.
+	fChunkLen = fChunkInfo.Size()
 
 	// Create an object header for requested object.
 	oHeader := repository.ObjHeader{
 		Magic:  [4]byte{0x7f, 'o', 'b', 'j'},
-		Name:   make([]byte, 32),
+		Name:   [44]byte{},
 		Size:   r.Osize,
-		Offset: fChunkLen + 140,
+		Offset: fChunkLen + s.GetObjectHeaderSize(),
 	}
 
-	oHeader.Name = append([]byte(r.Oid))
+	for i := 0; i < len(r.Oid); i++ {
+		oHeader.Name[i] = r.Oid[i]
+	}
 	//fmt.Println("len(r.Oid) : ", len(r.Oid))
 
-	for i := len(r.Oid); i <= 32; i++ {
-		oHeader.Name = append(oHeader.Name, byte(0))
+	for i := len(r.Oid); i < len(oHeader.Name); i++ {
+		oHeader.Name[i] = '0'
 	}
 
 	b := new(bytes.Buffer)
-	enc := gob.NewEncoder(b)
-	err = enc.Encode(&oHeader)
+	bufio.NewWriter(b)
+	err = binary.Write(b, binary.LittleEndian, oHeader)
 	if err != nil {
 		r.Err = err
 		return
@@ -487,7 +488,7 @@ func (s *service) write(r *repository.Request) {
 		Cid:    r.Cid,
 		Offset: fChunkLen,
 		ObjInfo: repository.ObjInfo{
-			Size: r.Osize + int64(n),
+			Size: r.Osize,
 			MD5:  r.Md5,
 		},
 	}
@@ -619,7 +620,7 @@ func (s *service) deleteReal(r *repository.Request) {
 		// Get current length of the chunk.
 		fChunkLen := fChunkInfo.Size()
 
-		if obj.Offset+obj.ObjInfo.Size != fChunkLen {
+		if obj.Offset+obj.ObjInfo.Size+s.GetObjectHeaderSize() != fChunkLen {
 			r.Err = fmt.Errorf("can remove only a last object of a chunk")
 			return
 		}
@@ -731,7 +732,7 @@ func (s *service) CountNonCodedChunk(Vol string, LocGid string) (int, error) {
 			err := fmt.Errorf("prevent panic by handling failure accessing a path %q: %v", dir, err)
 			return err
 		}
-		ok, err := regexp.MatchString(LocGid+"/L_", path)
+		ok, err := regexp.MatchString("/"+LocGid+"/L_", path)
 		if ok {
 			count++
 		}
@@ -758,7 +759,7 @@ func (s *service) GetNonCodedChunk(Vol string, LocGid string) (string, error) {
 	}
 
 	dir := lv.MntPoint
-	encPath := LocGid + "/L_"
+	encPath := "/" + LocGid + "/L_"
 	var cid string
 
 	fmt.Println("getnoncodedchunk")
