@@ -1,12 +1,47 @@
 package cmap
 
 import (
+	"errors"
 	"fmt"
+	"math/rand"
+	"time"
 )
+
+var (
+	// ErrNotFound is returned when failed to search specific components;
+	// node, volume, encoding group with the given conditions.
+	ErrNotFound = errors.New("no search result with the given conditions")
+)
+
+// Random for pick random member option.
+var random *rand.Rand
+
+// SearchCall is an object that can provide users various and detailed
+// search functions.
+type SearchCall struct {
+	// Cluster map which will be used to search.
+	// It is copied through the manager at the time the SearchCall object
+	// is created. Because the SearchCall sub methods are not cause changes
+	// to the cmap, caller can reuse any number of different sub calls
+	// without locking.
+	cmap *CMap
+}
+
+// Node returns a SearchCallNode object for searching node member.
+func (c *SearchCall) Node() *SearchCallNode {
+	return &SearchCallNode{
+		cmap:   c.cmap,
+		id:     ID(-1),
+		name:   NodeName(""),
+		nType:  NodeType(-1),
+		status: NodeStatus(unknown),
+	}
+}
 
 // SearchCallNode is a handle of search call node operation.
 type SearchCallNode struct {
-	manager  *cMapManager
+	cmap     *CMap
+	manager  *manager
 	id       ID
 	name     NodeName
 	nType    NodeType
@@ -47,19 +82,21 @@ func (c *SearchCallNode) Random() *SearchCallNode {
 
 // Do returns the search result.
 func (c *SearchCallNode) Do() (Node, error) {
-	m := c.manager.cMaps[c.manager.latest]
+	if c.cmap == nil {
+		c.cmap = c.manager.cMaps[c.manager.latest]
+	}
 
 	var randIdx []int
 	if c.random {
-		randIdx = c.manager.random.Perm(len(m.Nodes))
+		randIdx = random.Perm(len(c.cmap.Nodes))
 	}
 
-	for i := 0; i < len(m.Nodes); i++ {
+	for i := 0; i < len(c.cmap.Nodes); i++ {
 		var n Node
 		if c.random {
-			n = m.Nodes[randIdx[i]]
+			n = c.cmap.Nodes[randIdx[i]]
 		} else {
-			n = m.Nodes[i]
+			n = c.cmap.Nodes[i]
 		}
 
 		// If search condition for ID is set, but the ID is not matched.
@@ -88,9 +125,20 @@ func (c *SearchCallNode) Do() (Node, error) {
 	return Node{}, fmt.Errorf("failed to search the node with the conditions")
 }
 
+// EncGrp returns a SearchCallEncGrp object for searching encoding group member.
+func (c *SearchCall) EncGrp() *SearchCallEncGrp {
+	return &SearchCallEncGrp{
+		cmap:   c.cmap,
+		id:     ID(-1),
+		status: EncodingGroupStatus(unknown),
+		random: false,
+	}
+}
+
 // SearchCallEncGrp is a handle of search call encoding group operation.
 type SearchCallEncGrp struct {
-	manager *cMapManager
+	cmap    *CMap
+	manager *manager
 	id      ID
 	status  EncodingGroupStatus
 	random  bool
@@ -116,19 +164,21 @@ func (c *SearchCallEncGrp) Random() *SearchCallEncGrp {
 
 // Do returns the search result.
 func (c *SearchCallEncGrp) Do() (EncodingGroup, error) {
-	m := c.manager.cMaps[c.manager.latest]
+	if c.cmap == nil {
+		c.cmap = c.manager.cMaps[c.manager.latest]
+	}
 
 	var randIdx []int
 	if c.random {
-		randIdx = c.manager.random.Perm(len(m.EncGrps))
+		randIdx = random.Perm(len(c.cmap.EncGrps))
 	}
 
-	for i := 0; i < len(m.EncGrps); i++ {
+	for i := 0; i < len(c.cmap.EncGrps); i++ {
 		var eg EncodingGroup
 		if c.random {
-			eg = m.EncGrps[randIdx[i]]
+			eg = c.cmap.EncGrps[randIdx[i]]
 		} else {
-			eg = m.EncGrps[i]
+			eg = c.cmap.EncGrps[i]
 		}
 
 		if c.id != ID(-1) && c.id != eg.ID {
@@ -145,9 +195,19 @@ func (c *SearchCallEncGrp) Do() (EncodingGroup, error) {
 	return EncodingGroup{}, fmt.Errorf("failed to search the encoding group with the conditions")
 }
 
+// Volume returns a SearchCallVolume object for searching volume member.
+func (c *SearchCall) Volume() *SearchCallVolume {
+	return &SearchCallVolume{
+		cmap:   c.cmap,
+		id:     ID(-1),
+		status: VolumeStatus(unknown),
+	}
+}
+
 // SearchCallVolume is a handle of search volume call.
 type SearchCallVolume struct {
-	manager *cMapManager
+	cmap    *CMap
+	manager *manager
 	id      ID
 	status  VolumeStatus
 }
@@ -166,9 +226,11 @@ func (c *SearchCallVolume) Status(s VolumeStatus) *SearchCallVolume {
 
 // Do returns the search result.
 func (c *SearchCallVolume) Do() (Volume, error) {
-	m := c.manager.cMaps[c.manager.latest]
+	if c.cmap == nil {
+		c.cmap = c.manager.cMaps[c.manager.latest]
+	}
 
-	for _, v := range m.Vols {
+	for _, v := range c.cmap.Vols {
 		if c.id != ID(-1) && c.id != v.ID {
 			continue
 		}
@@ -181,4 +243,9 @@ func (c *SearchCallVolume) Do() (Volume, error) {
 	}
 
 	return Volume{}, fmt.Errorf("failed to search the encoding group with the conditions")
+}
+
+func init() {
+	// Initializes random seed.
+	random = rand.New(rand.NewSource(time.Now().Unix()))
 }

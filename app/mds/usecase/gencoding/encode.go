@@ -55,7 +55,7 @@ func (s *service) encode() {
 	t.Primary.EncGrp = primary.EncGrp
 
 	// Find the parity group leader ds and ask to start encoding job.
-	parity, err := s.cmapAPI.SearchCallNode().ID(t.Primary.Node).Status(cmap.NodeAlive).Do()
+	parity, err := s.cmapAPI.SearchCall().Node().ID(t.Primary.Node).Status(cmap.NodeAlive).Do()
 	if err != nil {
 		ctxLogger.Error(errors.Wrap(err, "failed to find such parity node"))
 		s.setJobStatus(jobID, Fail)
@@ -128,12 +128,13 @@ func (s *service) findPrimary() (token.Unencoded, error) {
 		return token.Unencoded{}, fmt.Errorf("no proper primary candidate")
 	}
 
-	v, err := s.cmapAPI.SearchCallVolume().ID(target.Vols[0]).Do()
+	c := s.cmapAPI.SearchCall()
+	v, err := c.Volume().ID(target.Vols[0]).Do()
 	if err != nil {
 		return token.Unencoded{}, err
 	}
 
-	n, err := s.cmapAPI.SearchCallNode().ID(v.Node).Do()
+	n, err := c.Node().ID(v.Node).Do()
 	if err != nil {
 		return token.Unencoded{}, err
 	}

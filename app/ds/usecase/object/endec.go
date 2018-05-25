@@ -87,7 +87,7 @@ func (e *endec) genLocalParity(c chunk) error {
 	}
 
 	cmapVer := e.cmapAPI.GetLatestCMapVersion()
-	eg, err := e.cmapAPI.SearchCallEncGrp().ID(cmap.ID(egID)).Do()
+	eg, err := e.cmapAPI.SearchCall().EncGrp().ID(cmap.ID(egID)).Do()
 	if err != nil {
 		return errors.Wrap(err, "failed to find encoding group")
 	}
@@ -111,7 +111,7 @@ func (e *endec) genLocalParity(c chunk) error {
 			return nil
 		case <-cmapChangedC:
 			cmapVer = e.cmapAPI.GetLatestCMapVersion()
-			newEg, err := e.cmapAPI.SearchCallEncGrp().ID(cmap.ID(egID)).Do()
+			newEg, err := e.cmapAPI.SearchCall().EncGrp().ID(cmap.ID(egID)).Do()
 			if err != nil {
 				stopC <- nil
 				return errors.Wrap(err, "failed to find encoding group")
@@ -277,14 +277,16 @@ func (e *endec) _genLocalParity(c chunk, stop <-chan interface{}) <-chan error {
 
 func (e *endec) renameToL(c chunk) error {
 	egID, _ := strconv.ParseInt(string(c.encodingGroup), 10, 64)
-	eg, err := e.cmapAPI.SearchCallEncGrp().ID(cmap.ID(egID)).Do()
+
+	call := e.cmapAPI.SearchCall()
+	eg, err := call.EncGrp().ID(cmap.ID(egID)).Do()
 	if err != nil {
 		return errors.Wrap(err, "failed to find such encoding group")
 	}
 
 	vols := make([]cmap.Volume, len(eg.Vols))
 	for i := 0; i < len(eg.Vols); i++ {
-		v, err := e.cmapAPI.SearchCallVolume().ID(eg.Vols[i]).Do()
+		v, err := call.Volume().ID(eg.Vols[i]).Do()
 		if err != nil {
 			return errors.Wrap(err, "failed to find such volume")
 		}
@@ -293,7 +295,7 @@ func (e *endec) renameToL(c chunk) error {
 
 	nodes := make([]cmap.Node, len(eg.Vols))
 	for i := 0; i < len(eg.Vols); i++ {
-		n, err := e.cmapAPI.SearchCallNode().ID(vols[i].Node).Do()
+		n, err := call.Node().ID(vols[i].Node).Do()
 		if err != nil {
 			return errors.Wrap(err, "failed to find such volume")
 		}
@@ -346,16 +348,18 @@ func (e *endec) truncateAllChunks(c chunk) error {
 		}
 	}
 
+	call := e.cmapAPI.SearchCall()
+
 	// Truncate remotes.
 	egID, _ := strconv.ParseInt(string(c.encodingGroup), 10, 64)
-	eg, err := e.cmapAPI.SearchCallEncGrp().ID(cmap.ID(egID)).Do()
+	eg, err := call.EncGrp().ID(cmap.ID(egID)).Do()
 	if err != nil {
 		return errors.Wrap(err, "failed to find such encoding group")
 	}
 
 	vols := make([]cmap.Volume, len(eg.Vols)-1)
 	for i := 1; i < len(eg.Vols); i++ {
-		v, err := e.cmapAPI.SearchCallVolume().ID(eg.Vols[i]).Do()
+		v, err := call.Volume().ID(eg.Vols[i]).Do()
 		if err != nil {
 			return errors.Wrap(err, "failed to find such volume")
 		}
@@ -364,7 +368,7 @@ func (e *endec) truncateAllChunks(c chunk) error {
 
 	nodes := make([]cmap.Node, len(eg.Vols)-1)
 	for i := 0; i < len(eg.Vols)-1; i++ {
-		n, err := e.cmapAPI.SearchCallNode().ID(vols[i].Node).Do()
+		n, err := call.Node().ID(vols[i].Node).Do()
 		if err != nil {
 			return errors.Wrap(err, "failed to find such volume")
 		}

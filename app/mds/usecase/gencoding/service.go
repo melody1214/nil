@@ -181,12 +181,13 @@ func (s *service) findCandidate(region token.Stop) (*token.Unencoded, error) {
 		return nil, fmt.Errorf("no unencoded chunk")
 	}
 
-	v, err := s.cmapAPI.SearchCallVolume().ID(target.Vols[0]).Do()
+	c := s.cmapAPI.SearchCall()
+	v, err := c.Volume().ID(target.Vols[0]).Do()
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to search volume ID: %s", target.Vols[0].String())
 	}
 
-	n, err := s.cmapAPI.SearchCallNode().ID(v.Node).Do()
+	n, err := c.Node().ID(v.Node).Do()
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to search node ID: %s", v.Node.String())
 	}

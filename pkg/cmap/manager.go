@@ -1,25 +1,22 @@
 package cmap
 
 import (
-	"math/rand"
 	"sync"
-	"time"
 )
 
-// cMapManager is the object for access multiple versions of cluster maps.
-type cMapManager struct {
+// manager is the object for access multiple versions of cluster maps.
+type manager struct {
 	latest                   Version
 	cMaps                    map[Version]*CMap
 	notiChannels             map[Time](chan interface{})
 	stateChangedNotiChannels map[Time](chan interface{})
-	random                   *rand.Rand
 
 	mu sync.RWMutex
 }
 
-// newCMapManager creates the cluster map manager with an initial cluster map
+// newManager creates the cluster map manager with an initial cluster map
 // with the given coordinator address.
-func newCMapManager(coordinator NodeAddress) (*cMapManager, error) {
+func newManager(coordinator NodeAddress) (*manager, error) {
 	// Create an empty map.
 	cm := &CMap{
 		Version: Version(0),
@@ -42,11 +39,10 @@ func newCMapManager(coordinator NodeAddress) (*cMapManager, error) {
 		return nil, err
 	}
 
-	m := &cMapManager{
+	m := &manager{
 		cMaps:                    make(map[Version]*CMap),
 		notiChannels:             make(map[Time](chan interface{})),
 		stateChangedNotiChannels: make(map[Time](chan interface{})),
-		random: rand.New(rand.NewSource(time.Now().Unix())),
 	}
 	m.cMaps[cm.Version] = cm
 	m.latest = cm.Version
@@ -55,7 +51,7 @@ func newCMapManager(coordinator NodeAddress) (*cMapManager, error) {
 }
 
 // LatestVersion returns the latest version number in cluster maps.
-func (m *cMapManager) LatestVersion() Version {
+func (m *manager) LatestVersion() Version {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -63,7 +59,7 @@ func (m *cMapManager) LatestVersion() Version {
 }
 
 // LatestCMap returns the cluster map of the latest version.
-func (m *cMapManager) LatestCMap() CMap {
+func (m *manager) LatestCMap() *CMap {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -71,14 +67,14 @@ func (m *cMapManager) LatestCMap() CMap {
 	return copyCMap(cm)
 }
 
-func (m *cMapManager) latestCMap() *CMap {
+func (m *manager) latestCMap() *CMap {
 	cm := m.cMaps[m.latest]
 	return cm
 }
 
 // copyCMap do deep copy the given cmap.
-func copyCMap(cm *CMap) CMap {
-	copiedMap := CMap{
+func copyCMap(cm *CMap) *CMap {
+	copiedMap := &CMap{
 		Version: cm.Version,
 		Time:    cm.Time,
 	}
@@ -111,14 +107,14 @@ func copyCMap(cm *CMap) CMap {
 }
 
 // Update updates the latest cluster map.
-func (m *cMapManager) Update(cm *CMap) error {
+func (m *manager) Update(cm *CMap) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	return m.update(cm)
 }
 
-func (m *cMapManager) update(cm *CMap) error {
+func (m *manager) update(cm *CMap) error {
 	// If version is less or equal to current latest version,
 	// then we don't need to do anything.
 	if cm.Version <= m.latest {
@@ -140,7 +136,7 @@ func (m *cMapManager) update(cm *CMap) error {
 
 // GetUpdatedNoti returns a channel which will send notification when
 // the higher version of cluster map is created.
-func (m *cMapManager) GetUpdatedNoti(ver Version) <-chan interface{} {
+func (m *manager) GetUpdatedNoti(ver Version) <-chan interface{} {
 	// Make buffered channel is important because not to be blocked
 	// while in the send noti progress if the receiver had been timeout.
 	notiC := make(chan interface{}, 2)
@@ -167,7 +163,7 @@ func (m *cMapManager) GetUpdatedNoti(ver Version) <-chan interface{} {
 
 // GetStateChangedNoti returns a channel which will send notification when
 // some cluster map member's state are changed.
-func (m *cMapManager) GetStateChangedNoti() <-chan interface{} {
+func (m *manager) GetStateChangedNoti() <-chan interface{} {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -181,7 +177,7 @@ func (m *cMapManager) GetStateChangedNoti() <-chan interface{} {
 
 // sendStateChangedNotiToAll sends notifications to all observers when some
 // states are changed.
-func (m *cMapManager) sendStateChangedNotiToAll() {
+func (m *manager) sendStateChangedNotiToAll() {
 	for key, ch := range m.stateChangedNotiChannels {
 		ch <- nil
 		close(ch)
@@ -189,7 +185,7 @@ func (m *cMapManager) sendStateChangedNotiToAll() {
 	}
 }
 
-func (m *cMapManager) sendUpdateNotiToAll() {
+func (m *manager) sendUpdateNotiToAll() {
 	for i, ch := range m.notiChannels {
 		ch <- nil
 		close(ch)
@@ -198,7 +194,7 @@ func (m *cMapManager) sendUpdateNotiToAll() {
 }
 
 // SearchCallNode returns a new search call for finding node.
-func (m *cMapManager) SearchCallNode() *SearchCallNode {
+func (m *manager) SearchCallNode() *SearchCallNode {
 	return &SearchCallNode{
 		manager: m,
 		id:      ID(-1),
@@ -209,7 +205,7 @@ func (m *cMapManager) SearchCallNode() *SearchCallNode {
 }
 
 // SearchCallEncGrp returns a new search call for finding encoding group.
-func (m *cMapManager) SearchCallEncGrp() *SearchCallEncGrp {
+func (m *manager) SearchCallEncGrp() *SearchCallEncGrp {
 	return &SearchCallEncGrp{
 		manager: m,
 		id:      ID(-1),
@@ -219,7 +215,7 @@ func (m *cMapManager) SearchCallEncGrp() *SearchCallEncGrp {
 }
 
 // SearchCallVolume returns a new search call for finding volume.
-func (m *cMapManager) SearchCallVolume() *SearchCallVolume {
+func (m *manager) SearchCallVolume() *SearchCallVolume {
 	return &SearchCallVolume{
 		manager: m,
 		id:      ID(-1),
@@ -227,7 +223,7 @@ func (m *cMapManager) SearchCallVolume() *SearchCallVolume {
 	}
 }
 
-func (m *cMapManager) getMdsAddr() (NodeAddress, error) {
+func (m *manager) getMdsAddr() (NodeAddress, error) {
 	var cm *CMap
 	// If fail to get cluster map from the memory,
 	// then look up in the file system directory.
@@ -266,7 +262,7 @@ func getLatestMapFromLocal() (*CMap, error) {
 
 // mergeCMap compares cluster map mine with received by swim protocol one,
 // and merge it to newer version. Set merged cmap to the cluster map manager.
-func (m *cMapManager) mergeCMap(received *CMap) {
+func (m *manager) mergeCMap(received *CMap) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

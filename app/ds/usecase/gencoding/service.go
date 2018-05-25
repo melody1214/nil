@@ -42,7 +42,7 @@ func NewService(cfg *config.Ds, cmapAPI cmap.SlaveAPI, store Repository) Service
 func (s *service) run() {
 	// Get node information
 	for {
-		n, err := s.cmapAPI.SearchCallNode().Name(cmap.NodeName(s.cfg.ID)).Do()
+		n, err := s.cmapAPI.SearchCall().Node().Name(cmap.NodeName(s.cfg.ID)).Do()
 		if err != nil {
 			// Wait to be updated.
 			notiC := s.cmapAPI.GetUpdatedNoti(s.cmapAPI.GetLatestCMapVersion())

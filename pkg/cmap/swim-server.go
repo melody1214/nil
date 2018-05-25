@@ -14,8 +14,8 @@ import (
 // and send gossip message periodically and disseminates the
 // status of the member if the status is changed.
 type server struct {
-	cfg         Config
-	cMapManager *cMapManager
+	cfg     Config
+	manager *manager
 
 	trans      Transport
 	rpcSrv     *rpc.Server
@@ -26,14 +26,14 @@ type server struct {
 }
 
 // newServer creates swim server object.
-func newServer(cfg Config, cMapManager *cMapManager, trans Transport) (*server, error) {
+func newServer(cfg Config, manager *manager, trans Transport) (*server, error) {
 	s := &server{
-		cfg:         cfg,
-		cMapManager: cMapManager,
-		trans:       trans,
-		rpcSrv:      rpc.NewServer(),
-		stop:        make(chan chan error, 1),
-		stopped:     uint32(1),
+		cfg:     cfg,
+		manager: manager,
+		trans:   trans,
+		rpcSrv:  rpc.NewServer(),
+		stop:    make(chan chan error, 1),
+		stopped: uint32(1),
 	}
 
 	s.rpcHandler = s

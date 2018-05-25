@@ -208,17 +208,18 @@ func (h *handlers) writeToRemoteFollower(req client.RequestEvent, size int64, ci
 		return errors.Wrap(err, "failed to convert encoding group id")
 	}
 
-	encGrp, err := h.cmapAPI.SearchCallEncGrp().ID(cmap.ID(encGrpID)).Do()
+	call := h.cmapAPI.SearchCall()
+	encGrp, err := call.EncGrp().ID(cmap.ID(encGrpID)).Do()
 	if err != nil {
 		return errors.Wrapf(err, "failed to find such encoding group: %d", encGrpID)
 	}
 
-	vol, err := h.cmapAPI.SearchCallVolume().ID(encGrp.Vols[c.shard]).Do()
+	vol, err := call.Volume().ID(encGrp.Vols[c.shard]).Do()
 	if err != nil {
 		return errors.Wrapf(err, "failed to find such volume: %d", encGrp.Vols[c.shard])
 	}
 
-	node, err := h.cmapAPI.SearchCallNode().ID(vol.Node).Do()
+	node, err := call.Node().ID(vol.Node).Do()
 	if err != nil {
 		return errors.Wrapf(err, "failed to find such node: %d", vol.Node)
 	}
@@ -340,7 +341,7 @@ func (h *handlers) writeCopy(req client.RequestEvent) {
 		return
 	}
 
-	mds, err := h.cmapAPI.SearchCallNode().Type(cmap.MDS).Status(cmap.NodeAlive).Do()
+	mds, err := h.cmapAPI.SearchCall().Node().Type(cmap.MDS).Status(cmap.NodeAlive).Do()
 	if err != nil {
 		// Rollback writed data.
 		storeReq.Cid = ""

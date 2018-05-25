@@ -19,12 +19,12 @@ func (i Incarnation) Uint32() uint32 {
 
 // ping sends periodical ping and sends the result through the channel 'pec'.
 func (s *server) ping() {
-	cmap := s.cMapManager.LatestCMap()
+	cmap := s.manager.LatestCMap()
 
 	const notFound = NodeName("not found")
 	fetched := Node{Name: notFound}
 
-	randIdx := s.cMapManager.random.Perm(len(cmap.Nodes))
+	randIdx := random.Perm(len(cmap.Nodes))
 	for i := 0; i < len(cmap.Nodes); i++ {
 		n := cmap.Nodes[randIdx[i]]
 
@@ -51,7 +51,7 @@ func (s *server) ping() {
 		return
 	}
 
-	msg := &PingMessage{CMap: cmap}
+	msg := &PingMessage{CMap: *cmap}
 
 	ack, err := s.sendPing(fetched.Addr, msg)
 	if err != nil {
@@ -64,7 +64,7 @@ func (s *server) ping() {
 		return
 	}
 
-	s.cMapManager.mergeCMap(&ack.CMap)
+	s.manager.mergeCMap(&ack.CMap)
 }
 
 // pingRequest picks 'k' random member and requests them to send ping 'dstID' indirectly.
@@ -73,7 +73,7 @@ func (s *server) pingRequest(dstID ID) {
 	alive := false        // Result of requests.
 	var wg sync.WaitGroup // Wait for all requests are finished.
 
-	dstNode, err := s.cMapManager.SearchCallNode().ID(dstID).Do()
+	dstNode, err := s.manager.SearchCallNode().ID(dstID).Do()
 	if err != nil {
 		logger.Error(errors.Wrapf(err, "failed to find ping request destination node: %v", dstID))
 		s.disseminate(dstID, NodeFaulty)
@@ -84,8 +84,8 @@ func (s *server) pingRequest(dstID ID) {
 		return
 	}
 
-	cmap := s.cMapManager.LatestCMap()
-	randIdx := s.cMapManager.random.Perm(len(cmap.Nodes))
+	cmap := s.manager.LatestCMap()
+	randIdx := random.Perm(len(cmap.Nodes))
 	for i := 0; i < len(cmap.Nodes); i++ {
 		n := cmap.Nodes[randIdx[i]]
 
@@ -112,7 +112,7 @@ func (s *server) pingRequest(dstID ID) {
 			if err == nil {
 				alive = true
 			}
-		}(n.Addr, &PingRequestMessage{dstID: dstID, CMap: cmap})
+		}(n.Addr, &PingRequestMessage{dstID: dstID, CMap: *cmap})
 		k--
 
 		if k == 0 {
@@ -158,30 +158,30 @@ func (s *server) sendPingRequest(addr NodeAddress, msg *PingRequestMessage) (ack
 
 // Ping handles ping request.
 func (s *server) Ping(req *PingMessage, res *Ack) (err error) {
-	s.cMapManager.mergeCMap(&req.CMap)
-	res.CMap = s.cMapManager.LatestCMap()
+	s.manager.mergeCMap(&req.CMap)
+	res.CMap = *(s.manager.LatestCMap())
 	return nil
 }
 
 // PingRequest handles ping-request request.
 func (s *server) PingRequest(req *PingRequestMessage, res *Ack) (err error) {
-	s.cMapManager.mergeCMap(&req.CMap)
-	n, err := s.cMapManager.SearchCallNode().ID(req.dstID).Do()
+	s.manager.mergeCMap(&req.CMap)
+	n, err := s.manager.SearchCallNode().ID(req.dstID).Do()
 	if err != nil {
 		return err
 	}
-	ack, err := s.sendPing(n.Addr, &PingMessage{CMap: s.cMapManager.LatestCMap()})
+	ack, err := s.sendPing(n.Addr, &PingMessage{CMap: *(s.manager.LatestCMap())})
 	if err != nil {
 		return err
 	}
-	s.cMapManager.mergeCMap(&ack.CMap)
+	s.manager.mergeCMap(&ack.CMap)
 	res.CMap = ack.CMap
 	return nil
 }
 
 // leave set myself faulty and send it to the cluster.
 func (s *server) leave() {
-	n, err := s.cMapManager.SearchCallNode().Name(s.cfg.Name).Do()
+	n, err := s.manager.SearchCallNode().Name(s.cfg.Name).Do()
 	if err != nil {
 		return
 	}
@@ -191,10 +191,10 @@ func (s *server) leave() {
 
 // Disseminate changes the status and asks broadcast it to other healthy node.
 func (s *server) disseminate(id ID, stat NodeStatus) {
-	s.cMapManager.mu.Lock()
-	defer s.cMapManager.mu.Unlock()
+	s.manager.mu.Lock()
+	defer s.manager.mu.Unlock()
 
-	cmap := s.cMapManager.latestCMap()
+	cmap := s.manager.latestCMap()
 	for i, n := range cmap.Nodes {
 		if n.ID != id {
 			continue
@@ -205,7 +205,7 @@ func (s *server) disseminate(id ID, stat NodeStatus) {
 			cmap.Nodes[i].Incr++
 		}
 
-		s.cMapManager.sendStateChangedNotiToAll()
+		s.manager.sendStateChangedNotiToAll()
 		go s.broadcast()
 		return
 	}
@@ -215,16 +215,16 @@ func (s *server) disseminate(id ID, stat NodeStatus) {
 func (s *server) broadcast() {
 	// Randomly select 3 nodes and send.
 	// Too hard to broadcast without IP multicast.
-	cmap := s.cMapManager.LatestCMap()
+	cmap := s.manager.LatestCMap()
 	for k := 0; k < 3; k++ {
-		n, err := s.cMapManager.SearchCallNode().Status(NodeAlive).Random().Do()
+		n, err := s.manager.SearchCallNode().Status(NodeAlive).Random().Do()
 		if err != nil {
 			continue
 		}
 		if n.Type == GW || n.Name == s.cfg.Name {
 			continue
 		}
-		go s.sendPing(n.Addr, &PingMessage{CMap: cmap})
+		go s.sendPing(n.Addr, &PingMessage{CMap: *cmap})
 	}
 	runtime.Gosched()
 }

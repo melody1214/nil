@@ -43,7 +43,8 @@ func (h *handlers) GetChunkHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	eg, err := h.cmapAPI.SearchCallEncGrp().ID(cmap.ID(iEncGrp)).Status(cmap.EGAlive).Do()
+	c := h.cmapAPI.SearchCall()
+	eg, err := c.EncGrp().ID(cmap.ID(iEncGrp)).Status(cmap.EGAlive).Do()
 	if err != nil {
 		http.Error(w, "invalid header", http.StatusBadRequest)
 		return
@@ -54,14 +55,14 @@ func (h *handlers) GetChunkHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	v, err := h.cmapAPI.SearchCallVolume().ID(eg.Vols[iShardNum]).Status(cmap.VolActive).Do()
+	v, err := c.Volume().ID(eg.Vols[iShardNum]).Status(cmap.VolActive).Do()
 	if err != nil {
 		http.Error(w, "invalid header", http.StatusBadRequest)
 		return
 	}
 	r.Header.Add("Volume", v.ID.String())
 
-	n, err := h.cmapAPI.SearchCallNode().ID(cmap.ID(v.Node)).Status(cmap.NodeAlive).Do()
+	n, err := c.Node().ID(cmap.ID(v.Node)).Status(cmap.NodeAlive).Do()
 	if err != nil {
 		http.Error(w, "invalid header", http.StatusBadRequest)
 		return
@@ -102,20 +103,21 @@ func (h *handlers) RenameChunkHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	eg, err := h.cmapAPI.SearchCallEncGrp().ID(cmap.ID(iEncGrp)).Status(cmap.EGAlive).Do()
+	c := h.cmapAPI.SearchCall()
+	eg, err := c.EncGrp().ID(cmap.ID(iEncGrp)).Status(cmap.EGAlive).Do()
 	if err != nil {
 		http.Error(w, "invalid header", http.StatusBadRequest)
 		return
 	}
 
 	for _, vID := range eg.Vols {
-		v, err := h.cmapAPI.SearchCallVolume().ID(vID).Status(cmap.VolActive).Do()
+		v, err := c.Volume().ID(vID).Status(cmap.VolActive).Do()
 		if err != nil {
 			http.Error(w, "invalid header", http.StatusBadRequest)
 			return
 		}
 
-		n, err := h.cmapAPI.SearchCallNode().ID(cmap.ID(v.Node)).Status(cmap.NodeAlive).Do()
+		n, err := c.Node().ID(cmap.ID(v.Node)).Status(cmap.NodeAlive).Do()
 		if err != nil {
 			http.Error(w, "invalid header", http.StatusBadRequest)
 			return

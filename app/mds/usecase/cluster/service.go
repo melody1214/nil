@@ -44,7 +44,7 @@ func NewService(cfg *config.Mds, cmapAPI cmap.MasterAPI, s Repository) Service {
 
 	// If I am the very firstman of the land, then version up myself to prevent merged by others.
 	if cfg.Swim.CoordinatorAddr == cfg.ServerAddr+":"+cfg.ServerPort {
-		n, err := service.cmapAPI.SearchCallNode().Type(cmap.MDS).Status(cmap.NodeAlive).Do()
+		n, err := service.cmapAPI.SearchCall().Node().Type(cmap.MDS).Status(cmap.NodeAlive).Do()
 		if err != nil {
 			return nil
 		}

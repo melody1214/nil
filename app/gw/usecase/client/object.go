@@ -61,18 +61,19 @@ func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handlers) findRandomPlaceToWrite() (cmap.EncodingGroup, cmap.Node, error) {
-	eg, err := h.cmapAPI.SearchCallEncGrp().Random().Status(cmap.EGAlive).Do()
+	c := h.cmapAPI.SearchCall()
+	eg, err := c.EncGrp().Random().Status(cmap.EGAlive).Do()
 	if err != nil {
 		return cmap.EncodingGroup{}, cmap.Node{}, errors.Wrap(err, "failed to search writable encoding group")
 	}
 
 	const primary = 0
-	vol, err := h.cmapAPI.SearchCallVolume().ID(eg.Vols[primary]).Status(cmap.VolActive).Do()
+	vol, err := c.Volume().ID(eg.Vols[primary]).Status(cmap.VolActive).Do()
 	if err != nil {
 		return cmap.EncodingGroup{}, cmap.Node{}, errors.Wrapf(err, "failed to search active volume %+v", eg.Vols[primary])
 	}
 
-	node, err := h.cmapAPI.SearchCallNode().ID(vol.Node).Status(cmap.NodeAlive).Do()
+	node, err := c.Node().ID(vol.Node).Status(cmap.NodeAlive).Do()
 	if err != nil {
 		return cmap.EncodingGroup{}, cmap.Node{}, errors.Wrapf(err, "failed to search alive node %+v", vol.Node)
 	}
@@ -104,9 +105,7 @@ func (h *handlers) GetObjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Test code
-	c := h.cmapAPI.SearchCallNode()
-	node, err := c.ID(cmap.ID(res.DsID)).Do()
+	node, err := h.cmapAPI.SearchCall().Node().ID(cmap.ID(res.DsID)).Do()
 	if err != nil {
 		ctxLogger.Error(err)
 		req.SendInternalError()

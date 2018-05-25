@@ -48,7 +48,8 @@ func (s *service) AddVolume(req *nilrpc.DCLAddVolumeRequest, res *nilrpc.DCLAddV
 		return err
 	}
 
-	mds, err := s.cmapAPI.SearchCallNode().Type(cmap.MDS).Status(cmap.NodeAlive).Do()
+	c := s.cmapAPI.SearchCall()
+	mds, err := c.Node().Type(cmap.MDS).Status(cmap.NodeAlive).Do()
 	if err != nil {
 		ctxLogger.Error(err)
 		return errors.Wrap(err, "failed to register volume")
@@ -60,7 +61,7 @@ func (s *service) AddVolume(req *nilrpc.DCLAddVolumeRequest, res *nilrpc.DCLAddV
 	}
 	defer conn.Close()
 
-	n, err := s.cmapAPI.SearchCallNode().Name(cmap.NodeName(s.cfg.ID)).Do()
+	n, err := c.Node().Name(cmap.NodeName(s.cfg.ID)).Do()
 	if err != nil {
 		return err
 	}
@@ -98,7 +99,7 @@ func (s *service) AddVolume(req *nilrpc.DCLAddVolumeRequest, res *nilrpc.DCLAddV
 		for {
 			ver := s.cmapAPI.GetLatestCMapVersion()
 			// id, _ := strconv.ParseInt(lv.Name, 10, 64)
-			v, err := s.cmapAPI.SearchCallVolume().ID(registerRes.ID).Do()
+			v, err := s.cmapAPI.SearchCall().Volume().ID(registerRes.ID).Do()
 			if err != nil {
 				ctxLogger.Error(errors.Wrap(err, "failed to search volume, wait cmap to be updated"))
 				notiC := s.cmapAPI.GetUpdatedNoti(ver)
