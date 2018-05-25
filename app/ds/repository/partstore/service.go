@@ -226,7 +226,7 @@ func (s *service) GetChunkHeaderSize() int64 {
 
 func (s *service) GetObjectHeaderSize() int64 {
 	// TODO: fill the method
-	return 64
+	return 100
 }
 
 func (s *service) handleCall(r *repository.Request) {
@@ -291,7 +291,11 @@ func (s *service) read(r *repository.Request) {
 
 	oHeader := new(repository.ObjHeader)
 	err = binary.Read(fChunk, binary.LittleEndian, oHeader)
-	//fmt.Println(oHeader.Name, oHeader.Size, oHeader.Offset)
+	//fmt.Printf("%s, %d, %d\n", oHeader.Name, oHeader.Size, oHeader.Offset)
+	if err != nil {
+		r.Err = err
+		return
+	}
 
 	_, err = fChunk.Seek(oHeader.Offset, os.SEEK_SET)
 	if err != nil {
@@ -454,7 +458,8 @@ func (s *service) write(r *repository.Request) {
 	// Create an object header for requested object.
 	oHeader := repository.ObjHeader{
 		Magic:  [4]byte{0x7f, 'o', 'b', 'j'},
-		Name:   [44]byte{},
+		Name:   [64]byte{},
+		MD5:    [16]byte{},
 		Size:   r.Osize,
 		Offset: fChunkLen + s.GetObjectHeaderSize(),
 	}
@@ -465,7 +470,12 @@ func (s *service) write(r *repository.Request) {
 	//fmt.Println("len(r.Oid) : ", len(r.Oid))
 
 	for i := len(r.Oid); i < len(oHeader.Name); i++ {
-		oHeader.Name[i] = '0'
+		oHeader.Name[i] = '\x00'
+	}
+
+	//fmt.Printf("len(r.Md5) : %d, len(oHeader.MD5) : %d\n", len(r.Md5), len(oHeader.MD5))
+	for i := 0; i < len(oHeader.MD5); i++ {
+		oHeader.MD5[i] = r.Md5[i]
 	}
 
 	b := new(bytes.Buffer)
@@ -519,12 +529,12 @@ func (s *service) write(r *repository.Request) {
 	pg.Lock.Obj.Lock()
 
 	pg.ObjMap[r.Oid] = repository.ObjMap{
-		Cid:    r.Cid,
-		Offset: fChunkLen,
+		Cid: r.Cid,
 		ObjInfo: repository.ObjInfo{
 			Size: r.Osize,
 			MD5:  r.Md5,
 		},
+		Offset: fChunkLen,
 	}
 
 	pg.Lock.Obj.Unlock()
@@ -834,6 +844,73 @@ func (s *service) GetNonCodedChunk(Vol string, LocGid string) (string, error) {
 	}
 
 	return cid, nil
+}
+
+func (s *service) BuildObjectMap(Vol string, cid string) error {
+	if Vol == "" || cid == "" {
+		return fmt.Errorf("Invalid arguments :%s, %s", Vol, cid)
+	}
+
+	pg, ok := s.pgs[Vol]
+	if !ok {
+		return fmt.Errorf("no such partition group: %s", Vol)
+	}
+
+	pg.Lock.Chk.RLock()
+	chk, ok := pg.ChunkMap[cid]
+	pg.Lock.Chk.RUnlock()
+	if !ok {
+		return fmt.Errorf("no such chunk: %s", cid)
+	}
+
+	fChunk, err := os.OpenFile(pg.MntPoint+"/"+chk.PartID+"/"+chk.ChunkInfo.LocGid+"/"+cid, os.O_RDWR, 0775)
+	if err != nil {
+		return err
+	}
+	defer fChunk.Close()
+
+	cHeader := new(repository.ChunkHeader)
+	err = binary.Read(fChunk, binary.LittleEndian, cHeader)
+	if err != nil {
+		return err
+	}
+
+	//fmt.Printf("cHeader.Magic : %s, cHeader.Type : %s", cHeader.Magic, cHeader.Type)
+
+	for {
+		oHeader := new(repository.ObjHeader)
+		err := binary.Read(fChunk, binary.LittleEndian, oHeader)
+		if err == io.EOF {
+			break
+		}
+
+		ObjID := strings.Trim(string(oHeader.Name[:]), "\x00")
+		MD5 := strings.Trim(string(oHeader.MD5[:]), "\x00")
+
+		//fmt.Printf("Object id : %s, MD5 : %x\n", ObjID, MD5)
+
+		pg.Lock.Obj.RLock()
+		_, ok := pg.ObjMap[ObjID]
+		pg.Lock.Obj.RUnlock()
+		if ok {
+			return fmt.Errorf("object is already existed : %s", ObjID)
+		}
+		pg.Lock.Obj.Lock()
+		pg.ObjMap[ObjID] = repository.ObjMap{
+			Cid: cid,
+			ObjInfo: repository.ObjInfo{
+				Size: oHeader.Size,
+				MD5:  MD5,
+			},
+			Offset: oHeader.Offset - s.GetObjectHeaderSize(),
+		}
+
+		pg.Lock.Obj.Unlock()
+
+		fChunk.Seek(oHeader.Size, os.SEEK_CUR)
+	}
+
+	return nil
 }
 
 // NewClusterRepository returns a new part store inteface in a view of cluster domain.

@@ -220,7 +220,7 @@ func (s *service) GetChunkHeaderSize() int64 {
 
 func (s *service) GetObjectHeaderSize() int64 {
 	// TODO: fill the method
-	return 64
+	return 100
 }
 
 func (s *service) handleCall(r *repository.Request) {
@@ -422,7 +422,8 @@ func (s *service) write(r *repository.Request) {
 	// Create an object header for requested object.
 	oHeader := repository.ObjHeader{
 		Magic:  [4]byte{0x7f, 'o', 'b', 'j'},
-		Name:   [44]byte{},
+		Name:   [64]byte{},
+		MD5:    [16]byte{},
 		Size:   r.Osize,
 		Offset: fChunkLen + s.GetObjectHeaderSize(),
 	}
@@ -434,6 +435,10 @@ func (s *service) write(r *repository.Request) {
 
 	for i := len(r.Oid); i < len(oHeader.Name); i++ {
 		oHeader.Name[i] = '0'
+	}
+
+	for i := 0; i < len(oHeader.MD5); i++ {
+		oHeader.MD5[i] = r.Md5[i]
 	}
 
 	b := new(bytes.Buffer)
@@ -786,6 +791,73 @@ func (s *service) GetNonCodedChunk(Vol string, LocGid string) (string, error) {
 	}
 
 	return cid, nil
+}
+
+func (s *service) BuildObjectMap(Vol string, cid string) error {
+	if Vol == "" || cid == "" {
+		return fmt.Errorf("Invalid arguments :%s, %s", Vol, cid)
+	}
+
+	lv, ok := s.lvs[Vol]
+	if !ok {
+		return fmt.Errorf("no such partition group: %s", Vol)
+	}
+
+	lv.Lock.Chk.RLock()
+	chk, ok := lv.ChunkMap[cid]
+	lv.Lock.Chk.RUnlock()
+	if !ok {
+		return fmt.Errorf("no such chunk: %s", cid)
+	}
+
+	fChunk, err := os.OpenFile(lv.MntPoint+"/"+chk.PartID+"/"+chk.ChunkInfo.LocGid+"/"+cid, os.O_RDWR, 0775)
+	if err != nil {
+		return err
+	}
+	defer fChunk.Close()
+
+	cHeader := new(repository.ChunkHeader)
+	err = binary.Read(fChunk, binary.LittleEndian, cHeader)
+	if err != nil {
+		return err
+	}
+
+	//fmt.Printf("cHeader.Magic : %s, cHeader.Type : %s", cHeader.Magic, cHeader.Type)
+
+	for {
+		oHeader := new(repository.ObjHeader)
+		err := binary.Read(fChunk, binary.LittleEndian, oHeader)
+		if err == io.EOF {
+			break
+		}
+
+		ObjID := strings.Trim(string(oHeader.Name[:]), "\x00")
+		MD5 := strings.Trim(string(oHeader.MD5[:]), "\x00")
+
+		//fmt.Printf("Object id : %s, MD5 : %x\n", ObjID, MD5)
+
+		lv.Lock.Obj.RLock()
+		_, ok := lv.ObjMap[ObjID]
+		lv.Lock.Obj.RUnlock()
+		if ok {
+			return fmt.Errorf("object is already existed : %s", ObjID)
+		}
+		lv.Lock.Obj.Lock()
+		lv.ObjMap[ObjID] = repository.ObjMap{
+			Cid: cid,
+			ObjInfo: repository.ObjInfo{
+				Size: oHeader.Size,
+				MD5:  MD5,
+			},
+			Offset: oHeader.Offset - s.GetObjectHeaderSize(),
+		}
+
+		lv.Lock.Obj.Unlock()
+
+		fChunk.Seek(oHeader.Size, os.SEEK_CUR)
+	}
+
+	return nil
 }
 
 // NewClusterRepository returns a new lv store inteface in a view of cluster domain.
