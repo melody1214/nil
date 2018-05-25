@@ -387,15 +387,15 @@ func TestCopyCMap(t *testing.T) {
 	copied := copyCMap(&origin)
 
 	// Check copied correctly.
-	if reflect.DeepEqual(origin, copied) == false {
-		t.Fatalf("copied map copied differently\norigin: %v\ncopied: %v", origin, copied)
+	if reflect.DeepEqual(origin, *copied) == false {
+		t.Fatalf("copied map copied differently\norigin: %v\ncopied: %v", origin, *copied)
 	}
 
 	// Change slice values for testing deep copy.
 	origin.Nodes[0].Vols[0] = ID(99)
 	origin.Vols[0].EncGrps[0] = ID(99)
 	origin.EncGrps[0].Vols[0] = ID(99)
-	if reflect.DeepEqual(origin, copied) {
-		t.Fatalf("slices are not deep copied.\norigin: %v\ncopied: %v", origin, copied)
+	if reflect.DeepEqual(origin, *copied) {
+		t.Fatalf("slices are not deep copied.\norigin: %v\ncopied: %v", origin, *copied)
 	}
 }

@@ -43,7 +43,7 @@ func TestSearchCallNode(t *testing.T) {
 		Nodes:   testNodes,
 	}
 
-	ct, err := newCMapManager("")
+	ct, err := newManager("")
 	if err != nil {
 		t.Fatal(err)
 	}
