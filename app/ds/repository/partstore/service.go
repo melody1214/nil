@@ -458,8 +458,8 @@ func (s *service) write(r *repository.Request) {
 	// Create an object header for requested object.
 	oHeader := repository.ObjHeader{
 		Magic:  [4]byte{0x7f, 'o', 'b', 'j'},
-		Name:   [64]byte{},
-		MD5:    [16]byte{},
+		Name:   [48]byte{},
+		MD5:    [32]byte{},
 		Size:   r.Osize,
 		Offset: fChunkLen + s.GetObjectHeaderSize(),
 	}
@@ -474,7 +474,7 @@ func (s *service) write(r *repository.Request) {
 	}
 
 	//fmt.Printf("len(r.Md5) : %d, len(oHeader.MD5) : %d\n", len(r.Md5), len(oHeader.MD5))
-	for i := 0; i < len(oHeader.MD5); i++ {
+	for i := 0; i < len(r.Md5); i++ {
 		oHeader.MD5[i] = r.Md5[i]
 	}
 
