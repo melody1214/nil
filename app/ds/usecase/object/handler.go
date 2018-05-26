@@ -139,7 +139,7 @@ func (h *handlers) writeToPrimary(req client.RequestEvent) {
 		vID(req.Request().Header.Get("Volume-Id")), contentLength,
 	)
 
-	if len(req.MD5()) < 16 {
+	if len(req.MD5()) < 32 {
 		req.SendInternalError()
 		return
 	}
@@ -313,7 +313,7 @@ func (h *handlers) writeCopy(req client.RequestEvent) {
 	}
 	encgrp := cmap.ID(tmp)
 
-	if len(req.MD5()) < 16 {
+	if len(req.MD5()) < 32 {
 		req.SendInternalError()
 		return
 	}
