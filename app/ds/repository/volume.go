@@ -89,8 +89,8 @@ type ChunkHeader struct {
 // ObjHeader contains identification and information of object.
 type ObjHeader struct {
 	Magic  [4]byte
-	Name   [64]byte
-	MD5    [16]byte
+	Name   [48]byte
+	MD5    [32]byte
 	Size   int64
 	Offset int64
 }
