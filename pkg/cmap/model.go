@@ -8,18 +8,16 @@ type EncodingGroupStatus string
 const (
 	// EGAlive : healthy node
 	EGAlive EncodingGroupStatus = "Alive"
-	// EGSuspect : maybe faulty
-	EGSuspect EncodingGroupStatus = "Suspect"
 	// EGFaulty : faulty
 	EGFaulty EncodingGroupStatus = "Faulty"
-	// EGRdonly : readonly, maybe rebalancing or recovering.
+	// EGRdonly : rebalancing or recovering is done, wait to
 	EGRdonly EncodingGroupStatus = "Rdonly"
 )
 
 // String returns a string of the node status.
 func (s EncodingGroupStatus) String() string {
 	switch s {
-	case EGAlive, EGSuspect, EGFaulty, EGRdonly:
+	case EGAlive, EGFaulty, EGRdonly:
 		return string(s)
 	default:
 		return unknown

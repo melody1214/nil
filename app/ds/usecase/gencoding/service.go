@@ -111,6 +111,7 @@ func (s *service) TruncateChunk(req *nilrpc.DGETruncateChunkRequest, res *nilrpc
 		Osize:  1000000000,
 		Cid:    req.Chunk,
 		In:     &io.PipeReader{},
+		Md5:    "fakemd5stringfakemd5stringfakemd5",
 	}
 	if err := s.store.Push(truncateReq); err != nil {
 		return errors.Wrap(err, "failed to push truncated request")

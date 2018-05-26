@@ -139,6 +139,11 @@ func (h *handlers) writeToPrimary(req client.RequestEvent) {
 		vID(req.Request().Header.Get("Volume-Id")), contentLength,
 	)
 
+	if len(req.MD5()) < 16 {
+		req.SendInternalError()
+		return
+	}
+
 	storeReq := &repository.Request{
 		Op:     repository.Write,
 		Vol:    req.Request().Header.Get("Volume-Id"),
@@ -146,6 +151,7 @@ func (h *handlers) writeToPrimary(req client.RequestEvent) {
 		Oid:    strings.Replace(strings.Trim(req.Request().RequestURI, "/"), "/", ".", -1),
 		Cid:    string(cid),
 		Osize:  contentLength,
+		Md5:    req.MD5(),
 
 		In: req.Request().Body,
 	}
@@ -307,6 +313,11 @@ func (h *handlers) writeCopy(req client.RequestEvent) {
 	}
 	encgrp := cmap.ID(tmp)
 
+	if len(req.MD5()) < 16 {
+		req.SendInternalError()
+		return
+	}
+
 	storeReq := &repository.Request{
 		Op:     repository.Write,
 		Vol:    vol.String(),
@@ -314,7 +325,7 @@ func (h *handlers) writeCopy(req client.RequestEvent) {
 		Cid:    req.Request().Header.Get("Chunk-Id"),
 		LocGid: encgrp.String(),
 		Osize:  contentLength,
-		Md5:    req.Request().Header.Get("Md5"),
+		Md5:    req.MD5(),
 
 		In: req.Request().Body,
 	}

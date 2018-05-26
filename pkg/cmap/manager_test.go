@@ -296,12 +296,6 @@ func TestMergeCMap(t *testing.T) {
 	srcMap.Vols[2].Stat = VolPrepared
 	expectedVols = append(expectedVols, dstMap.Vols[2])
 
-	// Case 2.
-	srcMap.Vols[3].Incr = Incarnation(dstMap.Vols[3].Incr.Uint32() + 1)
-	srcMap.Vols[3].Stat = VolFailed
-	srcMap.Vols[3].Size = 120
-	expectedVols = append(expectedVols, srcMap.Vols[3])
-
 	mergeCMap(&srcMap, &dstMap)
 	for _, v := range expectedVols {
 		if reflect.DeepEqual(dstMap.Vols[v.ID.Int64()], v) == false {

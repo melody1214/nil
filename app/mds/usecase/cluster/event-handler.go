@@ -100,10 +100,15 @@ func (s *service) runStateChangedObserver() {
 
 				events := extractEventsFromCMap(&lastCMap, &changedCMap)
 				for _, e := range events {
-					if _, err := s.jFact.create(e, nil); err != nil {
+					j, err := s.jFact.create(e, nil)
+					if err != nil {
 						// TODO: handling errors.
 						fmt.Printf("\n%+v\n", err)
 						continue
+					}
+
+					if j.Type == Iterative {
+						s.wPool.dispatchNow(j)
 					}
 				}
 

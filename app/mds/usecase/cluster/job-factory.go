@@ -69,6 +69,10 @@ func (f *jobFactory) create(e *Event, private interface{}) (*Job, error) {
 		j.Type = Batch
 		j.State = Ready
 
+	case Update:
+		j.Type = Iterative
+		j.State = Run
+
 	default:
 		return nil, fmt.Errorf("unknown event type")
 	}

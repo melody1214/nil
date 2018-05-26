@@ -477,23 +477,8 @@ func (s *clusterStore) MakeNewEncodingGroup(txid repository.TxID, encGrp *cmap.E
 	return nil
 }
 
-func (s *clusterStore) UpdateChangedCMap(txid repository.TxID, cmap *cmap.CMap) error {
-	for _, n := range cmap.Nodes {
-		q := fmt.Sprintf(
-			`
-		UPDATE node
-		SET node_status='%s'
-		WHERE node_id=%d
-		`, n.Stat, n.ID,
-		)
-
-		_, err := s.Execute(txid, q)
-		if err != nil {
-			return errors.Wrap(err, "failed to update node")
-		}
-	}
-
-	for _, v := range cmap.Vols {
+func (s *clusterStore) UpdateChangedCMap(txid repository.TxID, m *cmap.CMap) error {
+	for _, v := range m.Vols {
 		q := fmt.Sprintf(
 			`
 		UPDATE volume
@@ -508,19 +493,77 @@ func (s *clusterStore) UpdateChangedCMap(txid repository.TxID, cmap *cmap.CMap) 
 		}
 	}
 
-	for _, eg := range cmap.EncGrps {
+	for _, n := range m.Nodes {
+		// Update node status.
 		q := fmt.Sprintf(
 			`
-		UPDATE encoding_group
-		SET eg_status='%s'
-		WHERE eg_id=%d
-		`, eg.Stat, eg.ID,
+			UPDATE node
+			SET node_status='%s'
+			WHERE node_id=%d
+			`, n.Stat, n.ID,
 		)
-
 		_, err := s.Execute(txid, q)
 		if err != nil {
-			return errors.Wrap(err, "failed to update encoding group")
+			return errors.Wrap(err, "failed to update node")
 		}
+
+		if n.Stat == cmap.NodeAlive {
+			continue
+		}
+
+		// If node is suspect, then update related volumes.
+		if n.Stat == cmap.NodeSuspect {
+			q := fmt.Sprintf(
+				`
+				UPDATE volume
+				SET vl_status='%s'
+				WHERE vl_node=%d AND (vl_status='%s' OR vl_status='%s')
+				`, cmap.VolSuspect, n.ID, cmap.VolActive, cmap.VolPrepared,
+			)
+
+			_, err := s.Execute(txid, q)
+			if err != nil {
+				return errors.Wrap(err, "failed to update encoding group")
+			}
+			continue
+		}
+
+		// If node is faulty, then update related volumes.
+		if n.Stat == cmap.NodeFaulty {
+			q := fmt.Sprintf(
+				`
+				UPDATE volume
+				SET vl_status='%s'
+				WHERE vl_node=%d AND vl_status!='%s'
+				`, cmap.VolFailed, n.ID, cmap.VolActive,
+			)
+
+			_, err := s.Execute(txid, q)
+			if err != nil {
+				return errors.Wrap(err, "failed to update encoding group")
+			}
+			continue
+		}
+	}
+
+	q := fmt.Sprintf(
+		`
+		UPDATE encoding_group
+		SET eg_status='%s'
+		WHERE eg_status='%s' AND eg_id IN (
+			SELECT egv_encoding_group
+			FROM encoding_group_volume
+			WHERE egv_volume IN (
+				SELECT vl_id
+				FROM volume
+				WHERE vl_status='%s' OR vl_status='%s'
+			)
+		)
+		`, cmap.EGRdonly, cmap.EGAlive, cmap.VolSuspect, cmap.VolFailed,
+	)
+	_, err := s.Execute(txid, q)
+	if err != nil {
+		return errors.Wrap(err, "failed to update encoding group")
 	}
 
 	return nil

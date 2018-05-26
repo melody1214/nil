@@ -16,6 +16,8 @@ const (
 	RegisterVolume
 	// Rebalance means the event type is rebalance.
 	Rebalance
+	// Update means need to update cluster map from db data.
+	Update
 	// Fail means the event type is fail.
 	Fail
 )
@@ -30,6 +32,8 @@ func (t EventType) String() string {
 		return "Rebalance"
 	} else if t == Fail {
 		return "Fail"
+	} else if t == Update {
+		return "Update"
 	}
 	return "Unknown"
 }
@@ -66,6 +70,7 @@ func newEvent(t EventType, affectedEG cmap.ID) *Event {
 
 func extractEventsFromCMap(old, new *cmap.CMap) []*Event {
 	needRebalance := false
+	needUpdate := false
 
 	events := make([]*Event, 0)
 	for _, newNode := range new.Nodes {
@@ -80,6 +85,7 @@ func extractEventsFromCMap(old, new *cmap.CMap) []*Event {
 
 			switch newNode.Stat {
 			case cmap.NodeSuspect:
+				needUpdate = true
 				// Make nodes rdonly.
 			case cmap.NodeFaulty:
 				// Make recovery events.
@@ -110,6 +116,10 @@ func extractEventsFromCMap(old, new *cmap.CMap) []*Event {
 		}
 	}
 
+	if needUpdate {
+		e := newEvent(Update, NoAffectedEG)
+		events = append(events, e)
+	}
 	if needRebalance {
 		e := newEvent(Rebalance, NoAffectedEG)
 		events = append(events, e)

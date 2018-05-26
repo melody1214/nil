@@ -85,6 +85,8 @@ func (w *worker) init() fsm {
 		return w.rbStart
 	case Fail:
 		return nil
+	case Update:
+		return w.upStart
 	default:
 		return nil
 	}

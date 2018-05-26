@@ -313,14 +313,11 @@ func mergeCMap(src, dst *CMap) bool {
 				break
 			}
 
-			if sv.Incr == dv.Incr && sv.Stat == VolPrepared {
-				break
-			}
-
-			if dst.Vols[i].Stat != sv.Stat {
+			if dv.Stat == VolPrepared && sv.Stat != VolPrepared {
 				dst.Vols[i].Stat = sv.Stat
 				stateChanged = true
 			}
+
 			dst.Vols[i].Size = sv.Size
 			dst.Vols[i].Speed = sv.Speed
 			dst.Vols[i].Incr = sv.Incr
@@ -336,15 +333,6 @@ func mergeCMap(src, dst *CMap) bool {
 
 			if se.Incr < de.Incr {
 				break
-			}
-
-			if se.Incr == de.Incr && de.Stat == EGFaulty {
-				break
-			}
-
-			if dst.EncGrps[i].Stat != se.Stat {
-				dst.EncGrps[i].Stat = se.Stat
-				stateChanged = true
 			}
 			dst.EncGrps[i].Size = se.Size
 			dst.EncGrps[i].Used = se.Used
