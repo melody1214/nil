@@ -86,8 +86,8 @@ func (e *endec) genLocalParity(c chunk) error {
 		return errors.Wrap(err, "failed to convert encoding group id to cmap id")
 	}
 
-	cmapVer := e.cmapAPI.GetLatestCMapVersion()
-	eg, err := e.cmapAPI.SearchCall().EncGrp().ID(cmap.ID(egID)).Do()
+	call := e.cmapAPI.SearchCall()
+	eg, err := call.EncGrp().ID(cmap.ID(egID)).Do()
 	if err != nil {
 		return errors.Wrap(err, "failed to find encoding group")
 	}
@@ -101,7 +101,7 @@ func (e *endec) genLocalParity(c chunk) error {
 
 	timeoutC := time.After(5 * time.Minute)
 	encodingC := e._genLocalParity(c, stopC)
-	cmapChangedC := e.cmapAPI.GetUpdatedNoti(cmapVer)
+	cmapChangedC := e.cmapAPI.GetUpdatedNoti(call.Version())
 	for {
 		select {
 		case err = <-encodingC:
@@ -110,8 +110,8 @@ func (e *endec) genLocalParity(c chunk) error {
 			}
 			return nil
 		case <-cmapChangedC:
-			cmapVer = e.cmapAPI.GetLatestCMapVersion()
-			newEg, err := e.cmapAPI.SearchCall().EncGrp().ID(cmap.ID(egID)).Do()
+			call = e.cmapAPI.SearchCall()
+			newEg, err := call.EncGrp().ID(cmap.ID(egID)).Do()
 			if err != nil {
 				stopC <- nil
 				return errors.Wrap(err, "failed to find encoding group")

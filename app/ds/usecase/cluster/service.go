@@ -97,12 +97,11 @@ func (s *service) AddVolume(req *nilrpc.DCLAddVolumeRequest, res *nilrpc.DCLAddV
 
 	go func() {
 		for {
-			ver := s.cmapAPI.GetLatestCMapVersion()
-			// id, _ := strconv.ParseInt(lv.Name, 10, 64)
-			v, err := s.cmapAPI.SearchCall().Volume().ID(registerRes.ID).Do()
+			c := s.cmapAPI.SearchCall()
+			v, err := c.Volume().ID(registerRes.ID).Do()
 			if err != nil {
 				ctxLogger.Error(errors.Wrap(err, "failed to search volume, wait cmap to be updated"))
-				notiC := s.cmapAPI.GetUpdatedNoti(ver)
+				notiC := s.cmapAPI.GetUpdatedNoti(c.Version())
 				<-notiC
 				continue
 			}

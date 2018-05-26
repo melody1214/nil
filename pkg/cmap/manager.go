@@ -193,33 +193,10 @@ func (m *manager) sendUpdateNotiToAll() {
 	}
 }
 
-// SearchCallNode returns a new search call for finding node.
-func (m *manager) SearchCallNode() *SearchCallNode {
-	return &SearchCallNode{
-		manager: m,
-		id:      ID(-1),
-		name:    NodeName(""),
-		nType:   NodeType(-1),
-		status:  NodeStatus(unknown),
-	}
-}
-
-// SearchCallEncGrp returns a new search call for finding encoding group.
-func (m *manager) SearchCallEncGrp() *SearchCallEncGrp {
-	return &SearchCallEncGrp{
-		manager: m,
-		id:      ID(-1),
-		status:  EncodingGroupStatus(unknown),
-		random:  false,
-	}
-}
-
-// SearchCallVolume returns a new search call for finding volume.
-func (m *manager) SearchCallVolume() *SearchCallVolume {
-	return &SearchCallVolume{
-		manager: m,
-		id:      ID(-1),
-		status:  VolumeStatus(unknown),
+func (m *manager) SearchCall() *SearchCall {
+	return &SearchCall{
+		// Use copied the latest cluster map.
+		cmap: m.LatestCMap(),
 	}
 }
 
@@ -241,7 +218,7 @@ func (m *manager) getMdsAddr() (NodeAddress, error) {
 		cm = &m
 	}
 
-	mds, err := m.SearchCallNode().Type(MDS).Status(NodeAlive).Do()
+	mds, err := m.SearchCall().Node().Type(MDS).Status(NodeAlive).Do()
 	if err != nil {
 		return "", err
 	}
@@ -378,4 +355,36 @@ func mergeCMap(src, dst *CMap) bool {
 	}
 
 	return stateChanged
+}
+
+func (m *manager) UpdateVolume(volume Volume) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	cm := m.latestCMap()
+	for i, v := range cm.Vols {
+		if v.ID != volume.ID {
+			continue
+		}
+
+		cm.Vols[i].Stat = volume.Stat
+		cm.Vols[i].Size = volume.Size
+		cm.Vols[i].Speed = volume.Speed
+		cm.Vols[i].Incr = cm.Vols[i].Incr + 1
+	}
+}
+
+func (m *manager) UpdateUnencoded(egID ID, unencoded int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	cm := m.latestCMap()
+	for i, found := range cm.EncGrps {
+		if found.ID != egID {
+			continue
+		}
+
+		cm.EncGrps[i].Uenc = unencoded
+		cm.EncGrps[i].Incr = cm.EncGrps[i].Incr + 1
+	}
 }

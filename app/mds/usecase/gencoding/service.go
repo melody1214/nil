@@ -163,28 +163,20 @@ func (s *service) HandleToken(req *nilrpc.MGEHandleTokenRequest, res *nilrpc.MGE
 
 // findCandidate finds a candidate chunk for global encoding in current region.
 func (s *service) findCandidate(region token.Stop) (*token.Unencoded, error) {
-	// Get the lateste map.
-	m := s.cmapAPI.GetLatestCMap()
+	c := s.cmapAPI.SearchCall()
 
-	// Find the encoding group that has the most chunks that are not encoded.
-	priority := 0
-	var target *cmap.EncodingGroup
-	for i, eg := range m.EncGrps {
-		if priority < eg.Uenc {
-			priority = eg.Uenc
-			target = &m.EncGrps[i]
-		}
+	eg, err := c.EncGrp().MaxUenc().Random().Status(cmap.EGAlive).Do()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to find candidate encoding group")
 	}
 
-	// Our cluster has no unencoded chunks.
-	if target == nil {
+	if eg.Uenc == 0 {
 		return nil, fmt.Errorf("no unencoded chunk")
 	}
 
-	c := s.cmapAPI.SearchCall()
-	v, err := c.Volume().ID(target.Vols[0]).Do()
+	v, err := c.Volume().ID(eg.Vols[0]).Do()
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to search volume ID: %s", target.Vols[0].String())
+		return nil, errors.Wrapf(err, "failed to search volume ID: %s", eg.Vols[0].String())
 	}
 
 	n, err := c.Node().ID(v.Node).Do()
@@ -200,7 +192,7 @@ func (s *service) findCandidate(region token.Stop) (*token.Unencoded, error) {
 
 	getChunkReq := &nilrpc.DGEGetCandidateChunkRequest{
 		Vol: v.ID,
-		EG:  target.ID,
+		EG:  eg.ID,
 	}
 	getChunkRes := &nilrpc.DGEGetCandidateChunkResponse{}
 
@@ -217,9 +209,9 @@ func (s *service) findCandidate(region token.Stop) (*token.Unencoded, error) {
 		Region:   region,
 		Node:     n.ID,
 		Volume:   v.ID,
-		EncGrp:   target.ID,
+		EncGrp:   eg.ID,
 		ChunkID:  getChunkRes.Chunk,
-		Priority: priority,
+		Priority: eg.Uenc,
 	}, nil
 }
 

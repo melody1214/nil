@@ -42,10 +42,11 @@ func NewService(cfg *config.Ds, cmapAPI cmap.SlaveAPI, store Repository) Service
 func (s *service) run() {
 	// Get node information
 	for {
-		n, err := s.cmapAPI.SearchCall().Node().Name(cmap.NodeName(s.cfg.ID)).Do()
+		c := s.cmapAPI.SearchCall()
+		n, err := c.Node().Name(cmap.NodeName(s.cfg.ID)).Do()
 		if err != nil {
 			// Wait to be updated.
-			notiC := s.cmapAPI.GetUpdatedNoti(s.cmapAPI.GetLatestCMapVersion())
+			notiC := s.cmapAPI.GetUpdatedNoti(c.Version())
 			<-notiC
 			continue
 		}
@@ -64,28 +65,37 @@ func (s *service) run() {
 }
 
 func (s *service) updateUnencoded() {
-	egs := s.cmapAPI.FindEncodingGroupByLeader(s.nodeID)
-	// fmt.Printf("egs: %v\n", egs)
-	for _, eg := range egs {
-		if err := s.doUpdateUnencoded(eg); err != nil {
-			fmt.Println(errors.Wrap(err, "failed to update unencoded"))
+	c := s.cmapAPI.SearchCall()
+	myVols, err := c.Volume().Node(s.nodeID).DoAll()
+	if err != nil {
+		if err != cmap.ErrNotFound {
+			logger.Error(errors.Wrap(err, "failed to find owned volumes"))
+		}
+		return
+	}
+
+	for _, v := range myVols {
+		egs, err := c.EncGrp().LeaderVol(v.ID).DoAll()
+		if err != nil {
+			if err != cmap.ErrNotFound {
+				logger.Error(errors.Wrap(err, "failed to find owned volumes"))
+			}
+			continue
+		}
+
+		for _, eg := range egs {
+			uenc, err := s.store.CountNonCodedChunk(eg.LeaderVol().String(), eg.ID.String())
+			if err != nil {
+				logger.Error(errors.Wrap(err, "failed to count unencoded chunk"))
+				continue
+			}
+
+			if err := s.cmapAPI.UpdateUnencoded(eg.ID, uenc); err != nil {
+				logger.Error(errors.Wrap(err, "failed to update unencoded"))
+				continue
+			}
 		}
 	}
-}
-
-func (s *service) doUpdateUnencoded(eg cmap.EncodingGroup) error {
-	unenc, err := s.store.CountNonCodedChunk(eg.Vols[len(eg.Vols)-1].String(), eg.ID.String())
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
-
-	if eg.Uenc == unenc {
-		return nil
-	}
-
-	eg.Uenc = unenc
-	return s.cmapAPI.UpdateEncodingGroupUnencoded(eg)
 }
 
 func (s *service) RenameChunk(req *nilrpc.DGERenameChunkRequest, res *nilrpc.DGERenameChunkResponse) error {

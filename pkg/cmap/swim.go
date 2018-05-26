@@ -73,7 +73,7 @@ func (s *server) pingRequest(dstID ID) {
 	alive := false        // Result of requests.
 	var wg sync.WaitGroup // Wait for all requests are finished.
 
-	dstNode, err := s.manager.SearchCallNode().ID(dstID).Do()
+	dstNode, err := s.manager.SearchCall().Node().ID(dstID).Do()
 	if err != nil {
 		logger.Error(errors.Wrapf(err, "failed to find ping request destination node: %v", dstID))
 		s.disseminate(dstID, NodeFaulty)
@@ -166,7 +166,7 @@ func (s *server) Ping(req *PingMessage, res *Ack) (err error) {
 // PingRequest handles ping-request request.
 func (s *server) PingRequest(req *PingRequestMessage, res *Ack) (err error) {
 	s.manager.mergeCMap(&req.CMap)
-	n, err := s.manager.SearchCallNode().ID(req.dstID).Do()
+	n, err := s.manager.SearchCall().Node().ID(req.dstID).Do()
 	if err != nil {
 		return err
 	}
@@ -181,7 +181,7 @@ func (s *server) PingRequest(req *PingRequestMessage, res *Ack) (err error) {
 
 // leave set myself faulty and send it to the cluster.
 func (s *server) leave() {
-	n, err := s.manager.SearchCallNode().Name(s.cfg.Name).Do()
+	n, err := s.manager.SearchCall().Node().Name(s.cfg.Name).Do()
 	if err != nil {
 		return
 	}
@@ -217,7 +217,7 @@ func (s *server) broadcast() {
 	// Too hard to broadcast without IP multicast.
 	cmap := s.manager.LatestCMap()
 	for k := 0; k < 3; k++ {
-		n, err := s.manager.SearchCallNode().Status(NodeAlive).Random().Do()
+		n, err := s.manager.SearchCall().Node().Status(NodeAlive).Random().Do()
 		if err != nil {
 			continue
 		}

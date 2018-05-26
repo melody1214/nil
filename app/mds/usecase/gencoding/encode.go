@@ -1,7 +1,6 @@
 package gencoding
 
 import (
-	"fmt"
 	"net/rpc"
 	"strconv"
 	"time"
@@ -112,24 +111,14 @@ func (s *service) getEncodingJobToken() (*token.Token, error) {
 
 // findPrimary finds a proper encoding group for acting primary.
 func (s *service) findPrimary() (token.Unencoded, error) {
-	m := s.cmapAPI.GetLatestCMap()
-
-	min := 999
-	var target *cmap.EncodingGroup
-	for i, eg := range m.EncGrps {
-		if min > eg.Uenc {
-			min = eg.Uenc
-			target = &m.EncGrps[i]
-		}
-	}
-
-	// There is no unencoded chunk.
-	if target == nil {
-		return token.Unencoded{}, fmt.Errorf("no proper primary candidate")
-	}
-
 	c := s.cmapAPI.SearchCall()
-	v, err := c.Volume().ID(target.Vols[0]).Do()
+
+	eg, err := c.EncGrp().MinUenc().Random().Status(cmap.EGAlive).Do()
+	if err != nil {
+		return token.Unencoded{}, err
+	}
+
+	v, err := c.Volume().ID(eg.Vols[0]).Do()
 	if err != nil {
 		return token.Unencoded{}, err
 	}
@@ -142,7 +131,7 @@ func (s *service) findPrimary() (token.Unencoded, error) {
 	return token.Unencoded{
 		Node:   n.ID,
 		Volume: v.ID,
-		EncGrp: target.ID,
+		EncGrp: eg.ID,
 	}, nil
 }
 

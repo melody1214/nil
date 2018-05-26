@@ -1,5 +1,14 @@
 package cmap
 
+import (
+	"fmt"
+
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+)
+
+var logger *logrus.Entry
+
 // Service is the root manager of membership package.
 // The service consists of four parts described below.
 //
@@ -32,34 +41,52 @@ type Service struct {
 	server *server
 }
 
+// NewService returns new membership service.
+func NewService(coordinator NodeAddress, log *logrus.Entry) (*Service, error) {
+	logger = log
+
+	cm, err := newManager(coordinator)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create cmap manager")
+	}
+
+	return &Service{
+		manager: cm,
+	}, nil
+}
+
+// StartMembershipServer starts membership server to gossip.
+func (s *Service) StartMembershipServer(cfg Config, trans Transport) error {
+	s.cfg = cfg
+	swimSrv, err := newServer(cfg, s.manager, trans)
+	if err != nil {
+		return errors.Wrap(err, "failed to make new swim server")
+	}
+	s.server = swimSrv
+
+	go s.server.run()
+	return nil
+}
+
+// CommonAPI is the interface for access the membership service with any mode.
+type CommonAPI interface {
+	SearchCall() *SearchCall
+	GetStateChangedNoti() <-chan interface{}
+	GetUpdatedNoti(ver Version) <-chan interface{}
+}
+
 // MasterAPI is the interface for access the membership service with master mode.
 type MasterAPI interface {
-	SearchCall() *SearchCall
-	SearchCallNode() *SearchCallNode
-	SearchCallVolume() *SearchCallVolume
-	SearchCallEncGrp() *SearchCallEncGrp
+	CommonAPI
 	GetLatestCMap() CMap
 	UpdateCMap(cmap *CMap) error
-	GetStateChangedNoti() <-chan interface{}
-	GetLatestCMapVersion() Version
-	GetUpdatedNoti(ver Version) <-chan interface{}
 }
 
 // SlaveAPI is the interface for access the membership service with slave mode.
 type SlaveAPI interface {
-	SearchCall() *SearchCall
-	SearchCallNode() *SearchCallNode
-	SearchCallVolume() *SearchCallVolume
-	SearchCallEncGrp() *SearchCallEncGrp
-	UpdateNodeStatus(nID ID, stat NodeStatus) error
+	CommonAPI
 	UpdateVolume(volume Volume) error
-	UpdateEncodingGroupStatus(egID ID, stat EncodingGroupStatus) error
-	UpdateEncodingGroupUsed(egID ID, used uint64) error
-	GetLatestCMapVersion() Version
-	GetLatestCMap() CMap
-	GetUpdatedNoti(ver Version) <-chan interface{}
-	FindEncodingGroupByLeader(leaderNode ID) []EncodingGroup
-	UpdateEncodingGroupUnencoded(eg EncodingGroup) error
+	UpdateUnencoded(egID ID, unencoded int) error
 }
 
 // MasterAPI returns a set of APIs that can be used by nodes in master mode.
@@ -75,8 +102,61 @@ func (s *Service) SlaveAPI() SlaveAPI {
 // SearchCall returns a SearchCall object which can support convenient
 // searching some members in the cluster.
 func (s *Service) SearchCall() *SearchCall {
-	return &SearchCall{
-		// Use copied the latest cluster map.
-		cmap: s.manager.LatestCMap(),
+	return s.manager.SearchCall()
+}
+
+// GetStateChangedNoti returns a channel which will send notification when
+// the cluster map is outdated.
+func (s *Service) GetStateChangedNoti() <-chan interface{} {
+	return s.manager.GetStateChangedNoti()
+}
+
+// GetUpdatedNoti returns a channel which will send notification when
+// the higher version of cluster map is created.
+func (s *Service) GetUpdatedNoti(ver Version) <-chan interface{} {
+	return s.manager.GetUpdatedNoti(ver)
+}
+
+// GetLatestCMap returns the latest cluster map.
+func (s *Service) GetLatestCMap() CMap {
+	return *s.manager.LatestCMap()
+}
+
+// UpdateCMap updates the new cmap manager with the given cmap.
+func (s *Service) UpdateCMap(cmap *CMap) error {
+	s.manager.mergeCMap(cmap)
+	return nil
+}
+
+// UpdateVolume updates the volume status of the given volume ID.
+func (s *Service) UpdateVolume(volume Volume) error {
+	node, err := s.SearchCall().Node().ID(volume.Node).Do()
+	if err != nil {
+		return fmt.Errorf("no such node: %v", err)
 	}
+	if node.Name != s.cfg.Name {
+		return fmt.Errorf("only can update volumes which this node has")
+	}
+
+	s.manager.UpdateVolume(volume)
+	return nil
+}
+
+// UpdateUnencoded updates the unencoded field of encoding group.
+func (s *Service) UpdateUnencoded(egID ID, unencoded int) error {
+	c := s.SearchCall()
+	eg, err := c.EncGrp().ID(egID).Do()
+	if err != nil {
+		return errors.Wrap(err, "failed to find encoding group with the given id")
+	}
+	node, err := c.Node().ID(eg.LeaderVol()).Do()
+	if err != nil {
+		return errors.Wrap(err, "failed to find leader node with the given encoding group")
+	}
+	if node.Name != s.cfg.Name {
+		return fmt.Errorf("only can update eg which this the leader volume")
+	}
+
+	s.manager.UpdateUnencoded(egID, unencoded)
+	return nil
 }

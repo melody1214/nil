@@ -2,7 +2,6 @@ package cmap
 
 import (
 	"os"
-	"reflect"
 	"testing"
 )
 
@@ -54,41 +53,30 @@ func TestSearchCallNode(t *testing.T) {
 
 	for _, n := range testMap.Nodes {
 		// 1. Search with the all conditions are matched.
-		c := ct.SearchCallNode()
-		c.ID(n.ID).Name(n.Name).Type(n.Type).Status(n.Stat)
-
-		if find, err := c.Do(); err != nil {
+		c := ct.SearchCall()
+		if find, err := c.Node().ID(n.ID).Name(n.Name).Type(n.Type).Status(n.Stat).Do(); err != nil {
 			t.Error(err)
-		} else if !reflect.DeepEqual(find, n) {
+		} else if find.ID != n.ID {
 			t.Errorf("expected %+v, got %+v", n, find)
 		}
 
 		// 2. Search with only condition for id.
-		c = ct.SearchCallNode()
-		c.ID(n.ID)
-
-		if find, err := c.Do(); err != nil {
+		if find, err := c.Node().ID(n.ID).Do(); err != nil {
 			t.Error(err)
 			t.Errorf("%+v", c)
-		} else if !reflect.DeepEqual(find, n) {
+		} else if find.ID != n.ID {
 			t.Errorf("expected %+v, got %+v", n, find)
 		}
 
 		// 3. Search with wrong contition.
-		c = ct.SearchCallNode()
-		c.Name(n.Name + "wrong name")
-
-		if _, err := c.Do(); err == nil {
+		if _, err := c.Node().Name(n.Name + "wrong name").Do(); err == nil {
 			t.Error("expected error, got nil")
 		}
 
 		// 4. Search with type and status.
-		c = ct.SearchCallNode()
-		c.Type(n.Type).Status(n.Stat)
-
-		if find, err := c.Do(); err != nil {
+		if find, err := c.Node().Type(n.Type).Status(n.Stat).Do(); err != nil {
 			t.Error(err)
-		} else if !reflect.DeepEqual(find, n) {
+		} else if find.ID != n.ID {
 			t.Errorf("expected %+v, got %+v", n, find)
 		}
 	}

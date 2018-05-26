@@ -38,6 +38,14 @@ type EncodingGroup struct {
 	Uenc int                 `xml:"unencoded"`
 }
 
+// LeaderVol returns the leader volume of the encoding group.
+func (eg EncodingGroup) LeaderVol() ID {
+	if len(eg.Vols) == 0 {
+		return ID(-1)
+	}
+	return eg.Vols[len(eg.Vols)-1]
+}
+
 // NodeName is a string for identifying node.
 type NodeName string
 
