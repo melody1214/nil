@@ -335,7 +335,7 @@ func (e *endec) truncateAllChunks(c chunk) error {
 		Oid:    "fake, just for truncating",
 		Osize:  c.size,
 		In:     &io.PipeReader{},
-		Md5:    "fakemd5stringfakemd5stringfakemd5",
+		Md5:    "fakemd5stringfakemd5stringfakemd",
 	}
 	for i := int64(0); i < e.chunkPool.shardSize; i++ {
 		truncateReq.Cid = string(c.id) + "_" + strconv.FormatInt(i+1, 10)
