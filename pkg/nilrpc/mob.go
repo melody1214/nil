@@ -19,3 +19,10 @@ type MOBObjectGetResponse struct {
 	VolumeID        cmap.ID
 	DsID            cmap.ID
 }
+
+type MOBGetChunkRequest struct{
+	EncodingGroup cmap.ID
+}
+type MOBGetChunkResponse struct {
+	ID string
+}

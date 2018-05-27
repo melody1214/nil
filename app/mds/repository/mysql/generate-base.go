@@ -100,6 +100,15 @@ var generateSQLBase = []string{
 		) ENGINE=InnoDB DEFAULT CHARSET=ascii
 	`,
 	`
+		CREATE TABLE IF NOT EXISTS chunk (
+			chk_id int unsigned NOT NULL AUTO_INCREMENT,
+			chk_encoding_group int unsigned NOT NULL,
+			chk_status varchar(32) charset ascii NOT NULL,
+			PRIMARY KEY (chk_id),
+			FOREIGN KEY (chk_encoding_group) REFERENCES encoding_group (eg_id)
+		)
+	`,
+	`
 		CREATE TABLE IF NOT EXISTS cluster_job (
 			clj_id int unsigned NOT NULL AUTO_INCREMENT,
 			clj_type int unsigned NOT NULL,

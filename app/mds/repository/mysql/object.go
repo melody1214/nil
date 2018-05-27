@@ -2,9 +2,11 @@ package mysql
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/app/mds/usecase/object"
+	"github.com/chanyoung/nil/pkg/cmap"
 )
 
 type objectStore struct {
@@ -78,4 +80,22 @@ func (s *objectStore) Get(name string) (*object.ObjInfo, error) {
 	}
 
 	return o, nil
+}
+
+func (s *objectStore) GetChunk(eg cmap.ID) (cID string, err error) {
+	q := fmt.Sprintf(
+		`
+		INSERT INTO chunk (chk_encoding_group, chk_status)
+		VALUES (%d, '%s')
+		`, eg, "writing",
+	)
+	r, err := s.Store.Execute(repository.NotTx, q)
+	if err != nil {
+		return "", err
+	}
+	id, err := r.LastInsertId()
+	if err != nil {
+		return "", err
+	}
+	return strconv.FormatInt(id, 10), nil
 }

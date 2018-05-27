@@ -120,6 +120,7 @@ function purge() {
     rm -rf $DIR
 
     for region in ${REGIONS[@]}; do
+    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS chunk;"
     mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS recovery_volume;"
     mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS recovery;"
     mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoded_chunk;"

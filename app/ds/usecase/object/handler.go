@@ -43,7 +43,7 @@ func NewHandlers(cfg *config.Ds, cmapAPI cmap.SlaveAPI, f *cr.RequestEventFactor
 		return nil, err
 	}
 
-	pool := newChunkPool(shards, chunkSize, s.GetChunkHeaderSize(), s.GetObjectHeaderSize(), chunkSize-40000)
+	pool := newChunkPool(cmapAPI, shards, chunkSize, s.GetChunkHeaderSize(), s.GetObjectHeaderSize(), chunkSize-40000)
 
 	ed, err := newEndec(cmapAPI, pool, s)
 	if err != nil {
@@ -134,10 +134,15 @@ func (h *handlers) writeToPrimary(req client.RequestEvent) {
 	}
 
 	// Write into the available chunk.
-	cid := h.chunkPool.FindAvailableChunk(
+	cid, err := h.chunkPool.FindAvailableChunk(
 		egID(req.Request().Header.Get("Local-Chain-Id")),
 		vID(req.Request().Header.Get("Volume-Id")), contentLength,
 	)
+	if err != nil {
+		ctxLogger.Error(errors.Wrap(err, "failed to find available chunk"))
+		req.SendInternalError()
+		return
+	}
 
 	if len(req.MD5()) < 32 {
 		req.SendInternalError()

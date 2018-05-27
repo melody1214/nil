@@ -53,8 +53,18 @@ func (h *handlers) Get(req *nilrpc.MOBObjectGetRequest, res *nilrpc.MOBObjectGet
 	return nil
 }
 
+func (h *handlers) GetChunk(req *nilrpc.MOBGetChunkRequest, res *nilrpc.MOBGetChunkResponse) error {
+	cid, err := h.store.GetChunk(req.EncodingGroup)
+	if err != nil {
+		return err
+	}
+	res.ID = cid
+	return nil
+}
+
 // Handlers is the interface that provides object domain's rpc handlers.
 type Handlers interface {
 	Put(req *nilrpc.MOBObjectPutRequest, res *nilrpc.MOBObjectPutResponse) error
 	Get(req *nilrpc.MOBObjectGetRequest, res *nilrpc.MOBObjectGetResponse) error
+	GetChunk(req *nilrpc.MOBGetChunkRequest, res *nilrpc.MOBGetChunkResponse) error
 }
