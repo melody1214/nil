@@ -28,6 +28,7 @@ type Repository interface {
 	UpdateJob(repository.TxID, *Job) error
 	RegisterVolume(txid repository.TxID, v *cmap.Volume) error
 	MakeNewEncodingGroup(txid repository.TxID, encGrp *cmap.EncodingGroup) error
+	FindReplaceableVolume(txid repository.TxID, failedEG *cmap.EncodingGroup, failedVol *cmap.Volume, failureDomain ...cmap.ID) (cmap.ID, error)
 }
 
 // jobRepository is repository for storing and tracking jobs.
@@ -46,6 +47,7 @@ type jobRepository interface {
 	FindAllEncGrps(repository.TxID) (EngGrps []cmap.EncodingGroup, err error)
 	RegisterVolume(txid repository.TxID, v *cmap.Volume) error
 	MakeNewEncodingGroup(txid repository.TxID, encGrp *cmap.EncodingGroup) error
+	FindReplaceableVolume(txid repository.TxID, failedEG *cmap.EncodingGroup, failedVol *cmap.Volume, failureDomain ...cmap.ID) (cmap.ID, error)
 }
 
 func newJobRepository(r Repository) jobRepository {

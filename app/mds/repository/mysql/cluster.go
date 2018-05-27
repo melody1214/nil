@@ -568,3 +568,22 @@ func (s *clusterStore) UpdateChangedCMap(txid repository.TxID, m *cmap.CMap) err
 
 	return nil
 }
+
+func (s *clusterStore) FindReplaceableVolume(txid repository.TxID, failedEG *cmap.EncodingGroup, failedVol *cmap.Volume, failureDomain ...cmap.ID) (cmap.ID, error) {
+	q := fmt.Sprintf(
+		`
+			SELECT vl_id
+			FROM volume
+			WHERE vl_status='%s' AND vl_speed='%s'
+		`, cmap.VolActive.String(), failedVol.Speed,
+	)
+
+	for _, id := range failureDomain {
+		q += " AND vl_node!=" + id.String()
+	}
+	q += " ORDER BY vl_encoding_group DESC"
+
+	var selected cmap.ID
+	err := s.QueryRow(txid, q).Scan(&selected)
+	return selected, err
+}
