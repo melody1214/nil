@@ -149,7 +149,11 @@ func (s *Service) UpdateUnencoded(egID ID, unencoded int) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to find encoding group with the given id")
 	}
-	node, err := c.Node().ID(eg.LeaderVol()).Do()
+	vol, err := c.Volume().ID(eg.LeaderVol()).Do()
+	if err != nil {
+		return errors.Wrap(err, "failed to find leader volume with the given encoding group")
+	}
+	node, err := c.Node().ID(vol.Node).Do()
 	if err != nil {
 		return errors.Wrap(err, "failed to find leader node with the given encoding group")
 	}
