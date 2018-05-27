@@ -6,32 +6,23 @@ import (
 	"github.com/chanyoung/nil/app/mds/repository"
 )
 
-// Prefix: up
+// Prefix: rc
 
-// upStart is the first state of update job.
+// rcStart is the first state of recovery job.
 // Verify the worker and job fields.
-func (w *worker) upStart() fsm {
+func (w *worker) rcStart() fsm {
 	w.job.ScheduledAt = TimeNow()
 
 	if w.job.State != Run {
 		w.job.err = fmt.Errorf("job state is not Run")
-		return w.upFinish
+		return w.rcFinish
 	}
 
-	return w.upUpdateMap
+	return w.rcFinish
 }
 
-// upUpdateMap updates the cluster map from the db data.
-func (w *worker) upUpdateMap() fsm {
-	if err := w.updateClusterMap(); err != nil {
-		// TODO: handling error
-	}
-
-	return w.upFinish
-}
-
-// upFinish cleanup the job.
-func (w *worker) upFinish() fsm {
+// rcFinish cleanup the job.
+func (w *worker) rcFinish() fsm {
 	w.job.FinishedAt = TimeNow()
 
 	if w.job.err != nil {

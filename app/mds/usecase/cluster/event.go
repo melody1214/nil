@@ -89,6 +89,18 @@ func extractEventsFromCMap(old, new *cmap.CMap) []*Event {
 				// Make nodes rdonly.
 			case cmap.NodeFaulty:
 				// Make recovery events.
+				for _, vID := range newNode.Vols {
+					for _, v := range new.Vols {
+						if v.ID != vID {
+							continue
+						}
+						for _, egID := range v.EncGrps {
+							e := newEvent(Fail, egID)
+							events = append(events, e)
+						}
+						break
+					}
+				}
 			}
 		}
 	}

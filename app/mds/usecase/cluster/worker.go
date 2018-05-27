@@ -84,7 +84,7 @@ func (w *worker) init() fsm {
 	case Rebalance:
 		return w.rbStart
 	case Fail:
-		return nil
+		return w.rcStart
 	case Update:
 		return w.upStart
 	default:
