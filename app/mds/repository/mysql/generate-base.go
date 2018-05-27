@@ -164,4 +164,23 @@ var generateSQLBase = []string{
 			FOREIGN KEY (guc_region) REFERENCES region (rg_id)
 		)
 	`,
+	`
+		CREATE TABLE IF NOT EXISTS recovery (
+			rc_id int unsigned NOT NULL,
+			PRIMARY KEY (rc_id),
+			FOREIGN KEY (rc_id) REFERENCES cluster_job (clj_id)
+		)
+	`,
+	`
+		CREATE TABLE IF NOT EXISTS recovery_volume (
+			rcv_id int unsigned NOT NULL AUTO_INCREMENT,
+			rcv_job int unsigned NOT NULL,
+			rcv_failed_volume int unsigned NOT NULL,
+			rcv_replace_volume int unsigned NOT NULL,
+			PRIMARY KEY (rcv_id),
+			FOREIGN KEY (rcv_job) REFERENCES recovery (rc_id),
+			FOREIGN KEY (rcv_failed_volume) REFERENCES volume (vl_id),
+			FOREIGN KEY (rcv_replace_volume) REFERENCES volume (vl_id)
+		)
+	`,
 }

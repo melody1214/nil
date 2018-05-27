@@ -13,8 +13,8 @@ MNT=$DIR/mnt
 PENDINGCMD=$DIR/pending
 
 # Region names follow ISO-3166-1
-REGIONS=("KR" "US" "HK" "SG" "JP" "DE")
-# REGIONS=("KR")
+# REGIONS=("KR" "US" "HK" "SG" "JP" "DE")
+REGIONS=("KR")
 GWBASEPORT=50000
 MDSBASEPORT=51000
 DSBASEPORT=52000
@@ -120,6 +120,8 @@ function purge() {
     rm -rf $DIR
 
     for region in ${REGIONS[@]}; do
+    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS recovery_volume;"
+    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS recovery;"
     mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoded_chunk;"
     mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoding_chunk;"
     mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoding_job;"
@@ -447,8 +449,8 @@ function main() {
     putobjects
 
     # Get objects.
-    sleep 5
-    getobjects
+    # sleep 5
+    # getobjects
 
     # Test local recovery
     if [ $TESTLOCALRECOVERY = true ]; then
