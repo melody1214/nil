@@ -450,8 +450,8 @@ function main() {
     putobjects
 
     # Get objects.
-    # sleep 5
-    # getobjects
+    sleep 5
+    getobjects
 
     # Test local recovery
     if [ $TESTLOCALRECOVERY = true ]; then

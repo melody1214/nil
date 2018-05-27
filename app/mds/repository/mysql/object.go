@@ -99,3 +99,15 @@ func (s *objectStore) GetChunk(eg cmap.ID) (cID string, err error) {
 	}
 	return strconv.FormatInt(id, 10), nil
 }
+
+func (s *objectStore) SetChunk(cID string, egID cmap.ID, status string) error {
+	q := fmt.Sprintf(
+		`
+		UPDATE chunk
+		SET chk_encoding_group=%d, chk_status='%s'
+		WHERE chk_id=%s
+		`, egID, status, cID,
+	)
+	_, err := s.Store.Execute(repository.NotTx, q)
+	return err
+}

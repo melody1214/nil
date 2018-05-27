@@ -265,7 +265,10 @@ func (e *endec) _genLocalParity(c chunk, stop <-chan interface{}) <-chan error {
 			e.store.Push(deleteReqArr[i])
 		}
 
-		if err := e.renameToL(c); err != nil {
+		// if err := e.renameToL(c); err != nil {
+		// 	fmt.Printf("%+v\n\n", err)
+		// }
+		if err := e.updateToLocal(c); err != nil {
 			fmt.Printf("%+v\n\n", err)
 		}
 
@@ -273,6 +276,33 @@ func (e *endec) _genLocalParity(c chunk, stop <-chan interface{}) <-chan error {
 	}(notiC, stop)
 
 	return notiC
+}
+
+func (e *endec) updateToLocal(c chunk) error {
+	mds, err := e.cmapAPI.SearchCall().Node().Type(cmap.MDS).Status(cmap.NodeAlive).Do()
+	if err != nil {
+		return err
+	}
+
+	conn, err := nilrpc.Dial(mds.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
+	if err != nil {
+		return errors.Wrap(err, "failed to dial")
+	}
+	defer conn.Close()
+
+	egID, _ := strconv.ParseInt(string(c.encodingGroup), 10, 64)
+	req := &nilrpc.MOBSetChunkRequest{
+		Chunk:         string(c.id),
+		EncodingGroup: cmap.ID(egID),
+		Status:        "local",
+	}
+	res := &nilrpc.MOBSetChunkResponse{}
+
+	cli := rpc.NewClient(conn)
+	if err := cli.Call(nilrpc.MdsObjectSetChunk.String(), req, res); err != nil {
+		return errors.Wrap(err, "failed to set chunk state to local")
+	}
+	return nil
 }
 
 func (e *endec) renameToL(c chunk) error {
@@ -313,7 +343,8 @@ func (e *endec) renameToL(c chunk) error {
 			Vol:      vols[i].ID.String(),
 			EncGrp:   string(c.encodingGroup),
 			OldChunk: string(c.id),
-			NewChunk: "L_" + string(c.id),
+			// NewChunk: "L_" + string(c.id),
+			NewChunk: string(c.id),
 		}
 		res := &nilrpc.DGERenameChunkResponse{}
 

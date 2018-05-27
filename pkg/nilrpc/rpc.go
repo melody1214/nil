@@ -40,6 +40,7 @@ const (
 	MdsObjectPut
 	MdsObjectGet
 	MdsObjectGetChunk
+	MdsObjectSetChunk
 
 	// MDS global encoding domain methods
 	MdsGencodingGGG
@@ -88,6 +89,8 @@ func (m MethodName) String() string {
 		return MdsObjectPrefix + "." + "Get"
 	case MdsObjectGetChunk:
 		return MdsObjectPrefix + "." + "GetChunk"
+	case MdsObjectSetChunk:
+		return MdsObjectPrefix + "." + "SetChunk"
 
 	case MdsGencodingGGG:
 		return MdsGencodingPrefix + "." + "GGG"
