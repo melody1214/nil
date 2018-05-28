@@ -8,6 +8,7 @@ import (
 	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/app/mds/usecase/gencoding"
 	"github.com/chanyoung/nil/app/mds/usecase/gencoding/token"
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/go-sql-driver/mysql"
 	"github.com/hashicorp/raft"
 	"github.com/pkg/errors"
@@ -433,4 +434,34 @@ func (s *gencodingStore) RemoveFailedJobs() error {
 		}
 	}
 	return nil
+}
+
+func (s *gencodingStore) UpdateUnencoded(egs []cmap.EncodingGroup) ([]cmap.EncodingGroup, error) {
+	ret := make([]cmap.EncodingGroup, 0)
+	for _, eg := range egs {
+		var count int
+
+		q := fmt.Sprintf(
+			`
+			SELECT COUNT(*)
+			FROM chunk
+			WHERE chk_encoding_group=%d AND chk_status='%s'
+			`, eg.ID, "local",
+		)
+
+		err := s.QueryRow(repository.NotTx, q).Scan(&count)
+		if err != nil {
+			fmt.Printf("Error in UpdateUnencoded: %v", err)
+			continue
+		}
+
+		if eg.Uenc == count {
+			continue
+		}
+
+		eg.Uenc = count
+		ret = append(ret, eg)
+	}
+
+	return ret, nil
 }

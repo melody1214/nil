@@ -3,6 +3,7 @@ package gencoding
 import (
 	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/app/mds/usecase/gencoding/token"
+	"github.com/chanyoung/nil/pkg/cmap"
 )
 
 // Repository provides access to gencoding database.
@@ -22,4 +23,5 @@ type Repository interface {
 	SetJobStatus(id int64, status Status) error
 	RemoveFailedJobs() error
 	JobFinished(*token.Token) error
+	UpdateUnencoded(egs []cmap.EncodingGroup) ([]cmap.EncodingGroup, error)
 }

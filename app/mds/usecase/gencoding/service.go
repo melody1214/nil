@@ -70,6 +70,7 @@ func (s *service) run() {
 
 	issueTokenTicker := time.NewTicker(60 * time.Second)
 	encodeTicker := time.NewTicker(60 * time.Second)
+	updateUnencodedTicker := time.NewTicker(30 * time.Second)
 	gcTicker := time.NewTicker(60 * time.Second)
 
 	for {
@@ -97,6 +98,9 @@ func (s *service) run() {
 
 		case <-gcTicker.C:
 			s.garbageCollect()
+
+		case <-updateUnencodedTicker.C:
+			s.updateUnencoded()
 		}
 	}
 }
@@ -325,6 +329,26 @@ func (s *service) garbageCollect() {
 	}
 
 	s.store.RemoveFailedJobs()
+}
+
+func (s *service) updateUnencoded() {
+	ctxLogger := mlog.GetMethodLogger(logger, "service.updateUnencoded")
+
+	egs, err := s.cmapAPI.SearchCall().EncGrp().Status(cmap.EGAlive).DoAll()
+	if err != nil {
+		ctxLogger.Error(err)
+		return
+	}
+
+	egs, err = s.store.UpdateUnencoded(egs)
+	if err != nil {
+		ctxLogger.Error(err)
+		return
+	}
+
+	for _, eg := range egs {
+		s.cmapAPI.UpdateUnencoded(eg.ID, eg.Uenc)
+	}
 }
 
 // Service is the interface that provides global encoding domain's service

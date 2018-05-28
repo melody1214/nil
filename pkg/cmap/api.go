@@ -144,23 +144,22 @@ func (s *Service) UpdateVolume(volume Volume) error {
 
 // UpdateUnencoded updates the unencoded field of encoding group.
 func (s *Service) UpdateUnencoded(egID ID, unencoded int) error {
-	c := s.SearchCall()
-	eg, err := c.EncGrp().ID(egID).Do()
-	if err != nil {
-		return errors.Wrap(err, "failed to find encoding group with the given id")
-	}
-	vol, err := c.Volume().ID(eg.LeaderVol()).Do()
-	if err != nil {
-		return errors.Wrap(err, "failed to find leader volume with the given encoding group")
-	}
-	node, err := c.Node().ID(vol.Node).Do()
-	if err != nil {
-		return errors.Wrap(err, "failed to find leader node with the given encoding group")
-	}
-	if node.Name != s.cfg.Name {
-		return fmt.Errorf("only can update eg which this the leader volume")
-	}
-
+	// c := s.SearchCall()
+	// eg, err := c.EncGrp().ID(egID).Do()
+	// if err != nil {
+	// 	return errors.Wrap(err, "failed to find encoding group with the given id")
+	// }
+	// vol, err := c.Volume().ID(eg.LeaderVol()).Do()
+	// if err != nil {
+	// 	return errors.Wrap(err, "failed to find leader volume with the given encoding group")
+	// }
+	// node, err := c.Node().ID(vol.Node).Do()
+	// if err != nil {
+	// 	return errors.Wrap(err, "failed to find leader node with the given encoding group")
+	// }
+	// if node.Name != s.cfg.Name {
+	// 	return fmt.Errorf("only can update eg which this the leader volume")
+	// }
 	s.manager.UpdateUnencoded(egID, unencoded)
 	return nil
 }
