@@ -3,6 +3,7 @@ package mysql
 import (
 	"fmt"
 	"math/rand"
+	"strconv"
 	"time"
 
 	"github.com/chanyoung/nil/app/mds/repository"
@@ -95,7 +96,7 @@ func (s *gencodingStore) MakeGlobalEncodingJob(t *token.Token, p *token.Unencode
 	if err != nil {
 		return err
 	}
-	gblChunkID, err := r.LastInsertId()
+	jobID, err := r.LastInsertId()
 	if err != nil {
 		return err
 	}
@@ -108,7 +109,7 @@ func (s *gencodingStore) MakeGlobalEncodingJob(t *token.Token, p *token.Unencode
 			`
 			INSERT INTO global_encoding_chunk (guc_job, guc_role, guc_region, guc_node, guc_volume, guc_encgrp, guc_chunk)
 			VALUES ('%d', '%d', '%d', '%d', '%d', '%d', '%s')
-			`, gblChunkID, i, c.Region.RegionID, c.Node, c.Volume, c.EncGrp, c.ChunkID,
+			`, jobID, i, c.Region.RegionID, c.Node, c.Volume, c.EncGrp, c.ChunkID,
 		)
 		_, err = s.PublishCommand("execute", q)
 		if err != nil {
@@ -121,8 +122,8 @@ func (s *gencodingStore) MakeGlobalEncodingJob(t *token.Token, p *token.Unencode
 	q = fmt.Sprintf(
 		`
 		INSERT INTO global_encoding_chunk (guc_job, guc_role, guc_region, guc_node, guc_volume, guc_encgrp, guc_chunk)
-		VALUES ('%d', '%d', '%d', '%d', '%d', '%d', '%d')
-		`, gblChunkID, 3, p.Region.RegionID, p.Node, p.Volume, p.EncGrp, gblChunkID,
+		VALUES ('%d', '%d', '%d', '%d', '%d', '%d', '%s')
+		`, jobID, 3, p.Region.RegionID, p.Node, p.Volume, p.EncGrp, p.ChunkID,
 	)
 	_, err = s.PublishCommand("execute", q)
 	if err != nil {
@@ -135,14 +136,14 @@ func (s *gencodingStore) MakeGlobalEncodingJob(t *token.Token, p *token.Unencode
 			`
 			DELETE FROM global_encoding_chunk
 			WHERE guc_job=%d
-			`, gblChunkID,
+			`, jobID,
 		)
 		s.PublishCommand("execute", q)
 		q = fmt.Sprintf(
 			`
 			DELETE FROM global_encoding_job
 			WHERE gej_id=%d
-			`, gblChunkID,
+			`, jobID,
 		)
 		s.PublishCommand("execute", q)
 	}
@@ -367,9 +368,9 @@ func (s *gencodingStore) JobFinished(t *token.Token) error {
 
 	q = fmt.Sprintf(
 		`
-		INSERT INTO global_encoded_chunk (gec_chunk_id, gec_global_encoding_group, gec_local_encoding_group_first, gec_local_encoding_group_second, gec_local_encoding_group_third, gec_local_encoding_group_parity)
-		VALUES (%s, %d, %d, %d, %d, %d)
-		`, t.Primary.ChunkID, gblEncodingGroupID, t.First.EncGrp, t.Second.EncGrp, t.Third.EncGrp, t.Primary.EncGrp,
+		INSERT INTO global_encoded_chunk (gec_global_encoding_group, gec_local_chunk_first, gec_local_chunk_second, gec_local_chunk_third, gec_local_chunk_parity)
+		VALUES (%d, %s, %s, %s, %s)
+		`, gblEncodingGroupID, t.First.ChunkID, t.Second.ChunkID, t.Third.ChunkID, t.Primary.ChunkID,
 	)
 	_, err := s.PublishCommand("execute", q)
 	if err != nil {
@@ -464,4 +465,46 @@ func (s *gencodingStore) UpdateUnencoded(egs []cmap.EncodingGroup) ([]cmap.Encod
 	}
 
 	return ret, nil
+}
+
+func (s *gencodingStore) GetChunk(eg cmap.ID) (cID string, err error) {
+	q := fmt.Sprintf(
+		`
+		INSERT INTO chunk (chk_encoding_group, chk_status)
+		VALUES (%d, '%s')
+		`, eg, "encoding",
+	)
+	r, err := s.Store.Execute(repository.NotTx, q)
+	if err != nil {
+		return "", err
+	}
+	id, err := r.LastInsertId()
+	if err != nil {
+		return "", err
+	}
+	return strconv.FormatInt(id, 10), nil
+}
+
+func (s *gencodingStore) SetChunk(cID string, egID cmap.ID, status string) error {
+	q := fmt.Sprintf(
+		`
+		UPDATE chunk
+		SET chk_encoding_group=%d, chk_status='%s'
+		WHERE chk_id=%s
+		`, egID, status, cID,
+	)
+	_, err := s.Store.Execute(repository.NotTx, q)
+	return err
+}
+
+func (s *gencodingStore) GetCandidateChunk(egID cmap.ID) (cID string, err error) {
+	q := fmt.Sprintf(
+		`
+		SELECT chk_id
+		FROM chunk
+		where chk_encoding_group=%d AND chk_status='%s'
+		`, egID, "local",
+	)
+	err = s.QueryRow(repository.NotTx, q).Scan(&cID)
+	return
 }

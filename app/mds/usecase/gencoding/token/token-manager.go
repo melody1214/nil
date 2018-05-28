@@ -24,5 +24,6 @@ func (m *Manager) NewToken(routing Leg) *Token {
 		Version: m.currentVer,
 		Timeout: time.Now().Add(tokenTimeout),
 		Routing: routing,
+		JobID:   0,
 	}
 }

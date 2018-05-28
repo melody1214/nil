@@ -19,6 +19,7 @@ type Token struct {
 	Second  Unencoded
 	Third   Unencoded
 	Primary Unencoded
+	JobID   int64
 }
 
 // Add adds the new unencoded token if the priority is higher than old one.

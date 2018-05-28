@@ -68,7 +68,7 @@ func (s *service) GGG(req *nilrpc.MGEGGGRequest, res *nilrpc.MGEGGGResponse) err
 func (s *service) run() {
 	ctxLogger := mlog.GetMethodLogger(logger, "service.run")
 
-	issueTokenTicker := time.NewTicker(60 * time.Second)
+	issueTokenTicker := time.NewTicker(30 * time.Second)
 	encodeTicker := time.NewTicker(60 * time.Second)
 	updateUnencodedTicker := time.NewTicker(30 * time.Second)
 	gcTicker := time.NewTicker(60 * time.Second)
@@ -90,7 +90,7 @@ func (s *service) run() {
 
 			// Make a token and send to the next region.
 			token := s.tokenM.NewToken(*leg)
-			s.sendToken(token)
+			s.sendToken(token, token.Routing.Current())
 
 		case <-encodeTicker.C:
 			// Check and encode if there are some jobs assigned this region.
@@ -105,11 +105,11 @@ func (s *service) run() {
 	}
 }
 
-func (s *service) sendToken(t *token.Token) {
+func (s *service) sendToken(t *token.Token, nextRoute token.Stop) {
 	ctxLogger := mlog.GetMethodLogger(logger, "service.sendToken")
 
-	// Get next region to send token.
-	nextRoute := t.Routing.Next()
+	// // Get next region to send token.
+	// nextRoute := t.Routing.Next()
 
 	req := &nilrpc.MGEHandleTokenRequest{Token: *t}
 	res := &nilrpc.MGEHandleTokenResponse{}
@@ -149,19 +149,19 @@ func (s *service) HandleToken(req *nilrpc.MGEHandleTokenRequest, res *nilrpc.MGE
 	if err != nil && err.Error() == "no unencoded chunk" {
 		// There is no candidate for global encoding.
 		// Give up, and send to the next region.
-		s.sendToken(&req.Token)
+		s.sendToken(&req.Token, req.Token.Routing.Next())
 		return nil
 	} else if err != nil {
 		// Internal error is occured, log it.
 		// Give up, and send to the next region.
 		ctxLogger.Error(errors.Wrap(err, "failed to find a global encoding candidate"))
-		s.sendToken(&req.Token)
+		s.sendToken(&req.Token, req.Token.Routing.Next())
 		return nil
 	}
 
 	// Try to add our unencoded chunk into the global encoding request token.
 	req.Token.Add(tkn)
-	s.sendToken(&req.Token)
+	s.sendToken(&req.Token, req.Token.Routing.Next())
 	return nil
 }
 
@@ -173,6 +173,7 @@ func (s *service) findCandidate(region token.Stop) (*token.Unencoded, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to find candidate encoding group")
 	}
+	logger.Errorf("selected eg : %+v", eg)
 
 	if eg.Uenc == 0 {
 		return nil, fmt.Errorf("no unencoded chunk")
@@ -188,25 +189,31 @@ func (s *service) findCandidate(region token.Stop) (*token.Unencoded, error) {
 		return nil, errors.Wrapf(err, "failed to search node ID: %s", v.Node.String())
 	}
 
-	conn, err := nilrpc.Dial(n.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
+	// conn, err := nilrpc.Dial(n.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
+	// if err != nil {
+	// 	return nil, errors.Wrap(err, "failed to dial the candidate encoding group's master")
+	// }
+	// defer conn.Close()
+
+	// // TODO: 디비에서 인코딩된 청크 가져오기.
+	// // 장애 안난것으로.
+	// getChunkReq := &nilrpc.DGEGetCandidateChunkRequest{
+	// 	Vol: v.ID,
+	// 	EG:  eg.ID,
+	// }
+	// getChunkRes := &nilrpc.DGEGetCandidateChunkResponse{}
+
+	// // Calling to the our selected encoding group master, to tell me what is the name of unencoded chunk.
+	// cli := rpc.NewClient(conn)
+	// if err := cli.Call(nilrpc.DsGencodingGetCandidateChunk.String(), getChunkReq, getChunkRes); err != nil {
+	// 	return nil, errors.Wrap(err, "failed to call the candidate encoding group's master")
+	// }
+	// if getChunkRes.Chunk == "" {
+	// 	return nil, fmt.Errorf("no unencoded chunk")
+	// }
+	cID, err := s.store.GetCandidateChunk(eg.ID)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to dial the candidate encoding group's master")
-	}
-	defer conn.Close()
-
-	getChunkReq := &nilrpc.DGEGetCandidateChunkRequest{
-		Vol: v.ID,
-		EG:  eg.ID,
-	}
-	getChunkRes := &nilrpc.DGEGetCandidateChunkResponse{}
-
-	// Calling to the our selected encoding group master, to tell me what is the name of unencoded chunk.
-	cli := rpc.NewClient(conn)
-	if err := cli.Call(nilrpc.DsGencodingGetCandidateChunk.String(), getChunkReq, getChunkRes); err != nil {
-		return nil, errors.Wrap(err, "failed to call the candidate encoding group's master")
-	}
-	if getChunkRes.Chunk == "" {
-		return nil, fmt.Errorf("no unencoded chunk")
+		return nil, errors.Wrap(err, "failed to find candidate chunk")
 	}
 
 	return &token.Unencoded{
@@ -214,7 +221,7 @@ func (s *service) findCandidate(region token.Stop) (*token.Unencoded, error) {
 		Node:     n.ID,
 		Volume:   v.ID,
 		EncGrp:   eg.ID,
-		ChunkID:  getChunkRes.Chunk,
+		ChunkID:  cID,
 		Priority: eg.Uenc,
 	}, nil
 }

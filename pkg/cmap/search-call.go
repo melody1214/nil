@@ -205,9 +205,11 @@ func (c *SearchCallEncGrp) Do() (EncodingGroup, error) {
 
 	// Lookup all encoding groups.
 	for i := 0; i < len(c.cmap.EncGrps); i++ {
-		eg := c.cmap.EncGrps[i]
+		var eg EncodingGroup
 		if c.random {
 			eg = c.cmap.EncGrps[randIdx[i]]
+		} else {
+			eg = c.cmap.EncGrps[i]
 		}
 
 		if c.id != ID(-1) && c.id != eg.ID {
@@ -266,9 +268,11 @@ func (c *SearchCallEncGrp) DoAll() ([]EncodingGroup, error) {
 
 	// Lookup all encoding groups.
 	for i := 0; i < len(c.cmap.EncGrps); i++ {
-		eg := c.cmap.EncGrps[i]
+		var eg EncodingGroup
 		if c.random {
 			eg = c.cmap.EncGrps[randIdx[i]]
+		} else {
+			eg = c.cmap.EncGrps[i]
 		}
 
 		if c.leaderVol != ID(-1) {

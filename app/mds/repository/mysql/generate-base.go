@@ -140,12 +140,11 @@ var generateSQLBase = []string{
 	`
 		CREATE TABLE IF NOT EXISTS global_encoded_chunk (
 			gec_id int unsigned NOT NULL AUTO_INCREMENT,
-			gec_chunk_id int unsigned NOT NULL,
 			gec_global_encoding_group int unsigned NOT NULL,
-			gec_local_encoding_group_first int unsigned NOT NULL,
-			gec_local_encoding_group_second int unsigned NOT NULL,
-			gec_local_encoding_group_third int unsigned NOT NULL,
-			gec_local_encoding_group_parity int unsigned NOT NULL,
+			gec_local_chunk_first int unsigned NOT NULL,
+			gec_local_chunk_second int unsigned NOT NULL,
+			gec_local_chunk_third int unsigned NOT NULL,
+			gec_local_chunk_parity int unsigned NOT NULL,
 			PRIMARY KEY (gec_id),
 			FOREIGN KEY (gec_global_encoding_group) REFERENCES global_encoding_group (geg_id)
 		)
