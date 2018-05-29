@@ -503,7 +503,7 @@ func (s *gencodingStore) GetCandidateChunk(egID cmap.ID) (cID string, err error)
 		SELECT chk_id
 		FROM chunk
 		where chk_encoding_group=%d AND chk_status='%s'
-		`, egID, "local",
+		`, egID, "L",
 	)
 	err = s.QueryRow(repository.NotTx, q).Scan(&cID)
 	return

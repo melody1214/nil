@@ -3,6 +3,7 @@ package gencoding
 import (
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/chanyoung/nil/app/ds/repository"
 	"github.com/chanyoung/nil/pkg/cmap"
@@ -54,13 +55,13 @@ func (s *service) run() {
 		break
 	}
 
-	// 	checkTicker := time.NewTicker(10 * time.Second)
-	// 	for {
-	// 		select {
-	// 		case <-checkTicker.C:
-	// 			s.updateUnencoded()
-	// 		}
-	// 	}
+	checkTicker := time.NewTicker(10 * time.Second)
+	for {
+		select {
+		case <-checkTicker.C:
+			s.updateUnencoded()
+		}
+	}
 }
 
 func (s *service) updateUnencoded() {
