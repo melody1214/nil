@@ -51,3 +51,11 @@ type MGEJobFinishedRequest struct {
 }
 
 type MGEJobFinishedResponse struct{}
+
+type MGESetPrimaryChunkRequest struct {
+	Primary token.Unencoded
+	Job     int64
+}
+
+type MGESetPrimaryChunkResponse struct {
+}

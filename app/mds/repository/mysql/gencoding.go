@@ -518,3 +518,15 @@ func (s *gencodingStore) GetCandidateChunk(egID cmap.ID, region string) (cID str
 	err = s.QueryRow(repository.NotTx, q).Scan(&cID)
 	return
 }
+
+func (s *gencodingStore) SetPrimaryChunk(p token.Unencoded, job int64) error {
+	q := fmt.Sprintf(
+		`
+		UPDATE global_encoding_chunk
+		SET guc_node=%d, guc_volume=%d, guc_encgrp=%d, guc_chunk=%s
+		WHERE guc_id=%d AND guc_role=%d
+		`, p.Node, p.Volume, p.EncGrp, p.ChunkID, job, 3,
+	)
+	s.PublishCommand("execute", q)
+	return nil
+}

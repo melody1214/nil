@@ -299,6 +299,13 @@ func (s *service) SetJobStatus(req *nilrpc.MGESetJobStatusRequest, res *nilrpc.M
 	return s.store.SetJobStatus(req.ID, Status(req.Status))
 }
 
+func (s *service) SetPrimaryChunk(req *nilrpc.MGESetPrimaryChunkRequest, res *nilrpc.MGESetPrimaryChunkResponse) error {
+	if !s.store.AmILeader() {
+		return s.setPrimaryChunk(req.Primary, req.Job)
+	}
+	return s.store.SetPrimaryChunk(req.Primary, req.Job)
+}
+
 func (s *service) JobFinished(req *nilrpc.MGEJobFinishedRequest, res *nilrpc.MGEJobFinishedResponse) error {
 	if !s.store.AmILeader() {
 		return s.jobFinished(&req.Token)

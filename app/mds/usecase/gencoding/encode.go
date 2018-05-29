@@ -41,9 +41,6 @@ func (s *service) encode() {
 	// Get job id from the chunk ID.
 	jobID := t.JobID
 
-	s.setJobStatus(jobID, Fail)
-	return
-
 	// Fill the parity node information in this region.
 	primary, err := s.findPrimary()
 	if err != nil {
@@ -55,6 +52,15 @@ func (s *service) encode() {
 	t.Primary.Volume = primary.Volume
 	t.Primary.EncGrp = primary.EncGrp
 	t.Primary.ChunkID = primary.ChunkID
+
+	// Update primary chunk info.
+	err = s.setPrimaryChunk(t.Primary, t.JobID)
+	if err != nil {
+		ctxLogger.Error(errors.Wrap(err, "failed to update primary chunk info"))
+		s.store.SetChunk(t.Primary.ChunkID, t.Primary.EncGrp, "garbage")
+		s.setJobStatus(jobID, Fail)
+		return
+	}
 
 	// Find the parity group leader ds and ask to start encoding job.
 	parity, err := s.cmapAPI.SearchCall().Node().ID(t.Primary.Node).Status(cmap.NodeAlive).Do()
@@ -86,6 +92,26 @@ func (s *service) encode() {
 	defer cli.Close()
 
 	s.store.SetChunk(t.Primary.ChunkID, t.Primary.EncGrp, "global")
+}
+
+func (s *service) setPrimaryChunk(primary token.Unencoded, jobID int64) error {
+	leaderAddr := s.store.LeaderEndpoint()
+	conn, err := nilrpc.Dial(leaderAddr, nilrpc.RPCNil, time.Duration(2*time.Second))
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	req := &nilrpc.MGESetPrimaryChunkRequest{
+		Primary: primary,
+		Job:     jobID,
+	}
+	res := &nilrpc.MGESetPrimaryChunkResponse{}
+
+	cli := rpc.NewClient(conn)
+	defer cli.Close()
+
+	return cli.Call(nilrpc.MdsGencodingSetPrimaryChunk.String(), req, res)
 }
 
 // Get the token for encoding job.

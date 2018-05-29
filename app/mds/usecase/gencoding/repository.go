@@ -27,4 +27,5 @@ type Repository interface {
 	GetChunk(eg cmap.ID) (cID string, err error)
 	SetChunk(cID string, egID cmap.ID, status string) error
 	GetCandidateChunk(egID cmap.ID, region string) (cID string, err error)
+	SetPrimaryChunk(token.Unencoded, int64) error
 }
