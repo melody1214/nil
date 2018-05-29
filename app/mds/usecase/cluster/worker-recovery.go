@@ -31,44 +31,6 @@ func (w *worker) rcDiagnose() fsm {
 		return w.rcFinish
 	}
 
-	many := 0
-	for _, egv := range eg.Vols {
-		v, err := c.Volume().ID(egv.ID).Do()
-		if err != nil {
-			w.job.err = err
-			return w.rcFinish
-		}
-
-		if egv.MoveTo != cmap.ID(0) {
-			w.job.err = fmt.Errorf("this encoding group is healing by another worker")
-			return w.rcFinish
-		}
-
-		if v.Stat != cmap.VolActive {
-			many = many + 1
-		}
-	}
-
-	switch many {
-	case 0:
-		return w.rcFinish
-	case 1:
-		return w.rcLocal
-	default:
-		return w.rcGlobal
-	}
-}
-
-// rcLocal is the case where only one of the volumes belonging to
-// the encoding group has failed and failover is possible with local parity.
-func (w *worker) rcLocal() fsm {
-	c := w.cmapAPI.SearchCall()
-	eg, err := c.EncGrp().ID(w.job.Event.AffectedEG).Do()
-	if err != nil {
-		w.job.err = err
-		return w.rcFinish
-	}
-
 	var faulty cmap.Volume
 	var role int
 	for i, egv := range eg.Vols {
@@ -146,9 +108,118 @@ func (w *worker) rcLocal() fsm {
 		w.store.VolEGDecr(repository.NotTx, recover)
 	}
 
-	return w.rcFinish
+	many := 0
+	for _, egv := range eg.Vols {
+		v, err := c.Volume().ID(egv.ID).Do()
+		if err != nil {
+			w.job.err = err
+			return w.rcFinish
+		}
 
-	// return w.rcDiagnose
+		if egv.MoveTo != cmap.ID(0) {
+			w.job.err = fmt.Errorf("this encoding group is healing by another worker")
+			return w.rcFinish
+		}
+
+		if v.Stat != cmap.VolActive {
+			many = many + 1
+		}
+	}
+
+	if many == 1 {
+		return w.rcLocal
+	}
+	return w.rcGlobal
+}
+
+// rcLocal is the case where only one of the volumes belonging to
+// the encoding group has failed and failover is possible with local parity.
+func (w *worker) rcLocal() fsm {
+	c := w.cmapAPI.SearchCall()
+	eg, err := c.EncGrp().ID(w.job.Event.AffectedEG).Do()
+	if err != nil {
+		w.job.err = err
+		return w.rcFinish
+	}
+
+	for i, egv := range eg.Vols {
+		if egv.MoveTo == cmap.ID(0) {
+			continue
+		}
+
+		if i == 0 {
+			return w.rcLocalPrimary
+		}
+		return w.rcLocalFollower
+	}
+
+	w.job.err = fmt.Errorf("recovery target is gone")
+	w.job.Log = newJobLog(w.job.err.Error())
+	return w.rcDiagnose
+}
+
+func (w *worker) rcLocalPrimary() fsm {
+	// Recover locally encoded chunks.
+	listL, err := w.store.FindAllChunks(w.job.Event.AffectedEG, "L")
+	if err != nil {
+		w.job.err = err
+		w.job.Log = newJobLog(err.Error())
+		return w.rcFinish
+	}
+	_ = listL
+
+	// Recover globally encoded chunks.
+	listG, err := w.store.FindAllChunks(w.job.Event.AffectedEG, "G")
+	if err != nil {
+		w.job.err = err
+		w.job.Log = newJobLog(err.Error())
+		return w.rcFinish
+	}
+	_ = listG
+
+	// Recover writing chunks.
+	listW, err := w.store.FindAllChunks(w.job.Event.AffectedEG, "W")
+	if err != nil {
+		w.job.err = err
+		w.job.Log = newJobLog(err.Error())
+		return w.rcFinish
+	}
+	_ = listW
+
+	w.job.Log = newJobLog(fmt.Sprintf("primary: %+v", listL))
+	return w.rcFinish
+}
+
+func (w *worker) rcLocalFollower() fsm {
+	// Recover locally encoded chunks.
+	listL, err := w.store.FindAllChunks(w.job.Event.AffectedEG, "L")
+	if err != nil {
+		w.job.err = err
+		w.job.Log = newJobLog(err.Error())
+		return w.rcFinish
+	}
+	_ = listL
+
+	// Recover globally encoded chunks.
+	listG, err := w.store.FindAllChunks(w.job.Event.AffectedEG, "G")
+	if err != nil {
+		w.job.err = err
+		w.job.Log = newJobLog(err.Error())
+		return w.rcFinish
+	}
+	_ = listG
+
+	// Recover writing chunks.
+	listW, err := w.store.FindAllChunks(w.job.Event.AffectedEG, "W")
+	if err != nil {
+		w.job.err = err
+		w.job.Log = newJobLog(err.Error())
+		return w.rcFinish
+	}
+	_ = listW
+
+	w.job.Log = newJobLog(fmt.Sprintf("follower: %+v", listL))
+	return w.rcFinish
 }
 
 // rcGlobal is the case where more than one of the volumes belonging to

@@ -217,6 +217,38 @@ func (s *clusterStore) FindAllEncGrpVols(txid repository.TxID, id cmap.ID) (vols
 	return
 }
 
+func (s *clusterStore) FindAllChunks(egID cmap.ID, status string) ([]int, error) {
+	list := make([]int, 0)
+
+	q := fmt.Sprintf(
+		`
+		SELECT
+			chk_id
+		FROM
+			chunk
+		WHERE
+			chk_encoding_group=%d AND chk_status='%s'
+		`, egID, status,
+	)
+
+	var rows *sql.Rows
+	rows, err := s.Query(repository.NotTx, q)
+	if err != nil {
+		return list, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var chunkID int
+		if err = rows.Scan(&chunkID); err != nil {
+			return list, err
+		}
+
+		list = append(list, chunkID)
+	}
+	return list, nil
+}
+
 func (s *clusterStore) GetNewClusterMapVer(txid repository.TxID) (cmap.Version, error) {
 	q := fmt.Sprintf(
 		`

@@ -32,6 +32,7 @@ type Repository interface {
 	SetEGV(txid repository.TxID, egID cmap.ID, role int, volID, moveTo cmap.ID) error
 	VolEGIncr(txid repository.TxID, vID cmap.ID) error
 	VolEGDecr(txid repository.TxID, vID cmap.ID) error
+	FindAllChunks(egID cmap.ID, status string) ([]int, error)
 }
 
 // jobRepository is repository for storing and tracking jobs.
@@ -54,6 +55,7 @@ type jobRepository interface {
 	SetEGV(txid repository.TxID, egID cmap.ID, role int, volID, moveTo cmap.ID) error
 	VolEGIncr(txid repository.TxID, vID cmap.ID) error
 	VolEGDecr(txid repository.TxID, vID cmap.ID) error
+	FindAllChunks(egID cmap.ID, status string) ([]int, error)
 }
 
 func newJobRepository(r Repository) jobRepository {
