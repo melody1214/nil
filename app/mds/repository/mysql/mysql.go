@@ -3,6 +3,7 @@ package mysql
 import (
 	"database/sql"
 	"fmt"
+	"sync"
 
 	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -15,6 +16,7 @@ type mySQL struct {
 	cfg *config.Mds
 	db  *sql.DB
 	txs map[repository.TxID]*sql.Tx
+	txl sync.RWMutex
 }
 
 // newMySQL returns MySQL handle with the opened db.
@@ -107,6 +109,9 @@ func (m *mySQL) begin() (txid repository.TxID, err error) {
 		return "", err
 	}
 
+	m.txl.Lock()
+	defer m.txl.Unlock()
+
 	for {
 		txid = repository.TxID(uuid.Gen())
 		if _, ok := m.txs[txid]; ok {
@@ -128,6 +133,8 @@ func (m *mySQL) getTx(txid repository.TxID) (*sql.Tx, error) {
 }
 
 func (m *mySQL) rollback(txid repository.TxID) error {
+	m.txl.Lock()
+	defer m.txl.Unlock()
 	defer delete(m.txs, txid)
 
 	tx, err := m.getTx(txid)
@@ -139,6 +146,9 @@ func (m *mySQL) rollback(txid repository.TxID) error {
 }
 
 func (m *mySQL) commit(txid repository.TxID) error {
+	m.txl.Lock()
+	defer m.txl.Unlock()
+
 	tx, err := m.getTx(txid)
 	if err != nil {
 		return err
