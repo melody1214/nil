@@ -383,8 +383,8 @@ func (s *gencodingStore) JobFinished(t *token.Token) error {
 		`
 		UPDATE global_encoding_job
 		SET gej_status=%d
-		WHERE gej_id=%s
-		`, gencoding.Done, t.Primary.ChunkID,
+		WHERE gej_id=%d
+		`, gencoding.Done, t.JobID,
 	)
 	_, err = s.PublishCommand("execute", q)
 	if err != nil {
