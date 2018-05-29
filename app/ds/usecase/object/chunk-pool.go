@@ -30,17 +30,24 @@ const (
 	W chunkStatus = "W"
 	// L stands for locally encoded.
 	L chunkStatus = "L"
-	// GE stands for globally encoding.
-	GE chunkStatus = "GE"
+	// T stands for tmp.
+	// Encoding or decoding or moving.
+	// T state chunk can't be the object of recovery.
+	T chunkStatus = "T"
+	// E stands for globally encoding.
+	E chunkStatus = "E"
 	// G stands for globally encoded.
 	G chunkStatus = "G"
 	// R stands for recovering.
 	R chunkStatus = "R"
+	// F stands for faulty.
+	// GC will collects and remove from the disk.
+	F chunkStatus = "F"
 )
 
 func (s chunkStatus) String() string {
 	switch s {
-	case W, L, GE, G, R:
+	case W, L, T, G, R, F:
 		return string(s)
 	default:
 		return "unknown"

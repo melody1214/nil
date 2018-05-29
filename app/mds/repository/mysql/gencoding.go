@@ -474,7 +474,7 @@ func (s *gencodingStore) GetChunk(eg cmap.ID) (cID string, err error) {
 		`
 		INSERT INTO chunk (chk_encoding_group, chk_status)
 		VALUES (%d, '%s')
-		`, eg, "encoding",
+		`, eg, "T",
 	)
 	r, err := s.Store.Execute(repository.NotTx, q)
 	if err != nil {
@@ -524,7 +524,7 @@ func (s *gencodingStore) SetPrimaryChunk(p token.Unencoded, job int64) error {
 		`
 		UPDATE global_encoding_chunk
 		SET guc_node=%d, guc_volume=%d, guc_encgrp=%d, guc_chunk=%s
-		WHERE guc_id=%d AND guc_role=%d
+		WHERE guc_job=%d AND guc_role=%d
 		`, p.Node, p.Volume, p.EncGrp, p.ChunkID, job, 3,
 	)
 	s.PublishCommand("execute", q)

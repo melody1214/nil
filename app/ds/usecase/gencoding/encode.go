@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/rpc"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/chanyoung/nil/app/ds/repository"
@@ -45,7 +46,7 @@ func (s *service) encode(t token.Token) {
 	}
 
 	// Set chunk status.
-	if err := s.setChunkStatus("encoding", &t.First, &t.Second, &t.Third, &t.Primary); err != nil {
+	if err := s.setChunkStatus("E", &t.First, &t.Second, &t.Third); err != nil {
 		// TODO: handling error
 		ctxLogger.Error(errors.Wrap(err, "failed to rename encoded chunk"))
 		goto ROLLBACK
@@ -95,7 +96,7 @@ func (s *service) encode(t token.Token) {
 			Op:     repository.WriteAll,
 			Vol:    t.Primary.Volume.String(),
 			LocGid: t.Primary.EncGrp.String(),
-			Cid:    t.Primary.ChunkID + "_" + strconv.Itoa(i),
+			Cid:    "T_" + t.Primary.ChunkID + "_" + strconv.Itoa(i),
 			In:     r,
 		}
 		if err := s.store.Push(storeReq); err != nil {
@@ -106,7 +107,7 @@ func (s *service) encode(t token.Token) {
 			Op:     repository.DeleteReal,
 			Vol:    t.Primary.Volume.String(),
 			LocGid: t.Primary.EncGrp.String(),
-			Cid:    t.Primary.ChunkID + "_" + strconv.Itoa(i),
+			Cid:    "T_" + t.Primary.ChunkID + "_" + strconv.Itoa(i),
 		})
 		parity = append(parity, w)
 		openedReadStreams = append(openedReadStreams, r)
@@ -183,7 +184,7 @@ func (s *service) encode(t token.Token) {
 			Op:     repository.WriteAll,
 			Vol:    t.Primary.Volume.String(),
 			LocGid: t.Primary.EncGrp.String(),
-			Cid:    t.Primary.ChunkID,
+			Cid:    "T_" + t.Primary.ChunkID,
 			In:     r,
 		}
 		if err := s.store.Push(parityReq); err != nil {
@@ -231,8 +232,19 @@ func (s *service) encode(t token.Token) {
 		goto ROLLBACK
 	}
 
+	// Rename downloaded chunks.
+	if err = s.renameEncodedChunks(&t); err != nil {
+		// TODO: handling error
+		ctxLogger.Error(errors.Wrap(err, "failed to rename encoded chunk"))
+		goto ROLLBACK
+	}
+	if err = s.store.RenameChunk("T_"+t.Primary.ChunkID, "G_"+t.Primary.ChunkID, t.Primary.Volume.String(), t.Primary.EncGrp.String()); err != nil {
+		ctxLogger.Error(errors.Wrap(err, "failed to rename encoded chunk at primary"))
+		goto ROLLBACK
+	}
+
 	// Set chunk status.
-	if err = s.setChunkStatus("global", &t.First, &t.Second, &t.Third, &t.Primary); err != nil {
+	if err = s.setChunkStatus("G", &t.First, &t.Second, &t.Third, &t.Primary); err != nil {
 		// TODO: handling error
 		ctxLogger.Error(errors.Wrap(err, "failed to rename encoded chunk"))
 		goto ROLLBACK
@@ -285,15 +297,13 @@ ROLLBACK:
 	}
 
 	// Set chunk status.
-	if err := s.setChunkStatus("local", &t.First, &t.Second, &t.Third); err != nil {
+	if err := s.setChunkStatus("L", &t.First, &t.Second, &t.Third); err != nil {
 		// TODO: handling error
 		ctxLogger.Error(errors.Wrap(err, "failed to rename encoded chunk"))
-		return
 	}
-	if err := s.setChunkStatus("encoding failed", &t.Primary); err != nil {
+	if err := s.setChunkStatus("F", &t.Primary); err != nil {
 		// TODO: handling error
 		ctxLogger.Error(errors.Wrap(err, "failed to rename encoded chunk"))
-		return
 	}
 }
 
@@ -312,7 +322,7 @@ func (s *service) downloadChunk(src, dst *token.Unencoded) (rollbacks []*reposit
 		)
 
 		req.Header.Add("Encoding-Group", src.EncGrp.String())
-		req.Header.Add("Chunk-Name", src.ChunkID)
+		req.Header.Add("Chunk-Name", "L_"+src.ChunkID)
 		req.Header.Add("Shard-Number", strconv.Itoa(i))
 
 		resp, err := http.DefaultClient.Do(req)
@@ -325,14 +335,14 @@ func (s *service) downloadChunk(src, dst *token.Unencoded) (rollbacks []*reposit
 			Op:     repository.WriteAll,
 			Vol:    dst.Volume.String(),
 			LocGid: dst.EncGrp.String(),
-			Cid:    "U_" + src.Region.RegionName + "_" + src.ChunkID + "_" + strconv.Itoa(i),
+			Cid:    "T_" + src.Region.RegionName + "_" + src.ChunkID + "_" + strconv.Itoa(i),
 			In:     resp.Body,
 		}
 		rollbacks = append(rollbacks, &repository.Request{
 			Op:     repository.DeleteReal,
 			Vol:    dst.Volume.String(),
 			LocGid: dst.EncGrp.String(),
-			Cid:    "U_" + src.Region.RegionName + "_" + src.ChunkID + "_" + strconv.Itoa(i),
+			Cid:    "T_" + src.Region.RegionName + "_" + src.ChunkID + "_" + strconv.Itoa(i),
 		})
 
 		if err = s.store.Push(storeReq); err != nil {
@@ -446,8 +456,8 @@ func (s *service) sendEncodedChunks(encoded []*repository.Request) error {
 
 		req.Header.Add("Volume", vID.String())
 		req.Header.Add("Encoding-Group", encoded[idx].LocGid)
-		// ex. 1_0 -> 1
-		req.Header.Add("Chunk-Name", encoded[idx].Cid[:len(encoded[idx].Cid)-2])
+		// ex. T_1_0 -> G_1
+		req.Header.Add("Chunk-Name", strings.Replace(encoded[idx].Cid[:len(encoded[idx].Cid)-2], "T", "G", 1))
 		req.Header.Add("Content-Length", s.cfg.ChunkSize)
 
 		resp, err := http.DefaultClient.Do(req)
@@ -507,21 +517,31 @@ func (s *service) setChunkStatus(status string, shards ...*token.Unencoded) erro
 			return err
 		}
 		cli.Close()
-		// req, err := http.NewRequest(
-		// 	"PUT",
-		// 	"https://"+string(shard.Region.Endpoint)+"/chunk",
-		// 	nil,
-		// )
+	}
+	return nil
+}
 
-		// req.Header.Add("Encoding-Group", shard.EncGrp.String())
-		// req.Header.Add("Old-Chunk-Name", shard.ChunkID)
-		// req.Header.Add("New-Chunk-Name", "G_"+t.Primary.ChunkID)
+func (s *service) renameEncodedChunks(t *token.Token) error {
+	shards := [3]*token.Unencoded{
+		&t.First, &t.Second, &t.Third,
+	}
 
-		// resp, err := http.DefaultClient.Do(req)
-		// if err != nil {
-		// 	return err
-		// }
-		// defer resp.Body.Close()
+	for _, shard := range shards {
+		req, err := http.NewRequest(
+			"PUT",
+			"https://"+string(shard.Region.Endpoint)+"/chunk",
+			nil,
+		)
+
+		req.Header.Add("Encoding-Group", shard.EncGrp.String())
+		req.Header.Add("Old-Chunk-Name", "L_"+shard.ChunkID)
+		req.Header.Add("New-Chunk-Name", "G_"+shard.ChunkID)
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
 	}
 	return nil
 }

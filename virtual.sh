@@ -13,8 +13,8 @@ MNT=$DIR/mnt
 PENDINGCMD=$DIR/pending
 
 # Region names follow ISO-3166-1
-# REGIONS=("KR" "US" "HK" "SG" "JP" "DE")
-REGIONS=("KR")
+REGIONS=("KR" "US" "HK" "SG" "JP" "DE")
+# REGIONS=("KR")
 GW=1
 MDS=1
 DS=10
@@ -476,7 +476,6 @@ function main() {
     for region in ${REGIONS[@]}; do
         echo "set region $region ..."
         runregion "$region" $GW $MDS $DS
-        sleep 3
     done
 
     creatediskall

@@ -57,7 +57,7 @@ func (s *service) encode() {
 	err = s.setPrimaryChunk(t.Primary, t.JobID)
 	if err != nil {
 		ctxLogger.Error(errors.Wrap(err, "failed to update primary chunk info"))
-		s.store.SetChunk(t.Primary.ChunkID, t.Primary.EncGrp, "garbage")
+		s.store.SetChunk(t.Primary.ChunkID, t.Primary.EncGrp, "F")
 		s.setJobStatus(jobID, Fail)
 		return
 	}
@@ -66,14 +66,14 @@ func (s *service) encode() {
 	parity, err := s.cmapAPI.SearchCall().Node().ID(t.Primary.Node).Status(cmap.NodeAlive).Do()
 	if err != nil {
 		ctxLogger.Error(errors.Wrap(err, "failed to find such parity node"))
-		s.store.SetChunk(t.Primary.ChunkID, t.Primary.EncGrp, "garbage")
+		s.store.SetChunk(t.Primary.ChunkID, t.Primary.EncGrp, "F")
 		s.setJobStatus(jobID, Fail)
 		return
 	}
 	conn, err := nilrpc.Dial(parity.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
 	if err != nil {
 		ctxLogger.Error(errors.Wrap(err, "failed to dial to leader of parity group"))
-		s.store.SetChunk(t.Primary.ChunkID, t.Primary.EncGrp, "garbage")
+		s.store.SetChunk(t.Primary.ChunkID, t.Primary.EncGrp, "F")
 		s.setJobStatus(jobID, Fail)
 		return
 	}
@@ -85,13 +85,11 @@ func (s *service) encode() {
 	cli := rpc.NewClient(conn)
 	if err := cli.Call(nilrpc.DsGencodingEncode.String(), req, res); err != nil {
 		ctxLogger.Error(errors.Wrap(err, "failed to call to leader of parity group"))
-		s.store.SetChunk(t.Primary.ChunkID, t.Primary.EncGrp, "garbage")
+		s.store.SetChunk(t.Primary.ChunkID, t.Primary.EncGrp, "F")
 		s.setJobStatus(jobID, Fail)
 		return
 	}
 	defer cli.Close()
-
-	s.store.SetChunk(t.Primary.ChunkID, t.Primary.EncGrp, "global")
 }
 
 func (s *service) setPrimaryChunk(primary token.Unencoded, jobID int64) error {
