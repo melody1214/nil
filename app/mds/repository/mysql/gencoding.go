@@ -213,7 +213,9 @@ func (s *gencodingStore) GetJob(regionName string) (*token.Token, error) {
 		return nil, fmt.Errorf("no jobs for you")
 	}
 
-	t := &token.Token{}
+	t := &token.Token{
+		JobID: jobID,
+	}
 
 	q = fmt.Sprintf(
 		`
