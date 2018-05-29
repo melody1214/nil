@@ -41,6 +41,9 @@ func (s *service) encode() {
 	// Get job id from the chunk ID.
 	jobID := t.JobID
 
+	s.setJobStatus(jobID, Fail)
+	return
+
 	// Fill the parity node information in this region.
 	primary, err := s.findPrimary()
 	if err != nil {

@@ -173,7 +173,6 @@ func (s *service) findCandidate(region token.Stop) (*token.Unencoded, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to find candidate encoding group")
 	}
-	logger.Errorf("selected eg : %+v", eg)
 
 	if eg.Uenc == 0 {
 		return nil, fmt.Errorf("no unencoded chunk")
@@ -211,7 +210,7 @@ func (s *service) findCandidate(region token.Stop) (*token.Unencoded, error) {
 	// if getChunkRes.Chunk == "" {
 	// 	return nil, fmt.Errorf("no unencoded chunk")
 	// }
-	cID, err := s.store.GetCandidateChunk(eg.ID)
+	cID, err := s.store.GetCandidateChunk(eg.ID, s.cfg.Raft.LocalClusterRegion)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to find candidate chunk")
 	}

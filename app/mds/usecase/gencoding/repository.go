@@ -26,5 +26,5 @@ type Repository interface {
 	UpdateUnencoded(egs []cmap.EncodingGroup) ([]cmap.EncodingGroup, error)
 	GetChunk(eg cmap.ID) (cID string, err error)
 	SetChunk(cID string, egID cmap.ID, status string) error
-	GetCandidateChunk(egID cmap.ID) (cID string, err error)
+	GetCandidateChunk(egID cmap.ID, region string) (cID string, err error)
 }

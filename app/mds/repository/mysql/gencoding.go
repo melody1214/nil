@@ -497,13 +497,21 @@ func (s *gencodingStore) SetChunk(cID string, egID cmap.ID, status string) error
 	return err
 }
 
-func (s *gencodingStore) GetCandidateChunk(egID cmap.ID) (cID string, err error) {
+func (s *gencodingStore) GetCandidateChunk(egID cmap.ID, region string) (cID string, err error) {
 	q := fmt.Sprintf(
 		`
 		SELECT chk_id
 		FROM chunk
-		where chk_encoding_group=%d AND chk_status='%s'
-		`, egID, "L",
+		where chk_encoding_group=%d AND chk_status='%s' AND chk_id NOT IN (
+			SELECT guc_chunk
+			FROM global_encoding_chunk
+			WHERE guc_region IN (
+				SELECT rg_id
+				FROM region
+				WHERE rg_name='%s'
+			)
+		)
+		`, egID, "L", region,
 	)
 	err = s.QueryRow(repository.NotTx, q).Scan(&cID)
 	return
