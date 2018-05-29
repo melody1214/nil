@@ -74,6 +74,7 @@ var generateSQLBase = []string{
 			egv_id int unsigned NOT NULL AUTO_INCREMENT,
 			egv_encoding_group int unsigned NOT NULL,
 			egv_volume int unsigned NOT NULL,
+			egv_move_to int unsigned NOT NULL DEFAULT 0,
 			egv_role int unsigned NOT NULL,
 			PRIMARY KEY (egv_id),
 			FOREIGN KEY (egv_encoding_group) REFERENCES encoding_group (eg_id),

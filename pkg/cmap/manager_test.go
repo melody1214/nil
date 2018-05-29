@@ -124,7 +124,7 @@ func TestMergeCMap(t *testing.T) {
 				Used: 4,
 				Free: 6,
 				Stat: EGAlive,
-				Vols: []ID{ID(0), ID(3), ID(6)},
+				Vols: []EGVol{EGVol{ID: 0}, EGVol{ID: 3}, EGVol{ID: 6}},
 				Incr: Incarnation(30),
 			},
 			EncodingGroup{
@@ -133,7 +133,7 @@ func TestMergeCMap(t *testing.T) {
 				Used: 2,
 				Free: 8,
 				Stat: EGAlive,
-				Vols: []ID{ID(1), ID(4), ID(8)},
+				Vols: []EGVol{EGVol{ID: 1}, EGVol{ID: 4}, EGVol{ID: 8}},
 				Incr: Incarnation(30),
 			},
 			EncodingGroup{
@@ -142,7 +142,7 @@ func TestMergeCMap(t *testing.T) {
 				Used: 4,
 				Free: 6,
 				Stat: EGAlive,
-				Vols: []ID{ID(1), ID(6), ID(8)},
+				Vols: []EGVol{EGVol{ID: 1}, EGVol{ID: 6}, EGVol{ID: 8}},
 				Incr: Incarnation(30),
 			},
 		},
@@ -265,7 +265,7 @@ func TestMergeCMap(t *testing.T) {
 				Used: 4,
 				Free: 6,
 				Stat: EGAlive,
-				Vols: []ID{ID(0), ID(3), ID(6)},
+				Vols: []EGVol{EGVol{ID: 0}, EGVol{ID: 3}, EGVol{ID: 6}},
 				Incr: Incarnation(30),
 			},
 			EncodingGroup{
@@ -274,7 +274,7 @@ func TestMergeCMap(t *testing.T) {
 				Used: 2,
 				Free: 8,
 				Stat: EGAlive,
-				Vols: []ID{ID(1), ID(4), ID(8)},
+				Vols: []EGVol{EGVol{ID: 1}, EGVol{ID: 4}, EGVol{ID: 8}},
 				Incr: Incarnation(30),
 			},
 			EncodingGroup{
@@ -283,7 +283,7 @@ func TestMergeCMap(t *testing.T) {
 				Used: 4,
 				Free: 6,
 				Stat: EGAlive,
-				Vols: []ID{ID(1), ID(6), ID(8)},
+				Vols: []EGVol{EGVol{ID: 1}, EGVol{ID: 6}, EGVol{ID: 8}},
 				Incr: Incarnation(30),
 			},
 		},
@@ -307,7 +307,7 @@ func TestMergeCMap(t *testing.T) {
 
 	// Case 1.
 	srcMap.EncGrps[0].Incr = Incarnation(dstMap.EncGrps[0].Incr.Uint32() - 1)
-	srcMap.EncGrps[0].Vols = []ID{ID(0), ID(4), ID(6)}
+	srcMap.EncGrps[0].Vols = []EGVol{EGVol{ID: 0}, EGVol{ID: 4}, EGVol{ID: 6}}
 	expectedEncGrps = append(expectedEncGrps, dstMap.EncGrps[0])
 
 	// Case 2.
@@ -320,7 +320,7 @@ func TestMergeCMap(t *testing.T) {
 	srcMap.EncGrps[2].Incr = Incarnation(dstMap.EncGrps[2].Incr.Uint32() + 1)
 	srcMap.EncGrps[2].Used = 5
 	srcMap.EncGrps[2].Free = 5
-	dstMap.EncGrps[2].Vols = []ID{ID(1), ID(5), ID(8)}
+	dstMap.EncGrps[2].Vols = []EGVol{EGVol{ID: 1}, EGVol{ID: 5}, EGVol{ID: 8}}
 	expectedEncGrp := EncodingGroup{
 		ID:   dstMap.EncGrps[2].ID,
 		Size: srcMap.EncGrps[2].Size,
@@ -372,9 +372,7 @@ func TestCopyCMap(t *testing.T) {
 				Stat: EGAlive,
 				Incr: Incarnation(10),
 				Size: 100,
-				Vols: []ID{
-					ID(0), ID(1), ID(2),
-				},
+				Vols: []EGVol{EGVol{ID: 0}, EGVol{ID: 1}, EGVol{ID: 2}},
 			},
 		},
 	}
@@ -388,7 +386,7 @@ func TestCopyCMap(t *testing.T) {
 	// Change slice values for testing deep copy.
 	origin.Nodes[0].Vols[0] = ID(99)
 	origin.Vols[0].EncGrps[0] = ID(99)
-	origin.EncGrps[0].Vols[0] = ID(99)
+	origin.EncGrps[0].Vols[0] = EGVol{ID: 99}
 	if reflect.DeepEqual(origin, *copied) {
 		t.Fatalf("slices are not deep copied.\norigin: %v\ncopied: %v", origin, *copied)
 	}

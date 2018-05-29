@@ -409,14 +409,14 @@ func (s *service) sendEncodedChunks(encoded []*repository.Request) error {
 		return fmt.Errorf("encoded chunks number is not matched with the encoding group volume number")
 	}
 
-	for i, vID := range eg.Vols {
+	for i, egv := range eg.Vols {
 		if i == 0 {
 			// Jump leader. (it's me)
 			continue
 		}
 		idx := i - 1
 
-		v, err := c.Volume().ID(vID).Do()
+		v, err := c.Volume().ID(egv.ID).Do()
 		if err != nil {
 			// TODO: remove sent chunks.
 			return err
@@ -454,7 +454,7 @@ func (s *service) sendEncodedChunks(encoded []*repository.Request) error {
 			return err
 		}
 
-		req.Header.Add("Volume", vID.String())
+		req.Header.Add("Volume", egv.ID.String())
 		req.Header.Add("Encoding-Group", encoded[idx].LocGid)
 		// ex. T_1_0 -> G_1
 		req.Header.Add("Chunk-Name", strings.Replace(encoded[idx].Cid[:len(encoded[idx].Cid)-2], "T", "G", 1))

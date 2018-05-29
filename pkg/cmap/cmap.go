@@ -62,6 +62,17 @@ func (m *CMap) HumanReadable() string {
 		r += "}"
 		return r
 	}
+	egvs2str := func(egvs []EGVol) string {
+		r := "{"
+		for i, eg := range egvs {
+			r += eg.Print()
+			if i < len(egvs)-1 {
+				r += ", "
+			}
+		}
+		r += "}"
+		return r
+	}
 
 	// Write cmap header.
 	out := "+-------------------------+-----------------------------------------------------+\n"
@@ -130,7 +141,7 @@ func (m *CMap) HumanReadable() string {
 			eg.Free,
 			eg.Used,
 			eg.Stat.String(),
-			ids2str(eg.Vols),
+			egvs2str(eg.Vols),
 			eg.Uenc,
 		)
 		out += row

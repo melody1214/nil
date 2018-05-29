@@ -317,7 +317,7 @@ func (e *endec) renameToL(c chunk) error {
 
 	vols := make([]cmap.Volume, len(eg.Vols))
 	for i := 0; i < len(eg.Vols); i++ {
-		v, err := call.Volume().ID(eg.Vols[i]).Do()
+		v, err := call.Volume().ID(eg.Vols[i].ID).Do()
 		if err != nil {
 			return errors.Wrap(err, "failed to find such volume")
 		}
@@ -391,7 +391,7 @@ func (e *endec) truncateAllChunks(c chunk) error {
 
 	vols := make([]cmap.Volume, len(eg.Vols)-1)
 	for i := 1; i < len(eg.Vols); i++ {
-		v, err := call.Volume().ID(eg.Vols[i]).Do()
+		v, err := call.Volume().ID(eg.Vols[i].ID).Do()
 		if err != nil {
 			return errors.Wrap(err, "failed to find such volume")
 		}

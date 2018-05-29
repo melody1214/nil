@@ -53,7 +53,7 @@ func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 
 	const primary = 0
 	proxy := httputil.NewSingleHostReverseProxy(rpURL)
-	r.Header.Add("Volume-Id", eg.Vols[primary].String())
+	r.Header.Add("Volume-Id", eg.Vols[primary].ID.String())
 	r.Header.Add("Local-Chain-Id", eg.ID.String())
 	r.Header.Add("Request-Type", client.WriteToPrimary.String())
 	proxy.ErrorLog = log.New(logger.Writer(), "http reverse proxy", log.Lshortfile)
@@ -68,7 +68,7 @@ func (h *handlers) findRandomPlaceToWrite() (cmap.EncodingGroup, cmap.Node, erro
 	}
 
 	const primary = 0
-	vol, err := c.Volume().ID(eg.Vols[primary]).Status(cmap.VolActive).Do()
+	vol, err := c.Volume().ID(eg.Vols[primary].ID).Status(cmap.VolActive).Do()
 	if err != nil {
 		return cmap.EncodingGroup{}, cmap.Node{}, errors.Wrapf(err, "failed to search active volume %+v", eg.Vols[primary])
 	}

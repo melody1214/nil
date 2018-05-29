@@ -150,7 +150,7 @@ func (s *service) findPrimary() (token.Unencoded, error) {
 		return token.Unencoded{}, err
 	}
 
-	v, err := c.Volume().ID(eg.Vols[0]).Do()
+	v, err := c.Volume().ID(eg.Vols[0].ID).Do()
 	if err != nil {
 		return token.Unencoded{}, err
 	}

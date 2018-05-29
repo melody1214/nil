@@ -32,8 +32,22 @@ type EncodingGroup struct {
 	Size int64               `xml:"size"`
 	Used int64               `xml:"used"`
 	Free int64               `xml:"free"`
-	Vols []ID                `xml:"volume"`
+	Vols []EGVol             `xml:"volume"`
 	Uenc int                 `xml:"unencoded"`
+}
+
+// EGVol has additional information for recovery, or rebalance task.
+type EGVol struct {
+	ID     ID
+	MoveTo ID
+}
+
+// Print returns a string format of eg volume.
+func (ev *EGVol) Print() string {
+	if ev.MoveTo == ID(0) {
+		return ev.ID.String()
+	}
+	return ev.ID.String() + "->" + ev.MoveTo.String()
 }
 
 // LeaderVol returns the leader volume of the encoding group.
@@ -41,7 +55,7 @@ func (eg EncodingGroup) LeaderVol() ID {
 	if len(eg.Vols) == 0 {
 		return ID(-1)
 	}
-	return eg.Vols[len(eg.Vols)-1]
+	return eg.Vols[len(eg.Vols)-1].ID
 }
 
 // NodeName is a string for identifying node.

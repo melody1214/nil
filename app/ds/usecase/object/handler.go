@@ -225,7 +225,7 @@ func (h *handlers) writeToRemoteFollower(req client.RequestEvent, size int64, ci
 		return errors.Wrapf(err, "failed to find such encoding group: %d", encGrpID)
 	}
 
-	vol, err := call.Volume().ID(encGrp.Vols[c.shard]).Do()
+	vol, err := call.Volume().ID(encGrp.Vols[c.shard].ID).Do()
 	if err != nil {
 		return errors.Wrapf(err, "failed to find such volume: %d", encGrp.Vols[c.shard])
 	}

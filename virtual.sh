@@ -13,8 +13,8 @@ MNT=$DIR/mnt
 PENDINGCMD=$DIR/pending
 
 # Region names follow ISO-3166-1
-REGIONS=("KR" "US" "HK" "SG" "JP" "DE")
-# REGIONS=("KR")
+# REGIONS=("KR" "US" "HK" "SG" "JP" "DE")
+REGIONS=("KR")
 GW=1
 MDS=1
 DS=10
@@ -434,7 +434,7 @@ function checkportisinuse() {
 
     # Check required gw port.
     for port in $(seq $GWBASEPORT $(($GWBASEPORT+$((${#REGIONS[@]} * $GW))))); do
-        if netstat -ant | grep "LISTEN" | awk '{print $4}' | grep $port >/dev/null ; then
+        if netstat -ant | awk '{print $4}' | grep $port >/dev/null ; then
             echo "check gw port is in use failed."
             echo "$port is in use."
             result=1
@@ -444,7 +444,7 @@ function checkportisinuse() {
 
     # Check required mds port.
     for port in $(seq $MDSBASEPORT $(($MDSBASEPORT+$((${#REGIONS[@]} * $MDS))))); do
-        if netstat -ant | grep "LISTEN" | awk '{print $4}' | grep $port >/dev/null ; then
+        if netstat -ant | awk '{print $4}' | grep $port >/dev/null ; then
             echo "check mds port is in use failed."
             echo "$port is in use."
             result=1
@@ -454,7 +454,7 @@ function checkportisinuse() {
 
     # Check required ds port.
     for port in $(seq $DSBASEPORT $(($DSBASEPORT+$((${#REGIONS[@]} * $DS))))); do
-        if netstat -ant | grep "LISTEN" | awk '{print $4}' | grep $port >/dev/null ; then
+        if netstat -ant | awk '{print $4}' | grep $port >/dev/null ; then
             echo "check ds port is in use failed."
             echo "$port is in use."
             result=1
@@ -506,10 +506,6 @@ function main() {
     sleep 15
     putobjects
 
-    # Get objects.
-    sleep 5
-    getobjects
-
     # Test local recovery
     if [ $TESTLOCALRECOVERY = true ]; then
         testlocalrecovery
@@ -528,7 +524,7 @@ changeset
 trap restore SIGINT
 trap restore EXIT
 
-while getopts plsh o; do
+while getopts plshg o; do
     case $o in
     p)
         purge
@@ -543,6 +539,10 @@ while getopts plsh o; do
         ;;
     h)
         usage
+        exit 0
+        ;;
+    g)
+        getobjects
         exit 0
         ;;
     ?)

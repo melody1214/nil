@@ -68,7 +68,7 @@ func (s *service) GGG(req *nilrpc.MGEGGGRequest, res *nilrpc.MGEGGGResponse) err
 func (s *service) run() {
 	ctxLogger := mlog.GetMethodLogger(logger, "service.run")
 
-	issueTokenTicker := time.NewTicker(30 * time.Second)
+	issueTokenTicker := time.NewTicker(5 * time.Second)
 	encodeTicker := time.NewTicker(60 * time.Second)
 	// updateUnencodedTicker := time.NewTicker(30 * time.Second)
 	gcTicker := time.NewTicker(60 * time.Second)
@@ -178,9 +178,9 @@ func (s *service) findCandidate(region token.Stop) (*token.Unencoded, error) {
 		return nil, fmt.Errorf("no unencoded chunk")
 	}
 
-	v, err := c.Volume().ID(eg.Vols[0]).Do()
+	v, err := c.Volume().ID(eg.Vols[0].ID).Do()
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to search volume ID: %s", eg.Vols[0].String())
+		return nil, errors.Wrapf(err, "failed to search volume ID: %s", eg.Vols[0].ID.String())
 	}
 
 	n, err := c.Node().ID(v.Node).Do()

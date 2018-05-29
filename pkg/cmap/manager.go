@@ -99,7 +99,7 @@ func copyCMap(cm *CMap) *CMap {
 	copiedMap.EncGrps = make([]EncodingGroup, len(cm.EncGrps))
 	copy(copiedMap.EncGrps, cm.EncGrps)
 	for i, eg := range cm.EncGrps {
-		copiedMap.EncGrps[i].Vols = make([]ID, len(eg.Vols))
+		copiedMap.EncGrps[i].Vols = make([]EGVol, len(eg.Vols))
 		copy(copiedMap.EncGrps[i].Vols, eg.Vols)
 	}
 

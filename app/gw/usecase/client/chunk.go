@@ -55,7 +55,7 @@ func (h *handlers) GetChunkHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	v, err := c.Volume().ID(eg.Vols[iShardNum]).Status(cmap.VolActive).Do()
+	v, err := c.Volume().ID(eg.Vols[iShardNum].ID).Status(cmap.VolActive).Do()
 	if err != nil {
 		http.Error(w, "invalid header", http.StatusBadRequest)
 		return
@@ -110,8 +110,8 @@ func (h *handlers) RenameChunkHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, vID := range eg.Vols {
-		v, err := c.Volume().ID(vID).Status(cmap.VolActive).Do()
+	for _, egv := range eg.Vols {
+		v, err := c.Volume().ID(egv.ID).Status(cmap.VolActive).Do()
 		if err != nil {
 			http.Error(w, "invalid header", http.StatusBadRequest)
 			return
@@ -131,7 +131,7 @@ func (h *handlers) RenameChunkHandler(w http.ResponseWriter, r *http.Request) {
 		defer conn.Close()
 
 		req := &nilrpc.DGERenameChunkRequest{
-			Vol:      vID.String(),
+			Vol:      egv.ID.String(),
 			EncGrp:   eg.ID.String(),
 			OldChunk: oldChunkName,
 			NewChunk: newChunkName,

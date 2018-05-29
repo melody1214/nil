@@ -32,10 +32,15 @@ func (w *worker) rcDiagnose() fsm {
 	}
 
 	many := 0
-	for _, vID := range eg.Vols {
-		v, err := c.Volume().ID(vID).Do()
+	for _, egv := range eg.Vols {
+		v, err := c.Volume().ID(egv.ID).Do()
 		if err != nil {
 			w.job.err = err
+			return w.rcFinish
+		}
+
+		if egv.MoveTo != cmap.ID(0) {
+			w.job.err = fmt.Errorf("this encoding group is healing by another worker")
 			return w.rcFinish
 		}
 
@@ -64,21 +69,28 @@ func (w *worker) rcLocal() fsm {
 		return w.rcFinish
 	}
 
-	var faulty *cmap.Volume
-	for _, vID := range eg.Vols {
-		v, err := c.Volume().ID(vID).Do()
+	var faulty cmap.Volume
+	var role int
+	for i, egv := range eg.Vols {
+		v, err := c.Volume().ID(egv.ID).Do()
 		if err != nil {
 			w.job.err = err
 			return w.rcFinish
 		}
 
+		if egv.MoveTo != cmap.ID(0) {
+			w.job.err = fmt.Errorf("this encoding group is healing by another worker")
+			return w.rcFinish
+		}
+
 		if v.Stat != cmap.VolActive {
-			faulty = &v
+			faulty = v
+			role = i
 			break
 		}
 	}
 
-	if faulty == nil {
+	if faulty.ID == cmap.ID(0) {
 		// Cured by others?
 		// It's weird. Let's do again.
 		return w.rcDiagnose
@@ -86,7 +98,7 @@ func (w *worker) rcLocal() fsm {
 
 	failureDomain := make([]cmap.ID, len(eg.Vols))
 	for i, vID := range eg.Vols {
-		v, err := c.Volume().ID(vID).Do()
+		v, err := c.Volume().ID(vID.ID).Do()
 		if err != nil {
 			w.job.err = err
 			return w.rcFinish
@@ -95,13 +107,45 @@ func (w *worker) rcLocal() fsm {
 		failureDomain[i] = v.Node
 	}
 
-	recover, err := w.store.FindReplaceableVolume(repository.NotTx, &eg, faulty, failureDomain...)
+	recover, err := w.store.FindReplaceableVolume(repository.NotTx, &eg, &faulty, failureDomain...)
 	if err != nil {
 		w.job.err = err
 		w.job.Log = newJobLog("failed to select " + err.Error())
 		return w.rcFinish
 	}
 	w.job.Log = newJobLog("selected node is " + recover.String())
+
+	var txid repository.TxID
+	txid, w.job.err = w.store.Begin()
+	if w.job.err != nil {
+		w.job.Log = newJobLog(w.job.err.Error())
+		return w.rcFinish
+	}
+
+	if w.job.err = w.store.SetEGV(txid, eg.ID, role, faulty.ID, recover); w.job.err != nil {
+		w.job.Log = newJobLog("failed to set recovery volume")
+		w.store.Rollback(txid)
+		return w.rcFinish
+	}
+
+	if w.job.err = w.store.VolEGIncr(txid, recover); w.job.err != nil {
+		w.job.Log = newJobLog(w.job.err.Error())
+		w.store.Rollback(txid)
+		return w.rcFinish
+	}
+
+	if w.job.err = w.store.Commit(txid); w.job.err != nil {
+		w.job.Log = newJobLog(w.job.err.Error())
+		w.store.Rollback(txid)
+		return w.rcFinish
+	}
+
+	if w.job.err = w.updateClusterMap(); w.job.err != nil {
+		w.job.Log = newJobLog("failed to update cmap with selected recovery volume")
+		w.store.SetEGV(repository.NotTx, eg.ID, role, faulty.ID, cmap.ID(0))
+		w.store.VolEGDecr(repository.NotTx, recover)
+	}
+
 	return w.rcFinish
 
 	// return w.rcDiagnose
