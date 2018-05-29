@@ -244,7 +244,7 @@ func (h *handlers) writeToRemoteFollower(req client.RequestEvent, size int64, ci
 		Vol:    string(c.volume),
 		LocGid: string(c.encodingGroup),
 		Oid:    strings.Replace(strings.Trim(req.Request().RequestURI, "/"), "/", ".", -1),
-		Cid:    string(c.id),
+		Cid:    string(cid),
 		Osize:  size,
 
 		Out: pWriter,
@@ -267,7 +267,7 @@ func (h *handlers) writeToRemoteFollower(req client.RequestEvent, size int64, ci
 	headers := client.NewHeaders()
 	headers.SetLocalChainID(encGrp.ID.String())
 	headers.SetVolumeID(vol.ID.String())
-	headers.SetChunkID(string(c.id))
+	headers.SetChunkID(c.status.String() + "_" + string(c.id))
 	headers.SetMD5(req.MD5())
 
 	copyReq, err := cr.NewRequest(

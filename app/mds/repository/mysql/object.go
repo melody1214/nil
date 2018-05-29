@@ -87,7 +87,7 @@ func (s *objectStore) GetChunk(eg cmap.ID) (cID string, err error) {
 		`
 		INSERT INTO chunk (chk_encoding_group, chk_status)
 		VALUES (%d, '%s')
-		`, eg, "writing",
+		`, eg, "W",
 	)
 	r, err := s.Store.Execute(repository.NotTx, q)
 	if err != nil {
