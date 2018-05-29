@@ -14,6 +14,9 @@ PENDINGCMD=$DIR/pending
 
 # Region names follow ISO-3166-1
 REGIONS=("KR" "US" "HK" "SG" "JP" "DE")
+GW=1
+MDS=1
+DS=10
 # REGIONS=("KR")
 GWBASEPORT=50000
 MDSBASEPORT=51000
@@ -414,12 +417,53 @@ function testlocalrecovery() {
     getobjects
 }
 
+function checkportisinuse() {
+    result=0
+
+    # Check required gw port.
+    for port in $(seq $GWBASEPORT $(($GWBASEPORT+$((${#REGIONS[@]} * $GW))))); do
+        if netstat -ant | awk '{print $4}' | grep $port >/dev/null ; then
+            echo "check gw port is in use failed."
+            echo "$port is in use."
+            result=1
+            return
+        fi
+    done
+
+    # Check required mds port.
+    for port in $(seq $MDSBASEPORT $(($MDSBASEPORT+$((${#REGIONS[@]} * $MDS))))); do
+        if netstat -ant | awk '{print $4}' | grep $port >/dev/null ; then
+            echo "check mds port is in use failed."
+            echo "$port is in use."
+            result=1
+            return
+        fi
+    done
+
+    # Check required ds port.
+    for port in $(seq $DSBASEPORT $(($DSBASEPORT+$((${#REGIONS[@]} * $DS))))); do
+        if netstat -ant | awk '{print $4}' | grep $port >/dev/null ; then
+            echo "check ds port is in use failed."
+            echo "$port is in use."
+            result=1
+            return
+        fi
+    done
+}
+
 function main() {
     purge
 
+    checkportisinuse
+    while [ $result -eq 1 ]; do
+        echo "retry after 5 seconds."
+        sleep 5
+        checkportisinuse
+    done
+
     for region in ${REGIONS[@]}; do
         echo "set region $region ..."
-        runregion "$region" 1 1 10
+        runregion "$region" $GW $MDS $DS
         sleep 3
     done
 
