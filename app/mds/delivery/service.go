@@ -86,10 +86,10 @@ func SetupDeliveryService(cfg *config.Mds, uss user.Service, cls cluster.Service
 		return nil, err
 	}
 
-	// Run the delivery server.
-	if err := s.run(); err != nil {
-		return nil, err
-	}
+	// // Run the delivery server.
+	// if err := s.run(); err != nil {
+	// 	return nil, err
+	// }
 
 	// Setup the membership server and run.
 	cmapConf := cmap.DefaultConfig()
@@ -103,16 +103,35 @@ func SetupDeliveryService(cfg *config.Mds, uss user.Service, cls cluster.Service
 		cmapConf.PingExpire = t
 	}
 	cmapConf.Type = cmap.MDS
+
+	// Setup tls listener.
+	if err := s.nilMux.ListenAndServeTLS(); err != nil {
+		return nil, err
+	}
+
+	// Setup database and join to global.
+	if err := s.cls.Join(s.raftLayer); err != nil {
+		return nil, err
+	}
+
+	// Join to the local cmap.
+	if err := s.joinToLocal(cmapConf); err != nil {
+		return nil, err
+	}
+
+	// Setup rpc server.
+	go s.serveNilRPC()
+
+	// Start local membership protocol.
 	if err := s.cms.StartMembershipServer(*cmapConf, nilmux.NewSwimTransportLayer(s.membershipLayer)); err != nil {
 		return nil, err
 	}
-	// Join the local cmap.
-	conn, err := nilrpc.Dial(cmapConf.Coordinator.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
 
+	return s, nil
+}
+
+func (s *Service) joinToLocal(cmapConf *cmap.Config) error {
+	// Join the local cmap.
 	req := &nilrpc.MCLLocalJoinRequest{
 		Node: cmap.Node{
 			Name: cmapConf.Name,
@@ -123,18 +142,21 @@ func SetupDeliveryService(cfg *config.Mds, uss user.Service, cls cluster.Service
 	}
 	res := &nilrpc.MCLLocalJoinResponse{}
 
-	cli := rpc.NewClient(conn)
-	if err := cli.Call(nilrpc.MdsClusterLocalJoin.String(), req, res); err != nil {
-		return nil, err
+	// I am the very firstman of the land.
+	if cmapConf.Address.String() == s.cfg.ServerAddr+":"+s.cfg.ServerPort {
+		return s.cls.RPCHandler().LocalJoin(req, res)
 	}
 
-	return s, nil
-}
+	// Ask to join other node.
+	conn, err := nilrpc.Dial(cmapConf.Coordinator.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
 
-func (s *Service) run() error {
-	go s.nilMux.ListenAndServeTLS()
-	go s.serveNilRPC()
-	return s.cls.Join(s.raftLayer)
+	cli := rpc.NewClient(conn)
+	defer cli.Close()
+	return cli.Call(nilrpc.MdsClusterLocalJoin.String(), req, res)
 }
 
 func (s *Service) Stop() error {
