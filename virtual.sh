@@ -13,11 +13,11 @@ MNT=$DIR/mnt
 PENDINGCMD=$DIR/pending
 
 # Region names follow ISO-3166-1
-REGIONS=("KR" "US" "HK" "SG" "JP" "DE")
+# REGIONS=("KR" "US" "HK" "SG" "JP" "DE")
+REGIONS=("KR")
 GW=1
 MDS=1
 DS=10
-# REGIONS=("KR")
 GWBASEPORT=50000
 MDSBASEPORT=51000
 DSBASEPORT=52000
@@ -232,8 +232,20 @@ function runds() {
       --secure-certs-dir $CERTSDIR \
       -l log &
     echo $region ds $! >> $PID
+    # createsdisks "$DISKNUM" "$DISKSIZE" "$workdir" "$port"
+}
 
-    createsdisks "$DISKNUM" "$DISKSIZE" "$workdir" "$port"
+function creatediskall() {
+    local dsbaseport=52000
+    for region in ${REGIONS[@]}; do
+        for ds in $(eval echo "{1..$DS}"); do
+            local port=$dsbaseport
+            dsbaseport=$((dsbaseport + 1))
+            local workdir=$DIR/$region/ds$ds
+
+            createsdisks "$DISKNUM" "$DISKSIZE" "$workdir" "$port"
+        done
+    done
 }
 
 function ggg() {
@@ -422,7 +434,7 @@ function checkportisinuse() {
 
     # Check required gw port.
     for port in $(seq $GWBASEPORT $(($GWBASEPORT+$((${#REGIONS[@]} * $GW))))); do
-        if netstat -ant | awk '{print $4}' | grep $port >/dev/null ; then
+        if netstat -ant | grep "LISTEN" | awk '{print $4}' | grep $port >/dev/null ; then
             echo "check gw port is in use failed."
             echo "$port is in use."
             result=1
@@ -432,7 +444,7 @@ function checkportisinuse() {
 
     # Check required mds port.
     for port in $(seq $MDSBASEPORT $(($MDSBASEPORT+$((${#REGIONS[@]} * $MDS))))); do
-        if netstat -ant | awk '{print $4}' | grep $port >/dev/null ; then
+        if netstat -ant | grep "LISTEN" | awk '{print $4}' | grep $port >/dev/null ; then
             echo "check mds port is in use failed."
             echo "$port is in use."
             result=1
@@ -442,7 +454,7 @@ function checkportisinuse() {
 
     # Check required ds port.
     for port in $(seq $DSBASEPORT $(($DSBASEPORT+$((${#REGIONS[@]} * $DS))))); do
-        if netstat -ant | awk '{print $4}' | grep $port >/dev/null ; then
+        if netstat -ant | grep "LISTEN" | awk '{print $4}' | grep $port >/dev/null ; then
             echo "check ds port is in use failed."
             echo "$port is in use."
             result=1
@@ -466,6 +478,8 @@ function main() {
         runregion "$region" $GW $MDS $DS
         sleep 3
     done
+
+    creatediskall
 
     # Generate global encoding group.
     ggg 300
