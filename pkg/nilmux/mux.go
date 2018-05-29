@@ -84,7 +84,8 @@ func (m *NilMux) ListenAndServeTLS() error {
 	tlsConfig.Certificates = append(tlsConfig.Certificates, cert)
 
 	tlsListener := tls.NewListener(tcpKeepAliveListener{ln.(*net.TCPListener)}, tlsConfig)
-	return m.serve(tlsListener)
+	go m.serve(tlsListener)
+	return nil
 }
 
 func (m *NilMux) serve(ln net.Listener) error {

@@ -45,6 +45,7 @@ func SetupDeliveryService(cfg *config.Ds, cls cluster.Service, obh object.Handle
 		return nil, errors.New("invalid nil arguments")
 	}
 	logger = mlog.GetPackageLogger("app/ds/delivery")
+	ctxLogger := mlog.GetFunctionLogger(logger, "SetupDeliveryService")
 
 	s := &Service{
 		cls: cls,
@@ -93,7 +94,14 @@ func SetupDeliveryService(cfg *config.Ds, cls cluster.Service, obh object.Handle
 	}
 
 	// Run the delivery server.
-	s.run()
+	if err := s.nilMux.ListenAndServeTLS(); err != nil {
+		return nil, errors.Wrap(err, "failed to listen and serve TLS")
+	}
+	ctxLogger.Info("start to listen main mux")
+	go s.serveRPC()
+	ctxLogger.Info("start to serve rpc requests")
+	go s.serveHTTP()
+	ctxLogger.Info("start to serve http requests")
 
 	// Setup the membership server and run.
 	cmapConf := cmap.DefaultConfig()
@@ -135,14 +143,17 @@ func SetupDeliveryService(cfg *config.Ds, cls cluster.Service, obh object.Handle
 	return s, nil
 }
 
-// Run starts the gateway delivery service.
-func (s *Service) run() {
-	ctxLogger := mlog.GetMethodLogger(logger, "Service.Run")
-	ctxLogger.Info("Start gateway delivery service ...")
+// Serve http server.
+func (s *Service) serveHTTP() {
+	ctxLogger := mlog.GetMethodLogger(logger, "Service.serveHTTP")
 
-	go s.nilMux.ListenAndServeTLS()
-	go s.serveRPC()
-	go s.httpSrv.Serve(s.httpL)
+	for {
+		if err := s.httpSrv.Serve(s.httpL); err != nil {
+			ctxLogger.Error(errors.Wrap(err, "failed to serve http"))
+			ctxLogger.Error("please inspect this. retry to serve after 10 sec.")
+			time.Sleep(10 * time.Second)
+		}
+	}
 }
 
 // Stop cleans up the services and shut down the server.
