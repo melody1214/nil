@@ -232,7 +232,24 @@ func (w *worker) rcLocalPrimary() fsm {
 		w.job.err = errors.Wrap(err, "rcLocalPrimary: failed to find all G chunks")
 		return w.rcFinish
 	}
-	_ = listG
+	for _, c := range listG {
+		err := w.recoveryChunk(
+			n.Addr.String(),
+			&nilrpc.DCLRecoveryChunkRequest{
+				ChunkID:     strconv.Itoa(c),
+				ChunkStatus: "G",
+				ChunkEG:     w.job.Event.AffectedEG,
+				ChunkVol:    egv.ID,
+				TargetVol:   egv.MoveTo,
+				Type:        "LocalPrimary",
+			},
+			&nilrpc.DCLRecoveryChunkResponse{},
+		)
+		if err != nil {
+			w.job.err = errors.Wrapf(err, "rcLocalPrimary: failed to recovery chunk: %d", c)
+			return w.rcFinish
+		}
+	}
 
 	// Recover writing chunks.
 	listW, err := w.store.FindAllChunks(w.job.Event.AffectedEG, "W")
@@ -240,9 +257,58 @@ func (w *worker) rcLocalPrimary() fsm {
 		w.job.err = errors.Wrap(err, "rcLocalPrimary: failed to find all W chunks")
 		return w.rcFinish
 	}
-	_ = listW
+	for _, c := range listW {
+		err := w.recoveryChunk(
+			n.Addr.String(),
+			&nilrpc.DCLRecoveryChunkRequest{
+				ChunkID:     strconv.Itoa(c),
+				ChunkStatus: "W",
+				ChunkEG:     w.job.Event.AffectedEG,
+				ChunkVol:    egv.ID,
+				TargetVol:   egv.MoveTo,
+				Type:        "LocalPrimary",
+			},
+			&nilrpc.DCLRecoveryChunkResponse{},
+		)
+		if err != nil {
+			w.job.err = errors.Wrapf(err, "rcLocalPrimary: failed to recovery chunk: %d", c)
+			return w.rcFinish
+		}
+	}
 
-	w.job.Log = newJobLog(fmt.Sprintf("primary: %+v", listL))
+	var txid repository.TxID
+	txid, w.job.err = w.store.Begin()
+	if w.job.err != nil {
+		w.job.Log = newJobLog(w.job.err.Error())
+		return w.rcFinish
+	}
+
+	if w.job.err = w.store.SetEGV(txid, eg.ID, 0, egv.MoveTo, 0); w.job.err != nil {
+		w.job.Log = newJobLog("failed to set recovery volume")
+		w.store.Rollback(txid)
+		return w.rcFinish
+	}
+
+	if w.job.err = w.store.VolEGDecr(txid, egv.ID); w.job.err != nil {
+		w.job.Log = newJobLog(w.job.err.Error())
+		w.store.Rollback(txid)
+		return w.rcFinish
+	}
+
+	if w.job.err = w.store.Commit(txid); w.job.err != nil {
+		w.job.Log = newJobLog(w.job.err.Error())
+		w.store.Rollback(txid)
+		return w.rcFinish
+	}
+
+	if w.job.err = w.updateClusterMap(); w.job.err != nil {
+		w.job.Log = newJobLog("failed to update cmap with selected recovery volume")
+		w.store.SetEGV(repository.NotTx, eg.ID, 0, egv.ID, cmap.ID(0))
+		w.store.VolEGDecr(repository.NotTx, egv.MoveTo)
+		// TODO: remove recovered.
+	}
+
+	w.job.Log = newJobLog("finish normally")
 	return w.rcFinish
 }
 

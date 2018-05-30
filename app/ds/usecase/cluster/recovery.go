@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"io"
 	"net/http"
 	"net/rpc"
 	"strconv"
@@ -65,13 +66,15 @@ func (s *service) recoveryLocalPrimary(req *nilrpc.DCLRecoveryChunkRequest, res 
 		} else if req.ChunkStatus == "G" {
 			downReq.Header.Add("Chunk-Name", "G_"+req.ChunkID)
 		} else if req.ChunkStatus == "W" {
-			err := s.truncateChunk(n.Addr.String(), v.ID, eg.ID, "W_"+req.ChunkID)
+			err := s.truncateChunk(n.Addr.String(), v.ID, eg.ID, "W_"+req.ChunkID+"_"+strconv.Itoa(i))
 			if err != nil {
+				ctxLogger.Infof("truncate fail: %s\n", "W_"+req.ChunkID+"_"+strconv.Itoa(i))
 				// No truncateable chunk.
 				// Writing is stopped at this shard.
 				break
 			}
-			downReq.Header.Add("Chunk-Name", "W_"+req.ChunkID)
+			ctxLogger.Infof("truncate: %s\n", "W_"+req.ChunkID+"_"+strconv.Itoa(i))
+			downReq.Header.Add("Chunk-Name", "W_"+req.ChunkID+"_"+strconv.Itoa(i))
 		} else {
 			e = fmt.Errorf("unknown chunk status")
 			goto ROLLBACK
@@ -108,17 +111,113 @@ func (s *service) recoveryLocalPrimary(req *nilrpc.DCLRecoveryChunkRequest, res 
 		}
 	}
 
-	ctxLogger.Infof("downloaded for recovery: %+v", downloaded)
+	ctxLogger.Info("download complete")
 
-	return nil
+	if req.ChunkStatus == "W" {
+		ctxLogger.Info("TODO: register chunk to chunk pool")
+		return nil
+	} else {
+		ctxLogger.Info("start encoding")
+		chunkSize, err := strconv.ParseInt(s.cfg.ChunkSize, 10, 64)
+		if err != nil {
+			goto ROLLBACK
+		}
+		prArr := make([]*io.PipeReader, len(downloaded))
+		pwArr := make([]*io.PipeWriter, len(downloaded))
+		bufArr := make([][]byte, len(downloaded))
+		readReqArr := make([]*repository.Request, len(downloaded))
+
+		const bufSize int = 1
+		for i := 0; i < len(downloaded); i++ {
+			prArr[i], pwArr[i] = io.Pipe()
+			defer pwArr[i].Close()
+			defer prArr[i].Close()
+
+			bufArr[i] = make([]byte, bufSize)
+
+			readReqArr[i] = &repository.Request{
+				Op:     repository.ReadAll,
+				Vol:    downloaded[i].Vol,
+				LocGid: downloaded[i].LocGid,
+				Cid:    downloaded[i].Cid,
+				Out:    pwArr[i],
+			}
+		}
+
+		for i := 0; i < len(downloaded); i++ {
+			s.store.Push(readReqArr[i])
+			go func(readReq *repository.Request, idx int) {
+				defer pwArr[idx].Close()
+				err := readReq.Wait()
+				if err != nil {
+					return
+				}
+			}(readReqArr[i], i)
+		}
+
+		parityReader, parityWriter := io.Pipe()
+		defer parityWriter.Close()
+		defer parityReader.Close()
+		parityBuf := make([]byte, bufSize)
+
+		ctxLogger.Info("start parity writing")
+		parityWriteReq := &repository.Request{
+			Op:     repository.WriteAll,
+			Vol:    req.TargetVol.String(),
+			LocGid: req.ChunkEG.String(),
+			Cid:    req.ChunkStatus + "_" + req.ChunkID,
+			In:     parityReader,
+		}
+		s.store.Push(parityWriteReq)
+
+		ctxLogger.Info("start read and xoring")
+		for n := int64(0); n < chunkSize; n++ {
+			parityBuf[0] = 0x00
+			for i := 0; i < len(downloaded); i++ {
+				if _, err := prArr[i].Read(bufArr[i]); err != nil {
+					e = fmt.Errorf("failed in xoring")
+					goto ROLLBACK
+				}
+
+				parityBuf[0] = parityBuf[0] ^ bufArr[i][0]
+			}
+
+			_, err := parityWriter.Write(parityBuf)
+			if err != nil {
+				e = errors.Wrap(err, "failed to write a xored byte into parity chunk")
+				goto ROLLBACK
+			}
+		}
+
+		ctxLogger.Info("wait parity writing")
+		err = parityWriteReq.Wait()
+		if err != nil {
+			e = errors.Wrap(err, "failed to write parity chunk")
+			goto ROLLBACK
+		}
+	}
+
+	goto FINISH
 
 ROLLBACK:
+	ctxLogger.Info("rollback")
+	s.store.Push(
+		&repository.Request{
+			Op:     repository.DeleteReal,
+			Vol:    req.TargetVol.String(),
+			LocGid: req.ChunkEG.String(),
+			Cid:    req.ChunkStatus + "_" + req.ChunkID,
+		},
+	)
 	ctxLogger.Error(e)
+
+FINISH:
+	ctxLogger.Info("done")
 	for _, delete := range downloaded {
 		s.store.Push(delete)
 	}
 
-	return e
+	return nil
 }
 
 func (s *service) recoveryLocalFollower(req *nilrpc.DCLRecoveryChunkRequest, res *nilrpc.DCLRecoveryChunkResponse) error {
