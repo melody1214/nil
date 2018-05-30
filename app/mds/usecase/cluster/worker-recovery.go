@@ -143,7 +143,7 @@ func (w *worker) rcLocal() fsm {
 	c := w.cmapAPI.SearchCall()
 	eg, err := c.EncGrp().ID(w.job.Event.AffectedEG).Do()
 	if err != nil {
-		w.job.err = err
+		w.job.err = errors.Wrap(err, "rcLocal: failed to find eg")
 		return w.rcFinish
 	}
 
@@ -158,8 +158,7 @@ func (w *worker) rcLocal() fsm {
 		return w.rcLocalFollower
 	}
 
-	w.job.err = fmt.Errorf("recovery target is gone")
-	w.job.Log = newJobLog(w.job.err.Error())
+	w.job.err = fmt.Errorf("rcLocal: recovery target is gone")
 	return w.rcDiagnose
 }
 
@@ -167,7 +166,7 @@ func (w *worker) rcLocalPrimary() fsm {
 	c := w.cmapAPI.SearchCall()
 	eg, err := c.EncGrp().ID(w.job.Event.AffectedEG).Do()
 	if err != nil {
-		w.job.err = err
+		w.job.err = errors.Wrap(err, "rcLocalPrimary: failed to find eg")
 		return w.rcFinish
 	}
 
@@ -181,32 +180,31 @@ func (w *worker) rcLocalPrimary() fsm {
 	}
 
 	if egv.ID == cmap.ID(0) {
-		w.job.err = fmt.Errorf("failed to find target volume")
+		w.job.err = fmt.Errorf("rcLocalPrimary: failed to find target volume")
 		return w.rcFinish
 	}
 
 	v, err := c.Volume().ID(egv.MoveTo).Do()
 	if err != nil {
-		w.job.err = err
+		w.job.err = errors.Wrap(err, "rcLocalPrimary: failed to find move2vol")
 		return w.rcFinish
 	}
 
 	if v.ID == cmap.ID(0) {
-		w.job.err = fmt.Errorf("failed to find volume")
+		w.job.err = fmt.Errorf("rcLocalPrimary: failed to find volume")
 		return w.rcFinish
 	}
 
-	n, err := c.Node().ID(v.ID).Do()
+	n, err := c.Node().ID(v.Node).Do()
 	if err != nil {
-		w.job.err = err
+		w.job.err = errors.Wrap(err, "rcLocalPrimary: failed to find node")
 		return w.rcFinish
 	}
 
 	// Recover locally encoded chunks.
 	listL, err := w.store.FindAllChunks(w.job.Event.AffectedEG, "L")
 	if err != nil {
-		w.job.err = err
-		w.job.Log = newJobLog(err.Error())
+		w.job.err = errors.Wrap(err, "rcLocalPrimary: failed to find all L chunks")
 		return w.rcFinish
 	}
 	for _, c := range listL {
@@ -223,8 +221,7 @@ func (w *worker) rcLocalPrimary() fsm {
 			&nilrpc.DCLRecoveryChunkResponse{},
 		)
 		if err != nil {
-			w.job.err = err
-			w.job.Log = newJobLog(err.Error())
+			w.job.err = errors.Wrapf(err, "rcLocalPrimary: failed to recovery chunk: %d", c)
 			return w.rcFinish
 		}
 	}
@@ -232,8 +229,7 @@ func (w *worker) rcLocalPrimary() fsm {
 	// Recover globally encoded chunks.
 	listG, err := w.store.FindAllChunks(w.job.Event.AffectedEG, "G")
 	if err != nil {
-		w.job.err = err
-		w.job.Log = newJobLog(err.Error())
+		w.job.err = errors.Wrap(err, "rcLocalPrimary: failed to find all G chunks")
 		return w.rcFinish
 	}
 	_ = listG
@@ -241,8 +237,7 @@ func (w *worker) rcLocalPrimary() fsm {
 	// Recover writing chunks.
 	listW, err := w.store.FindAllChunks(w.job.Event.AffectedEG, "W")
 	if err != nil {
-		w.job.err = err
-		w.job.Log = newJobLog(err.Error())
+		w.job.err = errors.Wrap(err, "rcLocalPrimary: failed to find all W chunks")
 		return w.rcFinish
 	}
 	_ = listW
@@ -295,6 +290,7 @@ func (w *worker) rcFinish() fsm {
 
 	if w.job.err != nil {
 		w.job.State = Abort
+		w.job.Log = newJobLog(w.job.err.Error())
 	} else {
 		w.job.State = Done
 	}
@@ -315,7 +311,7 @@ func (w *worker) recoveryChunk(addr string, req *nilrpc.DCLRecoveryChunkRequest,
 
 	cli := rpc.NewClient(conn)
 	if err := cli.Call(nilrpc.DsClusterRecoveryChunk.String(), req, res); err != nil {
-		return errors.Wrap(err, "failed to truncate chunk")
+		return err
 	}
 	defer cli.Close()
 	return nil

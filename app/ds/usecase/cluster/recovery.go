@@ -59,6 +59,7 @@ func (s *service) recoveryLocalPrimary(req *nilrpc.DCLRecoveryChunkRequest, res 
 		)
 
 		downReq.Header.Add("Encoding-Group", req.ChunkEG.String())
+		downReq.Header.Add("Volume", v.ID.String())
 		if req.ChunkStatus == "L" {
 			downReq.Header.Add("Chunk-Name", "L_"+req.ChunkID)
 		} else if req.ChunkStatus == "G" {
