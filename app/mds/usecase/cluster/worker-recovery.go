@@ -2,9 +2,14 @@ package cluster
 
 import (
 	"fmt"
+	"net/rpc"
+	"strconv"
+	"time"
 
 	"github.com/chanyoung/nil/app/mds/repository"
 	"github.com/chanyoung/nil/pkg/cmap"
+	"github.com/chanyoung/nil/pkg/nilrpc"
+	"github.com/pkg/errors"
 )
 
 // Prefix: rc
@@ -159,6 +164,44 @@ func (w *worker) rcLocal() fsm {
 }
 
 func (w *worker) rcLocalPrimary() fsm {
+	c := w.cmapAPI.SearchCall()
+	eg, err := c.EncGrp().ID(w.job.Event.AffectedEG).Do()
+	if err != nil {
+		w.job.err = err
+		return w.rcFinish
+	}
+
+	var egv cmap.EGVol
+	for _, v := range eg.Vols {
+		if v.MoveTo == cmap.ID(0) {
+			continue
+		}
+		egv = v
+		break
+	}
+
+	if egv.ID == cmap.ID(0) {
+		w.job.err = fmt.Errorf("failed to find target volume")
+		return w.rcFinish
+	}
+
+	v, err := c.Volume().ID(egv.MoveTo).Do()
+	if err != nil {
+		w.job.err = err
+		return w.rcFinish
+	}
+
+	if v.ID == cmap.ID(0) {
+		w.job.err = fmt.Errorf("failed to find volume")
+		return w.rcFinish
+	}
+
+	n, err := c.Node().ID(v.ID).Do()
+	if err != nil {
+		w.job.err = err
+		return w.rcFinish
+	}
+
 	// Recover locally encoded chunks.
 	listL, err := w.store.FindAllChunks(w.job.Event.AffectedEG, "L")
 	if err != nil {
@@ -166,7 +209,25 @@ func (w *worker) rcLocalPrimary() fsm {
 		w.job.Log = newJobLog(err.Error())
 		return w.rcFinish
 	}
-	_ = listL
+	for _, c := range listL {
+		err := w.recoveryChunk(
+			n.Addr.String(),
+			&nilrpc.DCLRecoveryChunkRequest{
+				ChunkID:     strconv.Itoa(c),
+				ChunkStatus: "L",
+				ChunkEG:     w.job.Event.AffectedEG,
+				ChunkVol:    egv.ID,
+				TargetVol:   egv.MoveTo,
+				Type:        "LocalPrimary",
+			},
+			&nilrpc.DCLRecoveryChunkResponse{},
+		)
+		if err != nil {
+			w.job.err = err
+			w.job.Log = newJobLog(err.Error())
+			return w.rcFinish
+		}
+	}
 
 	// Recover globally encoded chunks.
 	listG, err := w.store.FindAllChunks(w.job.Event.AffectedEG, "G")
@@ -242,5 +303,20 @@ func (w *worker) rcFinish() fsm {
 		// TODO: handling error
 	}
 
+	return nil
+}
+
+func (w *worker) recoveryChunk(addr string, req *nilrpc.DCLRecoveryChunkRequest, res *nilrpc.DCLRecoveryChunkResponse) error {
+	conn, err := nilrpc.Dial(addr, nilrpc.RPCNil, time.Duration(2*time.Second))
+	if err != nil {
+		return errors.Wrap(err, "failed to dial")
+	}
+	defer conn.Close()
+
+	cli := rpc.NewClient(conn)
+	if err := cli.Call(nilrpc.DsClusterRecoveryChunk.String(), req, res); err != nil {
+		return errors.Wrap(err, "failed to truncate chunk")
+	}
+	defer cli.Close()
 	return nil
 }

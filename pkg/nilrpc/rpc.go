@@ -54,6 +54,7 @@ const (
 
 	// DS cluster domain methods.
 	DsClusterAddVolume
+	DsClusterRecoveryChunk
 
 	// Ds gencoding domain methods.
 	DsGencodingRenameChunk
@@ -112,6 +113,8 @@ func (m MethodName) String() string {
 
 	case DsClusterAddVolume:
 		return DsClusterPrefix + "." + "AddVolume"
+	case DsClusterRecoveryChunk:
+		return DsClusterPrefix + "." + "RecoveryChunk"
 
 	case DsGencodingRenameChunk:
 		return DsGencodingPrefix + "." + "RenameChunk"

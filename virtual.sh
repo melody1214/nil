@@ -359,7 +359,7 @@ function putobjects() {
         dummyarray+=($DIR/$dummysize.txt)
     done
 
-    for i in $(seq 1 50); do
+    for i in $(seq 1 5); do
         for j in $(seq 1 $BUCKETS); do
             for k in $(seq 1 $TOTALUSERS); do
                 local ak=user$k[accesskey]
@@ -383,7 +383,7 @@ function putobjects() {
 }
 
 function getobjects() {
-    for i in $(seq 1 50); do
+    for i in $(seq 1 5); do
         for j in $(seq 1 $BUCKETS); do
             for k in $(seq 1 $TOTALUSERS); do
                 local ak=user$k[accesskey]
