@@ -67,10 +67,9 @@ func (h *handlers) findRandomPlaceToWrite() (cmap.EncodingGroup, cmap.Node, erro
 		return cmap.EncodingGroup{}, cmap.Node{}, errors.Wrap(err, "failed to search writable encoding group")
 	}
 
-	const primary = 0
-	vol, err := c.Volume().ID(eg.Vols[primary].ID).Status(cmap.VolActive).Do()
+	vol, err := c.Volume().ID(eg.LeaderVol()).Status(cmap.VolActive).Do()
 	if err != nil {
-		return cmap.EncodingGroup{}, cmap.Node{}, errors.Wrapf(err, "failed to search active volume %+v", eg.Vols[primary])
+		return cmap.EncodingGroup{}, cmap.Node{}, errors.Wrapf(err, "failed to search active volume %+v", eg.LeaderVol())
 	}
 
 	node, err := c.Node().ID(vol.Node).Status(cmap.NodeAlive).Do()

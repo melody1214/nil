@@ -147,12 +147,12 @@ func (w *worker) rcLocal() fsm {
 		return w.rcFinish
 	}
 
-	for i, egv := range eg.Vols {
+	for _, egv := range eg.Vols {
 		if egv.MoveTo == cmap.ID(0) {
 			continue
 		}
 
-		if i == 0 {
+		if egv.ID == eg.LeaderVol() {
 			return w.rcLocalPrimary
 		}
 		return w.rcLocalFollower

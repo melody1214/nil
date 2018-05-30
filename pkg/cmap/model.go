@@ -55,7 +55,7 @@ func (eg EncodingGroup) LeaderVol() ID {
 	if len(eg.Vols) == 0 {
 		return ID(-1)
 	}
-	return eg.Vols[len(eg.Vols)-1].ID
+	return eg.Vols[0].ID
 }
 
 // NodeName is a string for identifying node.
