@@ -185,6 +185,18 @@ func (s *service) MigrateData() error {
 	return nil
 }
 
+func (s *service) ChunkExist(pgID, chkID string) bool {
+	pg, ok := s.pgs[pgID]
+	if ok == false {
+		return false
+	}
+
+	pg.Lock.Chk.RLock()
+	_, ok = pg.ChunkMap[chkID]
+	pg.Lock.Chk.RUnlock()
+	return ok
+}
+
 func (s *service) GetObjectSize(pgID, objID string) (int64, bool) {
 	pg, ok := s.pgs[pgID]
 	if ok == false {

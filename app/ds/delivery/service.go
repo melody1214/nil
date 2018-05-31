@@ -92,6 +92,9 @@ func SetupDeliveryService(cfg *config.Ds, cls cluster.Service, obh object.Handle
 	if err := s.rpcSrv.RegisterName(nilrpc.DsGencodingPrefix, s.ges); err != nil {
 		return nil, err
 	}
+	if err := s.rpcSrv.RegisterName(nilrpc.DsObjectPrefix, s.obh.RPCHandler()); err != nil {
+		return nil, err
+	}
 
 	// Run the delivery server.
 	if err := s.nilMux.ListenAndServeTLS(); err != nil {

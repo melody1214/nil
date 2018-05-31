@@ -19,6 +19,7 @@ type Service interface {
 	GetChunkHeaderSize() int64
 	GetObjectHeaderSize() int64
 
+	ChunkExist(pgID, chkID string) bool
 	RenameChunk(src string, dest string, Vol string, LocGid string) error
 	CountNonCodedChunk(Vol string, LocGid string) (int, error)
 	GetNonCodedChunk(Vol string, LocGid string) (string, error)

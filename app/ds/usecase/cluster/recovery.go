@@ -36,6 +36,7 @@ func (s *service) recoveryLocalPrimary(req *nilrpc.DCLRecoveryChunkRequest, res 
 
 	var e error
 	downloaded := make([]*repository.Request, 0)
+	var lastIdx int
 	for i, egv := range eg.Vols {
 		if egv.ID == req.ChunkVol {
 			continue
@@ -66,15 +67,15 @@ func (s *service) recoveryLocalPrimary(req *nilrpc.DCLRecoveryChunkRequest, res 
 		} else if req.ChunkStatus == "G" {
 			downReq.Header.Add("Chunk-Name", "G_"+req.ChunkID)
 		} else if req.ChunkStatus == "W" {
-			err := s.truncateChunk(n.Addr.String(), v.ID, eg.ID, "W_"+req.ChunkID+"_"+strconv.Itoa(i))
+			err := s.truncateChunk(n.Addr.String(), v.ID, eg.ID, "W_"+req.ChunkID)
 			if err != nil {
-				ctxLogger.Infof("truncate fail: %s\n", "W_"+req.ChunkID+"_"+strconv.Itoa(i))
+				ctxLogger.Infof("truncate fail: %s\n", "W_"+req.ChunkID)
 				// No truncateable chunk.
 				// Writing is stopped at this shard.
 				break
 			}
-			ctxLogger.Infof("truncate: %s\n", "W_"+req.ChunkID+"_"+strconv.Itoa(i))
-			downReq.Header.Add("Chunk-Name", "W_"+req.ChunkID+"_"+strconv.Itoa(i))
+			ctxLogger.Infof("truncate: %s\n", "W_"+req.ChunkID)
+			downReq.Header.Add("Chunk-Name", "W_"+req.ChunkID)
 		} else {
 			e = fmt.Errorf("unknown chunk status")
 			goto ROLLBACK
@@ -109,12 +110,35 @@ func (s *service) recoveryLocalPrimary(req *nilrpc.DCLRecoveryChunkRequest, res 
 			e = errors.Wrap(err, "failed to wait repository")
 			goto ROLLBACK
 		}
+
+		lastIdx = i
 	}
 
 	ctxLogger.Info("download complete")
 
 	if req.ChunkStatus == "W" {
-		ctxLogger.Info("TODO: register chunk to chunk pool")
+		chunkPoolReq := &nilrpc.DOBSetChunkPoolRequest{
+			ID:    req.ChunkID,
+			EG:    req.ChunkEG,
+			Vol:   req.ChunkVol,
+			Shard: lastIdx,
+		}
+		chunkPoolRes := &nilrpc.DOBSetChunkPoolResponse{}
+
+		conn, err := nilrpc.Dial(s.cfg.ServerAddr+":"+s.cfg.ServerPort, nilrpc.RPCNil, time.Duration(2*time.Second))
+		if err != nil {
+			e = errors.Wrap(err, "failed to dial for setting chunk pool")
+			goto ROLLBACK
+		}
+		defer conn.Close()
+
+		cli := rpc.NewClient(conn)
+		if err := cli.Call(nilrpc.DsObjectSetChunkPool.String(), chunkPoolReq, chunkPoolRes); err != nil {
+			e = errors.Wrap(err, "failed to call for setting chunk pool")
+			goto ROLLBACK
+		}
+		defer cli.Close()
+
 		return nil
 	} else {
 		ctxLogger.Info("start encoding")

@@ -8,4 +8,5 @@ type Repository interface {
 	CountNonCodedChunk(Vol string, LocGid string) (int, error)
 	RenameChunk(src string, dest string, Vol string, LocGid string) error
 	GetNonCodedChunk(Vol string, LocGid string) (string, error)
+	ChunkExist(pgID, chkID string) bool
 }

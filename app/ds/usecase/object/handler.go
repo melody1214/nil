@@ -465,6 +465,15 @@ func (h *handlers) DeleteObjectHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "not implemented", http.StatusNotImplemented)
 }
 
+func (h *handlers) SetChunkPool(req *nilrpc.DOBSetChunkPoolRequest, res *nilrpc.DOBSetChunkPoolResponse) error {
+	return h.chunkPool.moveChunk(
+		egID(req.EG.String()),
+		vID(req.Vol.String()),
+		chunkID(req.ID),
+		req.Shard,
+	)
+}
+
 // Handlers is the interface that provides client http handlers.
 type Handlers interface {
 	PutObjectHandler(w http.ResponseWriter, r *http.Request)
@@ -472,4 +481,19 @@ type Handlers interface {
 	DeleteObjectHandler(w http.ResponseWriter, r *http.Request)
 	GetChunkHandler(w http.ResponseWriter, r *http.Request)
 	PutChunkHandler(w http.ResponseWriter, r *http.Request)
+	RPCHandler() RPCHandler
+}
+
+// RPCHandler returns the RPC handler which will handle
+// the requests from the delivery layer.
+func (h *handlers) RPCHandler() RPCHandler {
+	// This is a trick to hide inadvertently exposed methods,
+	// such as Join() or Leave().
+	type handler struct{ RPCHandler }
+	return handler{RPCHandler: h}
+}
+
+// RPCHandler is the interface that provides clustermap domain's rpc handlers.
+type RPCHandler interface {
+	SetChunkPool(*nilrpc.DOBSetChunkPoolRequest, *nilrpc.DOBSetChunkPoolResponse) error
 }

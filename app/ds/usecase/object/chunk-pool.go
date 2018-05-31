@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"fmt"
+
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/pkg/errors"
@@ -139,6 +141,33 @@ func (p *chunkPool) newChunk(encodingGroup egID, volume vID) (chunkID, error) {
 	}
 
 	return cid, nil
+}
+
+func (p *chunkPool) moveChunk(egID egID, vID vID, cID chunkID, shard int) error {
+	if int64(shard) > p.shardSize {
+		return fmt.Errorf("unmatched shard size")
+	}
+
+	c := &chunk{
+		id:            cID,
+		status:        "W",
+		encodingGroup: egID,
+		volume:        vID,
+		shard:         shard,
+		encoding:      false,
+
+		size: p.chunkSize,
+	}
+
+	if int64(shard) == p.shardSize {
+		c.free = 0
+		p.encoding[cID] = c
+		return nil
+	}
+	c.free = c.size - p.chunkHeaderSize
+	c.shard++
+	p.pool[cID] = c
+	return nil
 }
 
 // FindAvailableChunk returns chunkID which is available for writing.
