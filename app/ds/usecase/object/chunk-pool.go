@@ -256,7 +256,7 @@ func (p *chunkPool) FinishWriting(cid chunkID, writingSize int64) {
 	defer delete(p.writing, cid)
 
 	c.free = c.free - writingSize
-	if c.free < p.maximumSize {
+	if c.free > p.maximumSize {
 		p.pool[cid] = c
 		return
 	}

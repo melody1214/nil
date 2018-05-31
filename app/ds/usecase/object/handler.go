@@ -93,6 +93,57 @@ func (h *handlers) GetChunkHandler(w http.ResponseWriter, r *http.Request) {
 		Out:    w,
 	}
 
+	shard := r.Header.Get("Shard")
+	if shard != "" {
+		truncateReq := &repository.Request{
+			Op:     repository.Write,
+			Vol:    r.Header.Get("Volume"),
+			LocGid: r.Header.Get("Encoding-Group"),
+			Oid:    "fake, just for truncating",
+			Osize:  1000000000,
+			Cid:    r.Header.Get("Chunk-Name") + "_" + shard,
+			In:     &io.PipeReader{},
+			Md5:    "fakemd5stringfakemd5stringfakemd",
+		}
+
+		c, ok := h.chunkPool.pool[chunkID(storeReq.Cid)[2:]]
+		if ok {
+			if err := h.store.Push(truncateReq); err != nil {
+				logger.Error(errors.Wrap(err, "failed to push truncated request"))
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			if err := truncateReq.Wait(); err == nil {
+				logger.Error(fmt.Errorf("truncate request returns no error"))
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			} else if err.Error() != "truncated" {
+				logger.Error(errors.Wrap(err, "failed to truncat chunk"))
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			h.chunkPool.FinishWriting(chunkID(truncateReq.Cid), h.chunkPool.chunkSize)
+		}
+
+		c, ok = h.chunkPool.writing[chunkID(storeReq.Cid[2:])]
+		if ok {
+			err := fmt.Errorf("try later. requested chunk is writing now")
+			logger.Error(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		c, ok = h.chunkPool.encoding[chunkID(storeReq.Cid[2:])]
+		if ok && c.encoding {
+			err := fmt.Errorf("try later. requested chunk is encoding now")
+			logger.Error(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		storeReq.Cid = storeReq.Cid + "_" + shard
+	}
+
 	h.store.Push(storeReq)
 	err := storeReq.Wait()
 	if err != nil {

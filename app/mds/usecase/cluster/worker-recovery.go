@@ -313,6 +313,46 @@ func (w *worker) rcLocalPrimary() fsm {
 }
 
 func (w *worker) rcLocalFollower() fsm {
+	c := w.cmapAPI.SearchCall()
+	eg, err := c.EncGrp().ID(w.job.Event.AffectedEG).Do()
+	if err != nil {
+		w.job.err = errors.Wrap(err, "rcLocalFollower: failed to find eg")
+		return w.rcFinish
+	}
+
+	var egv cmap.EGVol
+	var role int
+	for i, v := range eg.Vols {
+		if v.MoveTo == cmap.ID(0) {
+			continue
+		}
+		egv = v
+		role = i
+		break
+	}
+
+	if egv.ID == cmap.ID(0) {
+		w.job.err = fmt.Errorf("rcLocalFollower: failed to find target volume")
+		return w.rcFinish
+	}
+
+	v, err := c.Volume().ID(egv.MoveTo).Do()
+	if err != nil {
+		w.job.err = errors.Wrap(err, "rcLocalFollower: failed to find move2vol")
+		return w.rcFinish
+	}
+
+	if v.ID == cmap.ID(0) {
+		w.job.err = fmt.Errorf("rcLocalFollower: failed to find volume")
+		return w.rcFinish
+	}
+
+	n, err := c.Node().ID(v.Node).Do()
+	if err != nil {
+		w.job.err = errors.Wrap(err, "rcLocalFollower: failed to find node")
+		return w.rcFinish
+	}
+
 	// Recover locally encoded chunks.
 	listL, err := w.store.FindAllChunks(w.job.Event.AffectedEG, "L")
 	if err != nil {
@@ -320,7 +360,24 @@ func (w *worker) rcLocalFollower() fsm {
 		w.job.Log = newJobLog(err.Error())
 		return w.rcFinish
 	}
-	_ = listL
+	for _, c := range listL {
+		err := w.recoveryChunk(
+			n.Addr.String(),
+			&nilrpc.DCLRecoveryChunkRequest{
+				ChunkID:     strconv.Itoa(c),
+				ChunkStatus: "L",
+				ChunkEG:     w.job.Event.AffectedEG,
+				ChunkVol:    egv.ID,
+				TargetVol:   egv.MoveTo,
+				Type:        "LocalFollower",
+			},
+			&nilrpc.DCLRecoveryChunkResponse{},
+		)
+		if err != nil {
+			w.job.err = errors.Wrapf(err, "rcLocalFollower: failed to recovery chunk: %d", c)
+			return w.rcFinish
+		}
+	}
 
 	// Recover globally encoded chunks.
 	listG, err := w.store.FindAllChunks(w.job.Event.AffectedEG, "G")
@@ -329,7 +386,24 @@ func (w *worker) rcLocalFollower() fsm {
 		w.job.Log = newJobLog(err.Error())
 		return w.rcFinish
 	}
-	_ = listG
+	for _, c := range listG {
+		err := w.recoveryChunk(
+			n.Addr.String(),
+			&nilrpc.DCLRecoveryChunkRequest{
+				ChunkID:     strconv.Itoa(c),
+				ChunkStatus: "G",
+				ChunkEG:     w.job.Event.AffectedEG,
+				ChunkVol:    egv.ID,
+				TargetVol:   egv.MoveTo,
+				Type:        "LocalFollower",
+			},
+			&nilrpc.DCLRecoveryChunkResponse{},
+		)
+		if err != nil {
+			w.job.err = errors.Wrapf(err, "rcLocalFollower: failed to recovery chunk: %d", c)
+			return w.rcFinish
+		}
+	}
 
 	// Recover writing chunks.
 	listW, err := w.store.FindAllChunks(w.job.Event.AffectedEG, "W")
@@ -338,9 +412,58 @@ func (w *worker) rcLocalFollower() fsm {
 		w.job.Log = newJobLog(err.Error())
 		return w.rcFinish
 	}
-	_ = listW
+	for _, c := range listW {
+		err := w.recoveryChunk(
+			n.Addr.String(),
+			&nilrpc.DCLRecoveryChunkRequest{
+				ChunkID:     strconv.Itoa(c),
+				ChunkStatus: "W",
+				ChunkEG:     w.job.Event.AffectedEG,
+				ChunkVol:    egv.ID,
+				TargetVol:   egv.MoveTo,
+				Type:        "LocalFollower",
+			},
+			&nilrpc.DCLRecoveryChunkResponse{},
+		)
+		if err != nil {
+			w.job.err = errors.Wrapf(err, "rcLocalFollower: failed to recovery chunk: %d", c)
+			return w.rcFinish
+		}
+	}
 
-	w.job.Log = newJobLog(fmt.Sprintf("follower: %+v", listL))
+	var txid repository.TxID
+	txid, w.job.err = w.store.Begin()
+	if w.job.err != nil {
+		w.job.Log = newJobLog(w.job.err.Error())
+		return w.rcFinish
+	}
+
+	if w.job.err = w.store.SetEGV(txid, eg.ID, role, egv.MoveTo, 0); w.job.err != nil {
+		w.job.Log = newJobLog("failed to set recovery volume")
+		w.store.Rollback(txid)
+		return w.rcFinish
+	}
+
+	if w.job.err = w.store.VolEGDecr(txid, egv.ID); w.job.err != nil {
+		w.job.Log = newJobLog(w.job.err.Error())
+		w.store.Rollback(txid)
+		return w.rcFinish
+	}
+
+	if w.job.err = w.store.Commit(txid); w.job.err != nil {
+		w.job.Log = newJobLog(w.job.err.Error())
+		w.store.Rollback(txid)
+		return w.rcFinish
+	}
+
+	if w.job.err = w.updateClusterMap(); w.job.err != nil {
+		w.job.Log = newJobLog("failed to update cmap with selected recovery volume")
+		w.store.SetEGV(repository.NotTx, eg.ID, role, egv.ID, cmap.ID(0))
+		w.store.VolEGDecr(repository.NotTx, egv.MoveTo)
+		// TODO: remove recovered.
+	}
+
+	w.job.Log = newJobLog("finish normally")
 	return w.rcFinish
 }
 
