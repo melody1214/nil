@@ -506,6 +506,18 @@ function main() {
     sleep 15
     putobjects
 
+    # Get objects.
+    echo -n "Do you want to download all chunks? [y/n] "
+    read ANSWER
+    case $ANSWER in
+        y|Y)
+            echo " Start downloads."
+            getobjects
+            ;;
+        *)
+            echo " No downloads."
+    esac
+
     # Test local recovery
     if [ $TESTLOCALRECOVERY = true ]; then
         testlocalrecovery
@@ -524,7 +536,7 @@ changeset
 trap restore SIGINT
 trap restore EXIT
 
-while getopts plshg o; do
+while getopts plsh o; do
     case $o in
     p)
         purge
@@ -539,10 +551,6 @@ while getopts plshg o; do
         ;;
     h)
         usage
-        exit 0
-        ;;
-    g)
-        getobjects
         exit 0
         ;;
     ?)
