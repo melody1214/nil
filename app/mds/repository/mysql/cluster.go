@@ -651,12 +651,12 @@ func (s *clusterStore) RecoveryFinishEG(txid repository.TxID, egID cmap.ID) erro
 		`
 		SELECT COUNT(*)
 		FROM volume
-		WHERE vl_id IN (
+		WHERE vl_status!='%s' AND vl_id IN (
 			SELECT egv_volume
 			FROM encoding_group_volume
 			WHERE egv_encoding_group=%d
 		)
-		`, egID,
+		`, cmap.VolActive, egID,
 	)
 
 	var count int

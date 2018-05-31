@@ -354,8 +354,8 @@ func (s *service) recoveryLocalFollower(req *nilrpc.DCLRecoveryChunkRequest, res
 
 	if req.ChunkStatus == "W" {
 		err = s.store.BuildObjectMap(req.TargetVol.String(), req.ChunkStatus+"_"+req.ChunkID)
-		e = errors.Wrapf(err, "failed to rebuild chunk meta %v", req.ChunkStatus+"_"+req.ChunkID)
 		if err != nil {
+			e = errors.Wrapf(err, "failed to rebuild chunk meta %v", req.ChunkStatus+"_"+req.ChunkID)
 			goto ROLLBACK
 		}
 		return nil
