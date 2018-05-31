@@ -23,11 +23,27 @@ func NewObjectRepository(s *Store) object.Repository {
 func (s *objectStore) Put(o *object.ObjInfo) error {
 	q := fmt.Sprintf(
 		`
-		INSERT INTO object (obj_name, obj_bucket, obj_encoding_group, obj_volume)
+		SELECT
+			egv_role
+		FROM
+			encoding_group_volume
+		WHERE
+			egv_volume=%d AND egv_encoding_group=%d
+		`, o.Vol, o.EncGrp,
+	)
+
+	var role int
+	if err := s.QueryRow(repository.NotTx, q).Scan(&role); err != nil {
+		return err
+	}
+
+	q = fmt.Sprintf(
+		`
+		INSERT INTO object (obj_name, obj_bucket, obj_encoding_group, obj_role)
 		SELECT '%s', b.bk_id, '%d', '%d'
 		FROM bucket b
 		WHERE bk_name = '%s'
-		`, o.Name, o.EncGrp, o.Vol, o.Bucket,
+		`, o.Name, o.EncGrp, role, o.Bucket,
 	)
 
 	_, err := s.Execute(repository.NotTx, q)
@@ -40,7 +56,7 @@ func (s *objectStore) Get(name string) (*object.ObjInfo, error) {
 	q := fmt.Sprintf(
 		`
 		SELECT
-			obj_encoding_group, obj_volume
+			obj_encoding_group, obj_role
 		FROM
 			object
 		WHERE
@@ -48,12 +64,34 @@ func (s *objectStore) Get(name string) (*object.ObjInfo, error) {
 		`, name,
 	)
 
+	var role int
 	row := s.QueryRow(repository.NotTx, q)
 	if row == nil {
 		return nil, fmt.Errorf("mysql not connected yet")
 	}
 
-	err := row.Scan(&o.EncGrp, &o.Vol)
+	err := row.Scan(&o.EncGrp, &role)
+	if err != nil {
+		return nil, err
+	}
+
+	q = fmt.Sprintf(
+		`
+		SELECT
+			egv_volume
+		FROM
+			encoding_group_volume
+		WHERE
+			egv_encoding_group=%d AND egv_role=%d
+		`, o.EncGrp, role,
+	)
+
+	row = s.QueryRow(repository.NotTx, q)
+	if row == nil {
+		return nil, fmt.Errorf("mysql not connected yet")
+	}
+
+	err = row.Scan(&o.Vol)
 	if err != nil {
 		return nil, err
 	}
