@@ -482,6 +482,26 @@ func (w *worker) rcFinish() fsm {
 		w.job.Log = newJobLog(w.job.err.Error())
 	} else {
 		w.job.State = Done
+
+		// TODO: error handling.
+		var txid repository.TxID
+		txid, w.job.err = w.store.Begin()
+		if w.job.err != nil {
+			w.job.Log = newJobLog(w.job.err.Error())
+			return w.rcFinish
+		}
+
+		if w.job.err = w.store.RecoveryFinishEG(txid, w.job.Event.AffectedEG); w.job.err != nil {
+			w.job.Log = newJobLog("failed to set recovery volume")
+			w.store.Rollback(txid)
+			return w.rcFinish
+		}
+
+		if w.job.err = w.store.Commit(txid); w.job.err != nil {
+			w.job.Log = newJobLog(w.job.err.Error())
+			w.store.Rollback(txid)
+			return w.rcFinish
+		}
 	}
 
 	if err := w.store.UpdateJob(repository.NotTx, w.job); err != nil {

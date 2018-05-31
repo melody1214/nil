@@ -353,6 +353,11 @@ func (s *service) recoveryLocalFollower(req *nilrpc.DCLRecoveryChunkRequest, res
 	ctxLogger.Info("download complete")
 
 	if req.ChunkStatus == "W" {
+		err = s.store.BuildObjectMap(req.TargetVol.String(), req.ChunkStatus+"_"+req.ChunkID)
+		e = errors.Wrapf(err, "failed to rebuild chunk meta %v", req.ChunkStatus+"_"+req.ChunkID)
+		if err != nil {
+			goto ROLLBACK
+		}
 		return nil
 	} else {
 		ctxLogger.Info("start encoding")
@@ -431,6 +436,11 @@ func (s *service) recoveryLocalFollower(req *nilrpc.DCLRecoveryChunkRequest, res
 		err = parityWriteReq.Wait()
 		if err != nil {
 			e = errors.Wrap(err, "failed to write parity chunk")
+			goto ROLLBACK
+		}
+		err = s.store.BuildObjectMap(req.TargetVol.String(), req.ChunkStatus+"_"+req.ChunkID)
+		if err != nil {
+			e = errors.Wrapf(err, "failed to rebuild chunk meta %v", req.ChunkStatus+"_"+req.ChunkID)
 			goto ROLLBACK
 		}
 	}

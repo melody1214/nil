@@ -645,3 +645,37 @@ func (s *clusterStore) SetEGV(txid repository.TxID, egID cmap.ID, role int, volI
 	_, err := s.Execute(txid, q)
 	return err
 }
+
+func (s *clusterStore) RecoveryFinishEG(txid repository.TxID, egID cmap.ID) error {
+	q := fmt.Sprintf(
+		`
+		SELECT COUNT(*)
+		FROM volume
+		WHERE vl_id IN (
+			SELECT egv_volume
+			FROM encoding_group_volume
+			WHERE egv_encoding_group=%d
+		)
+		`, egID,
+	)
+
+	var count int
+	err := s.QueryRow(txid, q).Scan(&count)
+	if err != nil {
+		return fmt.Errorf("error in recovery finish eg: %v", err)
+	}
+
+	if count != 0 {
+		return fmt.Errorf("still have errored volume")
+	}
+
+	q = fmt.Sprintf(
+		`
+		UPDATE encoding_group
+		SET eg_status='%s'
+		WHERE eg_id=%d
+		`, cmap.EGAlive, egID,
+	)
+	_, err = s.Execute(txid, q)
+	return err
+}
