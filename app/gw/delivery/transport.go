@@ -21,6 +21,7 @@ func makeHandler(ch client.Handlers) http.Handler {
 	cr.Methods("PUT").HandlerFunc(ch.RenameChunkHandler)
 
 	// Bucket request handlers
+	br.Methods("HEAD").HandlerFunc(ch.MakeBucketHandler)
 	br.Methods("PUT").HandlerFunc(ch.MakeBucketHandler)
 	br.Methods("DELETE").HandlerFunc(ch.RemoveBucketHandler)
 
@@ -37,6 +38,7 @@ func httpTypeBytes() []byte {
 	return []byte{
 		0x44, // 'D' of DELETE
 		0x47, // 'G' of GET
+		0x48, // 'H' of HEAD,
 		0x50, // 'P' of POST, PUT
 	}
 }

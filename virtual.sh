@@ -481,7 +481,7 @@ function main() {
     creatediskall
 
     # Generate global encoding group.
-# ggg 300
+    ggg 300
 
     # Execute pending command.
     if [ -e $PENDINGCMD ]; then
@@ -504,7 +504,7 @@ function main() {
 
     # Put objects.
     sleep 15
-#    putobjects
+    putobjects
 
     # Get objects.
     echo -n "Do you want to download all chunks? [y/n] "
