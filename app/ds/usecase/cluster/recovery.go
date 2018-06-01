@@ -308,7 +308,6 @@ func (s *service) recoveryLocalFollower(req *nilrpc.DCLRecoveryChunkRequest, res
 			ctxLogger.Infof("get writing chunk: %s\n", "W_"+req.ChunkID+"_"+strconv.Itoa(shard))
 			downReq.Header.Add("Chunk-Name", "W_"+req.ChunkID)
 			downReq.Header.Add("Shard", strconv.Itoa(shard))
-			break
 		} else {
 			e = fmt.Errorf("unknown chunk status")
 			goto ROLLBACK
@@ -347,6 +346,10 @@ func (s *service) recoveryLocalFollower(req *nilrpc.DCLRecoveryChunkRequest, res
 		if err = storeReq.Wait(); err != nil {
 			e = errors.Wrap(err, "failed to wait repository")
 			goto ROLLBACK
+		}
+
+		if req.ChunkStatus == "W" {
+			break
 		}
 	}
 
