@@ -3,6 +3,7 @@ package nilmux
 import (
 	"crypto/tls"
 	"io"
+	"io/ioutil"
 	"net"
 	"time"
 
@@ -119,6 +120,10 @@ func (m *NilMux) handleConn(conn net.Conn) {
 			return
 		}
 	}
+
+	b, _ := ioutil.ReadAll(conn)
+	logger.Errorf("no matching bytes: %v%v", buf[0], b)
+	logger.Errorf("no matching bytes: %c%s", buf[0], string(b))
 
 	// No matching layers.
 	logger.Errorf("nilmux: no matching layers %+v\n", buf[0])
