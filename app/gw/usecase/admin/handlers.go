@@ -49,10 +49,11 @@ func (h *handlers) Proxying(conn net.Conn) {
 		ctxLogger.Error(errors.Wrap(err, "dial to mds failed"))
 		return
 	}
+	defer remote.Close()
 
 	// 4. Forwarding.
 	go io.Copy(conn, remote)
-	go io.Copy(remote, conn)
+	io.Copy(remote, conn)
 }
 
 // Handlers is the interface that provides admin rpc handlers.
