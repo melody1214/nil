@@ -21,6 +21,7 @@ func (h *handlers) MakeBucketHandler(w http.ResponseWriter, r *http.Request) {
 	if err == client.ErrInvalidProtocol {
 		ctxLogger.Error(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	sk, err := h.authHandlers.GetSecretKey(req.AccessKey())

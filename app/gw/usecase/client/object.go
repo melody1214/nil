@@ -20,6 +20,7 @@ func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 	req, err := h.requestEventFactory.CreateRequestEvent(w, r)
 	if err == client.ErrInvalidProtocol {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	// Extract bucket name and object name.

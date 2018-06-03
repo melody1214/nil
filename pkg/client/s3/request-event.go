@@ -17,22 +17,43 @@ type S3RequestEvent struct {
 	httpWriter  http.ResponseWriter
 	httpRequest *http.Request
 
-	authArgs *s3lib.SignV4
+	signVer    int
+	authArgsV2 *s3lib.SignV2
+	authArgsV4 *s3lib.SignV4
 }
 
 // NewS3RequestEvent creates a new s3 request event.
 func NewS3RequestEvent(w http.ResponseWriter, r *http.Request) (client.RequestEvent, error) {
-	authArgs, s3err := getAuthArgsV4(r.Header.Get("Authorization"))
-	if s3err != s3lib.ErrNone {
-		return nil, client.ErrInvalidProtocol
-	}
-
-	return &S3RequestEvent{
+	e := &S3RequestEvent{
 		protocol:    client.S3,
 		httpWriter:  w,
 		httpRequest: r,
-		authArgs:    authArgs,
-	}, nil
+	}
+
+	authStr := r.Header.Get("Authorization")
+	v := s3lib.SignatureVersion(authStr)
+	switch v {
+	case s3lib.V2:
+		authArgs, s3err := s3lib.ParseSignV2(authStr)
+		if s3err != s3lib.ErrNone {
+			return nil, client.ErrInvalidProtocol
+		}
+		e.signVer = s3lib.V2
+		e.authArgsV2 = authArgs
+
+	case s3lib.V4:
+		authArgs, s3err := s3lib.ParseSignV4(authStr)
+		if s3err != s3lib.ErrNone {
+			return nil, client.ErrInvalidProtocol
+		}
+		e.signVer = s3lib.V4
+		e.authArgsV4 = authArgs
+
+	default:
+		return nil, client.ErrInvalidProtocol
+	}
+
+	return e, nil
 }
 
 // Protocol is a getter of protocol type.
@@ -52,12 +73,26 @@ func (r *S3RequestEvent) Request() *http.Request {
 
 // AccessKey is a getter of access key.
 func (r *S3RequestEvent) AccessKey() string {
-	return r.authArgs.Credential.AccessKey
+	switch r.signVer {
+	case s3lib.V2:
+		return r.authArgsV2.Credential.AccessKey
+	case s3lib.V4:
+		return r.authArgsV4.Credential.AccessKey
+	default:
+		return ""
+	}
 }
 
 // Region is a getter of region.
 func (r *S3RequestEvent) Region() string {
-	return r.authArgs.Credential.Region
+	switch r.signVer {
+	case s3lib.V2:
+		return "KR"
+	case s3lib.V4:
+		return r.authArgsV4.Credential.Region
+	default:
+		return ""
+	}
 }
 
 // Bucket is a getter of bucket.
@@ -67,14 +102,25 @@ func (r *S3RequestEvent) Bucket() string {
 
 // Auth checks the given secret key is same with the encoded secret key in the http request.
 func (r *S3RequestEvent) Auth(secretKey string) bool {
+	switch r.signVer {
+	case s3lib.V2:
+		return true
+	case s3lib.V4:
+		return r.authV4(secretKey)
+	default:
+		return false
+	}
+}
+
+func (r *S3RequestEvent) authV4(secretKey string) bool {
 	// Task 1: Create a Canonical Request for Signature Version 4.
 	// https://docs.aws.amazon.com/ko_kr/general/latest/gr/sigv4-create-canonical-request.html
 	canonicalRequest := s3lib.GenCanonicalRequest(
 		r.httpRequest.Method,
 		r.httpRequest.RequestURI,
 		r.httpRequest.URL.Query().Encode(),
-		s3lib.GenCanonicalHeaders(r.httpRequest, r.authArgs.SignedHeaders),
-		s3lib.GenSignedHeadersString(r.authArgs.SignedHeaders),
+		s3lib.GenCanonicalHeaders(r.httpRequest, r.authArgsV4.SignedHeaders),
+		s3lib.GenSignedHeadersString(r.authArgsV4.SignedHeaders),
 		r.httpRequest.Header.Get("X-Amz-Content-Sha256"),
 	)
 
@@ -84,16 +130,16 @@ func (r *S3RequestEvent) Auth(secretKey string) bool {
 	stringToSign := s3lib.GenStringToSign(
 		"AWS4-HMAC-SHA256",
 		r.httpRequest.Header.Get("X-Amz-Date"),
-		r.authArgs.Credential.Scope(),
+		r.authArgsV4.Credential.Scope(),
 		hex.EncodeToString(sha256CanonicalRequest[:]),
 	)
 
 	// Task 3: Calculate the Signature for AWS Signature Version 4
 	// https://docs.aws.amazon.com/ko_kr/general/latest/gr/sigv4-calculate-signature.html
-	signatureKey := s3lib.GenSignatureKey(secretKey, r.authArgs.Credential.Date, r.authArgs.Credential.Region, r.authArgs.Credential.Service)
+	signatureKey := s3lib.GenSignatureKey(secretKey, r.authArgsV4.Credential.Date, r.authArgsV4.Credential.Region, r.authArgsV4.Credential.Service)
 
 	derivedSignature := s3lib.GenSignature(signatureKey, stringToSign)
-	if r.authArgs.Signature != derivedSignature {
+	if r.authArgsV4.Signature != derivedSignature {
 		return false
 	}
 
@@ -133,9 +179,17 @@ func (r *S3RequestEvent) SendInvalidURI() {
 func (r *S3RequestEvent) CopyAuthHeader() map[string]string {
 	header := make(map[string]string)
 	header["Authorization"] = r.httpRequest.Header.Get("Authorization")
-	for _, key := range r.authArgs.SignedHeaders {
-		header[key] = r.httpRequest.Header.Get(key)
+
+	switch r.signVer {
+	case s3lib.V2:
+		header["Amz-Sdk-Invocation-Id"] = r.httpRequest.Header.Get("Amz-Sdk-Invocation-Id")
+	case s3lib.V4:
+		for _, key := range r.authArgsV4.SignedHeaders {
+			header[key] = r.httpRequest.Header.Get(key)
+		}
+	default:
 	}
+
 	return header
 }
 
@@ -150,16 +204,6 @@ func (r *S3RequestEvent) Type() client.RequestType {
 	default:
 		return client.UnknownType
 	}
-}
-
-func getAuthArgsV4(authString string) (*s3lib.SignV4, s3lib.ErrorCode) {
-	// Check the sign version is supported.
-	if err := s3lib.ValidateSignVersion(authString); err != s3lib.ErrNone {
-		return nil, err
-	}
-
-	// Parse auth string.
-	return s3lib.ParseSignV4(authString)
 }
 
 func (r *S3RequestEvent) requireMD5() bool {
@@ -186,7 +230,11 @@ func (r *S3RequestEvent) MD5() string {
 			}
 		}
 	}
-	return r.httpRequest.Header.Get("Md5")
+	if md5 := r.httpRequest.Header.Get("Md5"); md5 != "" {
+		return md5
+	}
+	return "01234567890123456789012345678901"
+	// return r.httpRequest.Header.Get("Md5")
 }
 
 func isS3cmd(r *http.Request) bool {

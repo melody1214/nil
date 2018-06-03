@@ -13,11 +13,11 @@ import (
 const (
 	// Identifies signature version 2.
 	v2Identifier = "AWS"
-	v2           = 2
+	V2           = 2
 
 	// Identifies signature version 4.
 	v4Identifier = "AWS4-HMAC-SHA256"
-	v4           = 4
+	V4           = 4
 )
 
 // ValidateSignVersion checks the request provides valid sign version.
@@ -30,18 +30,18 @@ func ValidateSignVersion(authString string) ErrorCode {
 	return ErrNone
 }
 
-func signatureVersion(authString string) int {
+func SignatureVersion(authString string) int {
 	if strings.HasPrefix(authString, v4Identifier) {
-		return v4 // Signature V4
+		return V4 // Signature V4
 	} else if strings.HasPrefix(authString, v2Identifier) {
-		return v2 // Signature V2
+		return V2 // Signature V2
 	}
 
 	return -1 // Invalid signature identifiers.
 }
 
 func signatureV4(authString string) bool {
-	if signatureVersion(authString) == v4 {
+	if SignatureVersion(authString) == V4 {
 		return true
 	}
 	return false
@@ -62,6 +62,15 @@ type CredV4 struct {
 	Region      string
 	Service     string
 	Termination string // fixed: aws4_request
+}
+
+type SignV2 struct {
+	Credential CredV2
+	Signature  string
+}
+
+type CredV2 struct {
+	AccessKey string
 }
 
 // Scope returns credential scope of signature v4.
@@ -137,6 +146,22 @@ func ParseSignV4(authString string) (*SignV4, ErrorCode) {
 		Credential:    cred,
 		SignedHeaders: parseSignedHeaderV4(fields[1]),
 		Signature:     fields[2],
+	}, ErrNone
+}
+
+func ParseSignV2(authString string) (*SignV2, ErrorCode) {
+	authString = strings.TrimPrefix(authString, v2Identifier)
+	authString = strings.TrimSuffix(authString, "=")
+	fields := strings.Split(strings.TrimSpace(authString), ":")
+	if len(fields) < 2 {
+		return nil, ErrMissingSecurityHeader
+	}
+
+	return &SignV2{
+		Credential: CredV2{
+			AccessKey: fields[0],
+		},
+		Signature: fields[1],
 	}, ErrNone
 }
 

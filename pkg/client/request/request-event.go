@@ -36,6 +36,9 @@ func classifyProtocol(h http.Header) client.Protocol {
 	if ok := h.Get("X-Amz-Date"); ok != "" {
 		return client.S3
 	}
+	if ok := h.Get("Amz-Sdk-Invocation-Id"); ok != "" {
+		return client.S3
+	}
 
 	return client.Unknown
 }

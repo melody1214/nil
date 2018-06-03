@@ -502,9 +502,9 @@ function main() {
     sleep 5
     createbuckets
 
-    # Put objects.
-    sleep 15
-    putobjects
+    # # Put objects.
+    # sleep 15
+    # putobjects
 
     # Get objects.
     echo -n "Do you want to download all chunks? [y/n] "
