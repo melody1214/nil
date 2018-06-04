@@ -95,28 +95,11 @@ type ObjHeader struct {
 	Offset int64
 }
 
-// PartType is purpose of disk partition to be used.
-type PartType string
-
-const (
-	// ArchivePart is a storage, which sometimes should be spined-down to reduce power consumption.
-	ArchivePart PartType = "ArchivePart"
-
-	// ServicePart is a storage, which is always spinning-up.
-	ServicePart = "ServicePart"
-)
-
-// FsStatus contains space information of file system.
-type FsStatus struct {
-	All  uint64
-	Used uint64
-	Free uint64
-}
-
 // Lock contains locks for object and chunk respectively.
 type Lock struct {
-	Obj sync.RWMutex
-	Chk sync.RWMutex
+	Part sync.RWMutex
+	Obj  sync.RWMutex
+	Chk  sync.RWMutex
 }
 
 // PartInfo contains information of each partition.

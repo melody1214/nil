@@ -23,6 +23,5 @@ type Service interface {
 	CountNonCodedChunk(Vol string, LocGid string) (int, error)
 	GetNonCodedChunk(Vol string, LocGid string) (string, error)
 
-	MigrateData() error
 	BuildObjectMap(Vol string, cid string) error
 }

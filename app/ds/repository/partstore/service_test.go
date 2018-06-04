@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/chanyoung/nil/app/ds/repository"
 )
@@ -17,23 +18,25 @@ import (
 func TestServiceAPIs(t *testing.T) {
 	dir := "testServiceAPIs"
 	os.Mkdir(dir, 0775)
-	defer os.RemoveAll(dir)
+	//	defer os.RemoveAll(dir)
 
 	os.Mkdir(dir+"/pg1", 0775)
 	pg1 := &pg{
 		Vol: &repository.Vol{
 			Name:      "pg1",
 			MntPoint:  dir + "/pg1",
-			Size:      1024,
+			Size:      50000000,
 			Speed:     repository.High,
 			ChunkSize: 10000000,
 			NumOfPart: 5,
 			SubPartGroup: repository.SubPartGroup{
 				Cold: repository.PartGrpInfo{
 					NumOfPart: 2,
+					PartInfo:  make(map[string]repository.PartInfo),
 				},
 				Hot: repository.PartGrpInfo{
 					NumOfPart: 3,
+					PartInfo:  make(map[string]repository.PartInfo),
 				},
 			},
 			ChunkMap: make(map[string]repository.ChunkMap),
@@ -46,7 +49,7 @@ func TestServiceAPIs(t *testing.T) {
 		Vol: &repository.Vol{
 			Name:      "pg2",
 			MntPoint:  dir + "/pg2",
-			Size:      1024,
+			Size:      50000000,
 			Speed:     repository.High,
 			ChunkSize: 10000000,
 			NumOfPart: 5,
@@ -54,10 +57,12 @@ func TestServiceAPIs(t *testing.T) {
 				Cold: repository.PartGrpInfo{
 					DiskSched: 0,
 					NumOfPart: 2,
+					PartInfo:  make(map[string]repository.PartInfo),
 				},
 				Hot: repository.PartGrpInfo{
 					DiskSched: 0,
 					NumOfPart: 3,
+					PartInfo:  make(map[string]repository.PartInfo),
 				},
 			},
 			ChunkMap: make(map[string]repository.ChunkMap),
@@ -68,6 +73,48 @@ func TestServiceAPIs(t *testing.T) {
 	s := newService(dir)
 	s.pgs[pg1.Name] = pg1
 	s.pgs[pg2.Name] = pg2
+
+	s.devs["cold_part1"] = &dev{
+		Name:      "cold_dev1",
+		State:     "Standby",
+		Timestamp: uint(time.Now().Nanosecond()),
+		Size:      50000000,
+		Free:      50000000,
+		Used:      0,
+	}
+	s.devs["cold_part2"] = &dev{
+		Name:      "cold_dev2",
+		State:     "Standby",
+		Timestamp: uint(time.Now().Nanosecond()),
+		Size:      50000000,
+		Free:      50000000,
+		Used:      0,
+	}
+	s.devs["hot_part1"] = &dev{
+		Name:      "hot_dev1",
+		State:     "Active",
+		Timestamp: uint(time.Now().Nanosecond()),
+		Size:      50000000,
+		Free:      50000000,
+		Used:      0,
+	}
+
+	s.devs["hot_part2"] = &dev{
+		Name:      "hot_dev2",
+		State:     "Active",
+		Timestamp: uint(time.Now().Nanosecond()),
+		Size:      50000000,
+		Free:      50000000,
+		Used:      0,
+	}
+	s.devs["hot_part3"] = &dev{
+		Name:      "hot_dev3",
+		State:     "Active",
+		Timestamp: uint(time.Now().Nanosecond()),
+		Size:      50000000,
+		Free:      50000000,
+		Used:      0,
+	}
 
 	go s.Run()
 	runtime.Gosched()
@@ -346,7 +393,33 @@ func TestServiceAPIs(t *testing.T) {
 
 	s.GetNonCodedChunk("pg1", "lg1")
 
-	//time.Sleep(13 * time.Second)
-	s.MigrateData()
+	s.devLock.RLock()
+	coldDev1 := s.devs["cold_part1"]
+	coldDev2 := s.devs["cold_part2"]
+	hotDev1 := s.devs["hot_part1"]
+	hotDev2 := s.devs["hot_part2"]
+	hotDev3 := s.devs["hot_part3"]
+	s.devLock.RUnlock()
+
+	s.devLock.Lock()
+	coldDev1.State = "Active"
+	s.devLock.Unlock()
+
+	time.Sleep(25 * time.Second)
+
+	s.devLock.RLock()
+	t.Logf("cold_dev1, State: %s, ActiveTime: %d, StandbyTime: %d, TotalIO: %d, Free: %d, Used: %d",
+		coldDev1.State, coldDev1.ActiveTime, coldDev1.StandbyTime, coldDev1.TotalIO, coldDev1.Free, coldDev1.Used)
+	t.Logf("cold_dev2, State: %s, ActiveTime: %d, StandbyTime: %d, TotalIO: %d, Free: %d, Used: %d",
+		coldDev2.State, coldDev2.ActiveTime, coldDev2.StandbyTime, coldDev2.TotalIO, coldDev2.Free, coldDev2.Used)
+	t.Logf("hot_dev1, State: %s, ActiveTime: %d, StandbyTime: %d, TotalIO: %d, Free: %d, Used: %d",
+		hotDev1.State, hotDev1.ActiveTime, hotDev1.StandbyTime, hotDev1.TotalIO, hotDev1.Free, hotDev1.Used)
+	t.Logf("hot_dev2, State: %s, ActiveTime: %d, StandbyTime: %d, TotalIO: %d, Free: %d, Used: %d",
+		hotDev2.State, hotDev2.ActiveTime, hotDev2.StandbyTime, hotDev2.TotalIO, hotDev2.Free, hotDev2.Used)
+	t.Logf("hot_dev3, State: %s, ActiveTime: %d, StandbyTime: %d, TotalIO: %d, Free: %d, Used: %d",
+		hotDev3.State, hotDev3.ActiveTime, hotDev3.StandbyTime, hotDev3.TotalIO, hotDev3.Free, hotDev3.Used)
+	s.devLock.RUnlock()
+
+	//s.MigrateData("cold_part2")
 
 }
