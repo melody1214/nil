@@ -52,11 +52,17 @@ usage() {
 }
 
 function changeset() {
+    if [ ! $(command -v gsettings) &>/dev/null ]; then
+        return
+    fi
     AUTOMOUNT_OPEN="$(gsettings get org.gnome.desktop.media-handling automount-open)"
     gsettings set org.gnome.desktop.media-handling automount-open false
 }
 
 function restore() {
+    if [ ! $(command -v gsettings) &>/dev/null ]; then
+        return
+    fi
     gsettings set org.gnome.desktop.media-handling automount-open $AUTOMOUNT_OPEN
 }
 
