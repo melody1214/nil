@@ -31,6 +31,9 @@ TOTALUSERS=0    # (REGIONUSERS) * (number of regions)
 REGIONUSERS=5   # 5 users per region
                 # In this test, users are only allowed to create bucket in own region.
 
+RAFT="localhost"
+HOST="localhost"
+
 # Buckets per user
 BUCKETS=3
 
@@ -192,9 +195,10 @@ function rungw() {
 
     # Run gw.
     $NIL gw \
+      -b $HOST \
       -p $port \
       --work-dir $workdir \
-      --first-mds localhost:$MDSBASEPORT \
+      --first-mds $HOST:$MDSBASEPORT \
       --secure-certs-dir $CERTSDIR \
       -l log &
     echo $region gw $! >> $PID
@@ -210,13 +214,15 @@ function runmds() {
 
     # Run mds.
     $NIL mds \
+      -b $HOST \
       -p $port \
       --mysql-user testNil \
       --mysql-database nil$region \
       --work-dir $workdir \
-      --raft-local-cluster-addr localhost:$((GWBASEPORT - 1)) \
+      --raft-local-cluster-addr $HOST:$((GWBASEPORT - 1)) \
       --raft-local-cluster-region $region \
-      --swim-coordinator-addr localhost:$MDSBASEPORT \
+      --raft-global-cluster-addr $RAFT:50000 \
+      --swim-coordinator-addr $HOST:$MDSBASEPORT \
       --secure-certs-dir $CERTSDIR \
       -l log &
     echo $region mds $! >> $PID
@@ -232,8 +238,9 @@ function runds() {
 
     # Run ds.
     $NIL ds \
+      -b $HOST \
       -p $port \
-      --swim-coordinator-addr localhost:$((MDSBASEPORT - 1)) \
+      --swim-coordinator-addr $HOST:$((MDSBASEPORT - 1)) \
       --work-dir $workdir \
       --secure-certs-dir $CERTSDIR \
       -l log &
@@ -512,17 +519,17 @@ function main() {
     # sleep 15
     # putobjects
 
-    # Get objects.
-    echo -n "Do you want to download all chunks? [y/n] "
-    read ANSWER
-    case $ANSWER in
-        y|Y)
-            echo " Start downloads."
-            getobjects
-            ;;
-        *)
-            echo " No downloads."
-    esac
+    # # Get objects.
+    # echo -n "Do you want to download all chunks? [y/n] "
+    # read ANSWER
+    # case $ANSWER in
+    #     y|Y)
+    #         echo " Start downloads."
+    #         getobjects
+    #         ;;
+    #     *)
+    #         echo " No downloads."
+    # esac
 
     # Test local recovery
     if [ $TESTLOCALRECOVERY = true ]; then
@@ -542,7 +549,7 @@ changeset
 trap restore SIGINT
 trap restore EXIT
 
-while getopts plsh o; do
+while getopts plshg:f:r: o; do
     case $o in
     p)
         purge
@@ -558,6 +565,15 @@ while getopts plsh o; do
     h)
         usage
         exit 0
+        ;;
+    g)
+        RAFT=$OPTARG
+        ;;
+    f)
+        HOST=$OPTARG
+        ;;
+    r)
+        REGIONS=($OPTARG)
         ;;
     ?)
         usage
