@@ -84,7 +84,7 @@ function createsdisks() {
 
         # Add to ds.
         echo $dev >> $MNT
-        echo $NIL ds volume add dev$i -p $dsport >> $PENDINGCMD
+        echo $NIL ds volume add dev$i -b $HOST -p $dsport >> $PENDINGCMD
     done
 }
 
@@ -507,13 +507,13 @@ function main() {
         done < $PENDINGCMD
     fi
 
-    # Create users.
-    sleep 3
-    createusers
+    # # Create users.
+    # sleep 3
+    # createusers
 
-    # Create buckets.
-    sleep 5
-    createbuckets
+    # # Create buckets.
+    # sleep 5
+    # createbuckets
 
     # # Put objects.
     # sleep 15
