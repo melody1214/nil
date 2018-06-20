@@ -4,12 +4,11 @@ import (
 	"net/rpc"
 	"time"
 
+	"github.com/chanyoung/nil/app/mds/usecase/gencoding/token"
 	"github.com/chanyoung/nil/pkg/cmap"
+	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/pkg/errors"
-
-	"github.com/chanyoung/nil/app/mds/usecase/gencoding/token"
-	"github.com/chanyoung/nil/pkg/nilrpc"
 )
 
 // Status represents the job status of global encoding.
