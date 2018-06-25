@@ -531,10 +531,10 @@ function main() {
     #         echo " No downloads."
     # esac
 
-    # Test local recovery
-    if [ $TESTLOCALRECOVERY = true ]; then
-        testlocalrecovery
-    fi
+    # # Test local recovery
+    # if [ $TESTLOCALRECOVERY = true ]; then
+    #     testlocalrecovery
+    # fi
 }
 
 # Run as root.
@@ -549,7 +549,7 @@ changeset
 trap restore SIGINT
 trap restore EXIT
 
-while getopts plshge:f:r: o; do
+while getopts plsheg:f:r: o; do
     case $o in
     p)
         purge
