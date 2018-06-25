@@ -13,8 +13,8 @@ MNT=$DIR/mnt
 PENDINGCMD=$DIR/pending
 
 # Region names follow ISO-3166-1
-# REGIONS=("KR" "US" "HK" "SG" "JP" "DE")
-REGIONS=("KR")
+# REGIONS=("idckr" "idcus" "idchk" "idcsg" "idcjp" "idcde")
+REGIONS=("idckr")
 GW=1
 MDS=1
 DS=10

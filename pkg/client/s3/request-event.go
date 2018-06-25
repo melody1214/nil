@@ -87,7 +87,7 @@ func (r *S3RequestEvent) AccessKey() string {
 func (r *S3RequestEvent) Region() string {
 	switch r.signVer {
 	case s3lib.V2:
-		return "KR"
+		return "idckr"
 	case s3lib.V4:
 		return r.authArgsV4.Credential.Region
 	default:
