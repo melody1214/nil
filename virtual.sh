@@ -494,7 +494,7 @@ function main() {
     creatediskall
 
     # Generate global encoding group.
-    ggg 300
+    # ggg 300
 
     # Execute pending command.
     if [ -e $PENDINGCMD ]; then
@@ -549,7 +549,7 @@ changeset
 trap restore SIGINT
 trap restore EXIT
 
-while getopts plshg:f:r: o; do
+while getopts plshge:f:r: o; do
     case $o in
     p)
         purge
@@ -574,6 +574,11 @@ while getopts plshg:f:r: o; do
         ;;
     r)
         REGIONS=($OPTARG)
+        ;;
+    e)
+        REGIONS=("idckr" "idcus" "idchk" "idcsg" "idcjp" "idcde")
+        ggg
+        exit 0
         ;;
     ?)
         usage
