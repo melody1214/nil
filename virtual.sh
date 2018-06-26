@@ -17,14 +17,14 @@ PENDINGCMD=$DIR/pending
 REGIONS=("idckr")
 GW=1
 MDS=1
-DS=10
+DS=15
 GWBASEPORT=50000
 MDSBASEPORT=51000
 DSBASEPORT=52000
 
 # Disk configuration.
-DISKSIZE=100 # megabytes
-DISKNUM=2    # per ds
+DISKSIZE=400 # megabytes
+DISKNUM=5    # per ds
 
 # User per region
 TOTALUSERS=0    # (REGIONUSERS) * (number of regions)
