@@ -290,7 +290,7 @@ function ggg() {
                     fi
 
                     local selectedRegions=$first,$second,$third,$fourth
-                    $NIL mds ggg $selectedRegions
+                    $NIL mds ggg $selectedRegions -b $HOST
                 done
             done
         done
