@@ -679,3 +679,60 @@ func (s *clusterStore) RecoveryFinishEG(txid repository.TxID, egID cmap.ID) erro
 	_, err = s.Execute(txid, q)
 	return err
 }
+
+func (s *clusterStore) FindGblChunks(egID cmap.ID) ([]int, error) {
+	q := fmt.Sprintf(
+		`
+		SELECT chk_id
+		FROM chunk
+		WHERE chk_encoding_group=%d AND chk_status='G'
+		`, egID.Int64(),
+	)
+
+	rows, err := s.Query(repository.NotTx, q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	chunks := make([]int, 0)
+	for rows.Next() {
+		var c int
+
+		if err = rows.Scan(&c); err != nil {
+			return nil, err
+		}
+
+		chunks = append(chunks, c)
+	}
+	return chunks, nil
+}
+
+func (s *clusterStore) SelectRegions(here string) ([]string, error) {
+	q := fmt.Sprintf(
+		`
+		SELECT rg_end_point
+		FROM region
+		WHERE rg_name != '%s'
+		ORDER BY rand() limit 3
+		`, here,
+	)
+
+	rows, err := s.Query(repository.NotTx, q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	eps := make([]string, 0)
+	for rows.Next() {
+		var ep string
+
+		if err = rows.Scan(&ep); err != nil {
+			return nil, err
+		}
+
+		eps = append(eps, ep)
+	}
+	return eps, nil
+}

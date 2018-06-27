@@ -15,6 +15,8 @@ import (
 
 var logger *logrus.Entry
 
+var region string
+
 type service struct {
 	cfg     *config.Mds
 	jFact   *jobFactory
@@ -26,6 +28,8 @@ type service struct {
 // NewService creates a client service with necessary dependencies.
 func NewService(cfg *config.Mds, cmapAPI cmap.MasterAPI, s Repository) Service {
 	logger = mlog.GetPackageLogger("app/mds/usecase/cluster")
+
+	region = cfg.Raft.LocalClusterRegion
 
 	localParityShards, err := strconv.Atoi(cfg.LocalParityShards)
 	if err != nil {

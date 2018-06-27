@@ -20,6 +20,8 @@ type Repository interface {
 	Rollback(repository.TxID) error
 	Commit(repository.TxID) error
 	Open(raftL *nilmux.Layer) error
+	FindGblChunks(egID cmap.ID) ([]int, error)
+	SelectRegions(here string) ([]string, error)
 	Close() error
 
 	// jobRepository methods.
@@ -46,6 +48,8 @@ type jobRepository interface {
 	UpdateJob(repository.TxID, *Job) error
 	LocalJoin(cmap.Node) error
 
+	FindGblChunks(egID cmap.ID) ([]int, error)
+	SelectRegions(here string) ([]string, error)
 	GetNewClusterMapVer(repository.TxID) (cmap.Version, error)
 	FindAllNodes(repository.TxID) ([]cmap.Node, error)
 	FindAllVolumes(repository.TxID) (vols []cmap.Volume, err error)

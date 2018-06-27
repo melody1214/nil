@@ -2,6 +2,8 @@ package cluster
 
 import (
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"net/rpc"
 	"strconv"
 	"time"
@@ -24,7 +26,62 @@ func (w *worker) rcStart() fsm {
 		return w.rcFinish
 	}
 
-	return w.rcDiagnose
+	return w.rcOne
+	// return w.rcDiagnose
+}
+
+func (w *worker) rcOne() fsm {
+	c := w.cmapAPI.SearchCall()
+	eg, err := c.EncGrp().ID(w.job.Event.AffectedEG).Do()
+	if err != nil {
+		w.job.err = err
+		return w.rcFinish
+	}
+
+	chunks, err := w.store.FindGblChunks(eg.ID)
+	if err != nil {
+		w.job.err = err
+		return w.rcFinish
+	}
+
+	for _ = range chunks {
+		r, err := w.store.SelectRegions(region)
+		if err != nil {
+			continue
+		}
+		w.downloadChunk(r[0], 5)
+		w.downloadChunk(r[1], 5)
+		w.downloadChunk(r[2], 2)
+	}
+
+	return w.rcFinish
+}
+
+func (w *worker) rcTwo() fsm {
+	c := w.cmapAPI.SearchCall()
+	eg, err := c.EncGrp().ID(w.job.Event.AffectedEG).Do()
+	if err != nil {
+		w.job.err = err
+		return w.rcFinish
+	}
+
+	chunks, err := w.store.FindGblChunks(eg.ID)
+	if err != nil {
+		w.job.err = err
+		return w.rcFinish
+	}
+
+	for _ = range chunks {
+		r, err := w.store.SelectRegions(region)
+		if err != nil {
+			continue
+		}
+		w.downloadChunk(r[0], 1)
+		w.downloadChunk(r[1], 1)
+		w.downloadChunk(r[2], 1)
+	}
+
+	return w.rcFinish
 }
 
 // rcDiagnose decide the recovery process would be local or global.
@@ -524,4 +581,28 @@ func (w *worker) recoveryChunk(addr string, req *nilrpc.DCLRecoveryChunkRequest,
 	}
 	defer cli.Close()
 	return nil
+}
+
+func (w *worker) downloadChunk(addr string, number int) {
+	fmt.Printf("\nDownload %d chunks from region %s\n", number, addr)
+
+	downReq, err := http.NewRequest(
+		"DELETE",
+		"https://"+addr+"/chunk",
+		nil,
+	)
+
+	resp, err := http.DefaultClient.Do(downReq)
+	if err != nil {
+		fmt.Printf("%+v\n", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Printf("readall: %+v\n", err)
+		return
+	}
+	fmt.Printf("read size: %d\n", len(b))
 }
