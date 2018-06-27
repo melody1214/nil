@@ -93,6 +93,6 @@ func calcMaxEG(volumeSize uint64) int {
 		return 0
 	}
 
-	// Test, eg per 10MB,
-	return int(volumeSize / 10)
+	// Test, eg per 100MB,
+	return int(volumeSize / 100)
 }

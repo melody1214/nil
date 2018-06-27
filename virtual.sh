@@ -17,16 +17,16 @@ REGIONS=("idckr" "idcus" "idchk" "idcsg" "idcjp" "idcde")
 # REGIONS=("idckr")
 GW=1
 MDS=1
-DS=10
+DS=15
 GWBASEPORT=50000
 MDSBASEPORT=51000
 DSBASEPORT=52000
 
 # # Disk configuration.
-# DISKSIZE=400 # megabytes
-# DISKNUM=5    # per ds
-DISKSIZE=200
-DISKNUM=2
+DISKSIZE=400 # megabytes
+DISKNUM=5    # per ds
+# DISKSIZE=200
+# DISKNUM=2
 
 # User per region
 TOTALUSERS=0    # (REGIONUSERS) * (number of regions)
@@ -495,8 +495,8 @@ function main() {
 
     creatediskall
 
-    # Generate global encoding group.
-    ggg 300
+    # # Generate global encoding group.
+    # ggg 300
 
     # Execute pending command.
     if [ -e $PENDINGCMD ]; then
@@ -509,29 +509,29 @@ function main() {
         done < $PENDINGCMD
     fi
 
-    # Create users.
-    sleep 3
-    createusers
+    # # Create users.
+    # sleep 3
+    # createusers
 
-    # Create buckets.
-    sleep 5
-    createbuckets
+    # # Create buckets.
+    # sleep 5
+    # createbuckets
 
-    # Put objects.
-    sleep 15
-    putobjects
+    # # Put objects.
+    # sleep 15
+    # putobjects
 
-    # Get objects.
-    echo -n "Do you want to download all chunks? [y/n] "
-    read ANSWER
-    case $ANSWER in
-        y|Y)
-            echo " Start downloads."
-            getobjects
-            ;;
-        *)
-            echo " No downloads."
-    esac
+    # # Get objects.
+    # echo -n "Do you want to download all chunks? [y/n] "
+    # read ANSWER
+    # case $ANSWER in
+    #     y|Y)
+    #         echo " Start downloads."
+    #         getobjects
+    #         ;;
+    #     *)
+    #         echo " No downloads."
+    # esac
 
     # # Test local recovery
     # if [ $TESTLOCALRECOVERY = true ]; then
