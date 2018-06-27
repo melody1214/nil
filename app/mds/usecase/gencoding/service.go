@@ -68,8 +68,8 @@ func (s *service) GGG(req *nilrpc.MGEGGGRequest, res *nilrpc.MGEGGGResponse) err
 func (s *service) run() {
 	ctxLogger := mlog.GetMethodLogger(logger, "service.run")
 
-	issueTokenTicker := time.NewTicker(5 * time.Second)
-	encodeTicker := time.NewTicker(60 * time.Second)
+	issueTokenTicker := time.NewTicker(3 * time.Second)
+	encodeTicker := time.NewTicker(5 * time.Second)
 	// updateUnencodedTicker := time.NewTicker(30 * time.Second)
 	gcTicker := time.NewTicker(60 * time.Second)
 
