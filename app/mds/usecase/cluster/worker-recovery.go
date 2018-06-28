@@ -2,9 +2,10 @@ package cluster
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/rpc"
+	"os"
 	"strconv"
 	"time"
 
@@ -49,9 +50,9 @@ func (w *worker) rcOne() fsm {
 		if err != nil {
 			continue
 		}
-		w.downloadChunk(r[0], 5)
-		w.downloadChunk(r[1], 5)
-		w.downloadChunk(r[2], 2)
+		go w.downloadChunk(r[0], 5)
+		go w.downloadChunk(r[1], 5)
+		go w.downloadChunk(r[2], 2)
 	}
 
 	return w.rcFinish
@@ -76,9 +77,9 @@ func (w *worker) rcTwo() fsm {
 		if err != nil {
 			continue
 		}
-		w.downloadChunk(r[0], 1)
-		w.downloadChunk(r[1], 1)
-		w.downloadChunk(r[2], 1)
+		go w.downloadChunk(r[0], 1)
+		go w.downloadChunk(r[1], 1)
+		go w.downloadChunk(r[2], 1)
 	}
 
 	return w.rcFinish
@@ -587,24 +588,30 @@ func (w *worker) downloadChunk(addr string, number int) {
 	fmt.Printf("\nDownload %d chunks from region %s\n", number, addr)
 
 	for i := 0; i < number; i++ {
-		downReq, err := http.NewRequest(
-			"DELETE",
-			"https://"+addr+"/chunk",
-			nil,
-		)
+		go func() {
+			downReq, err := http.NewRequest(
+				"DELETE",
+				"https://"+addr+"/chunk",
+				nil,
+			)
 
-		resp, err := http.DefaultClient.Do(downReq)
-		if err != nil {
-			fmt.Printf("%+v\n", err)
-			return
-		}
-		defer resp.Body.Close()
+			resp, err := http.DefaultClient.Do(downReq)
+			if err != nil {
+				fmt.Printf("%+v\n", err)
+				return
+			}
+			defer resp.Body.Close()
 
-		b, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			fmt.Printf("readall: %+v\n", err)
-			return
-		}
-		fmt.Printf("read size: %d\n", len(b))
+			f, err := os.Create(addr + strconv.Itoa(number))
+			if err != nil {
+				return
+			}
+			defer f.Close()
+
+			_, err = io.Copy(f, resp.Body)
+			if err != nil {
+				return
+			}
+		}()
 	}
 }
