@@ -586,23 +586,25 @@ func (w *worker) recoveryChunk(addr string, req *nilrpc.DCLRecoveryChunkRequest,
 func (w *worker) downloadChunk(addr string, number int) {
 	fmt.Printf("\nDownload %d chunks from region %s\n", number, addr)
 
-	downReq, err := http.NewRequest(
-		"DELETE",
-		"https://"+addr+"/chunk",
-		nil,
-	)
+	for i := 0; i < number; i++ {
+		downReq, err := http.NewRequest(
+			"DELETE",
+			"https://"+addr+"/chunk",
+			nil,
+		)
 
-	resp, err := http.DefaultClient.Do(downReq)
-	if err != nil {
-		fmt.Printf("%+v\n", err)
-		return
-	}
-	defer resp.Body.Close()
+		resp, err := http.DefaultClient.Do(downReq)
+		if err != nil {
+			fmt.Printf("%+v\n", err)
+			return
+		}
+		defer resp.Body.Close()
 
-	b, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Printf("readall: %+v\n", err)
-		return
+		b, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Printf("readall: %+v\n", err)
+			return
+		}
+		fmt.Printf("read size: %d\n", len(b))
 	}
-	fmt.Printf("read size: %d\n", len(b))
 }
