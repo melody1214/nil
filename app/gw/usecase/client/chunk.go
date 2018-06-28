@@ -19,7 +19,7 @@ import (
 var data []byte
 
 func init() {
-	data = make([]byte, 64000)
+	data = make([]byte, 1000000)
 	rand.Read(data)
 }
 
