@@ -72,6 +72,10 @@ func (s *Store) Open(raftL *nilmux.Layer) error {
 	config := raft.DefaultConfig()
 	config.LocalID = raft.ServerID(s.cfg.Raft.LocalClusterRegion)
 	config.LogOutput = logger.Writer()
+	config.HeartbeatTimeout = 5000 * time.Millisecond
+	config.ElectionTimeout = 5000 * time.Millisecond
+	config.CommitTimeout = 500 * time.Millisecond
+	config.LeaderLeaseTimeout = 5000 * time.Millisecond
 
 	// Create Raft log store directory.
 	if s.cfg.Raft.RaftDir == "" {
