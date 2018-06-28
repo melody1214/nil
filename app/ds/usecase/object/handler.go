@@ -43,7 +43,7 @@ func NewHandlers(cfg *config.Ds, cmapAPI cmap.SlaveAPI, f *cr.RequestEventFactor
 		return nil, err
 	}
 
-	pool := newChunkPool(cmapAPI, shards, chunkSize, s.GetChunkHeaderSize(), s.GetObjectHeaderSize(), chunkSize-40000)
+	pool := newChunkPool(cmapAPI, shards, chunkSize, s.GetChunkHeaderSize(), s.GetObjectHeaderSize(), chunkSize-300000)
 
 	ed, err := newEndec(cmapAPI, pool, s)
 	if err != nil {
