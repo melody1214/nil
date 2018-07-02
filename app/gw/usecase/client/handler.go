@@ -72,5 +72,4 @@ type Handlers interface {
 
 	GetChunkHandler(w http.ResponseWriter, r *http.Request)
 	RenameChunkHandler(w http.ResponseWriter, r *http.Request)
-	TestHandler(w http.ResponseWriter, r *http.Request)
 }

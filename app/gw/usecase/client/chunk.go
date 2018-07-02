@@ -1,10 +1,7 @@
 package client
 
 import (
-	"bytes"
-	"io"
 	"log"
-	"math/rand"
 	"net/http"
 	"net/http/httputil"
 	"net/rpc"
@@ -15,18 +12,6 @@ import (
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 )
-
-var data []byte
-
-func init() {
-	data = make([]byte, 1000000)
-	rand.Read(data)
-}
-
-func (h *handlers) TestHandler(w http.ResponseWriter, r *http.Request) {
-	reader := bytes.NewReader(data)
-	io.Copy(w, reader)
-}
 
 // GetChunkHandler handles the client request for downloading a chunk.
 func (h *handlers) GetChunkHandler(w http.ResponseWriter, r *http.Request) {

@@ -13,21 +13,21 @@ MNT=$DIR/mnt
 PENDINGCMD=$DIR/pending
 
 # Region names follow ISO-3166-1
-REGIONS=("idckr" "idcus" "idchk" "idcsg" "idcjp" "idcde")
-# REGIONS=("idckr")
+# REGIONS=("idckr" "idcus" "idchk" "idcsg" "idcjp" "idcde")
+REGIONS=("idckr")
 GW=1
 MDS=1
-DS=12
-# DS=10
+# DS=12
+DS=10
 GWBASEPORT=50000
 MDSBASEPORT=51000
 DSBASEPORT=52000
 
 # # Disk configuration.
-DISKSIZE=400 # megabytes
-DISKNUM=5    # per ds
-# DISKSIZE=40
-# DISKNUM=2
+# DISKSIZE=400 # megabytes
+# DISKNUM=5    # per ds
+DISKSIZE=400
+DISKNUM=2
 
 # User per region
 TOTALUSERS=0    # (REGIONUSERS) * (number of regions)
@@ -369,13 +369,13 @@ function createbuckets() {
 function putobjects() {
     local dummyarray=()
     local dummysize=32
-    # for i in {1..10}; do
-    #     dummysize=$(($dummysize*2))
-    #     base64 /dev/urandom | head -c $dummysize > $DIR/$dummysize.txt
-    #     dummyarray+=($DIR/$dummysize.txt)
-    # done
-    base64 /dev/urandom | head -c 6400 > $DIR/6400.txt
-    dummyarray+=($DIR/6400.txt)
+    for i in {1..10}; do
+        dummysize=$(($dummysize*2))
+        base64 /dev/urandom | head -c $dummysize > $DIR/$dummysize.txt
+        dummyarray+=($DIR/$dummysize.txt)
+    done
+    # base64 /dev/urandom | head -c 6400 > $DIR/6400.txt
+    # dummyarray+=($DIR/6400.txt)
 
     for i in $(seq 1 50); do
         for j in $(seq 1 $BUCKETS); do
@@ -498,8 +498,8 @@ function main() {
 
     creatediskall
 
-    # # Generate global encoding group.
-    # ggg 300
+    # Generate global encoding group.
+    ggg 300
 
     # Execute pending command.
     if [ -e $PENDINGCMD ]; then
@@ -512,34 +512,34 @@ function main() {
         done < $PENDINGCMD
     fi
 
-    # # Create users.
-    # sleep 3
-    # createusers
+    # Create users.
+    sleep 3
+    createusers
 
-    # # Create buckets.
-    # sleep 5
-    # createbuckets
+    # Create buckets.
+    sleep 5
+    createbuckets
 
-    # # Put objects.
-    # sleep 15
-    # putobjects
+    # Put objects.
+    sleep 15
+    putobjects
 
-    # # Get objects.
-    # echo -n "Do you want to download all chunks? [y/n] "
-    # read ANSWER
-    # case $ANSWER in
-    #     y|Y)
-    #         echo " Start downloads."
-    #         getobjects
-    #         ;;
-    #     *)
-    #         echo " No downloads."
-    # esac
+    # Get objects.
+    echo -n "Do you want to download all chunks? [y/n] "
+    read ANSWER
+    case $ANSWER in
+        y|Y)
+            echo " Start downloads."
+            getobjects
+            ;;
+        *)
+            echo " No downloads."
+    esac
 
-    # # Test local recovery
-    # if [ $TESTLOCALRECOVERY = true ]; then
-    #     testlocalrecovery
-    # fi
+    # Test local recovery
+    if [ $TESTLOCALRECOVERY = true ]; then
+        testlocalrecovery
+    fi
 }
 
 # Run as root.
