@@ -25,10 +25,33 @@ type service struct {
 func NewService(cfg *config.Mds, s Repository) Service {
 	logger = mlog.GetPackageLogger("app/mds/usecase/admin")
 
-	return &service{
+	sv := &service{
 		cfg:   cfg,
 		store: s,
 	}
+
+	go func() {
+		time.Sleep(10 * time.Second)
+		if !sv.store.AmILeader() {
+			return
+		}
+
+		// Generate sample users.
+		regions := []string{
+			"idckr",
+			"idcsg",
+			"idcjp",
+			"idcde",
+			"idcus",
+			"idchk",
+		}
+
+		for _, r := range regions {
+			sv.store.AddUser(r, security.DummyKey(r))
+		}
+	}()
+
+	return sv
 }
 
 // AddUser adds a new user with the given name.

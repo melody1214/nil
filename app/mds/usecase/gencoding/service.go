@@ -68,8 +68,9 @@ func (s *service) GGG(req *nilrpc.MGEGGGRequest, res *nilrpc.MGEGGGResponse) err
 func (s *service) run() {
 	ctxLogger := mlog.GetMethodLogger(logger, "service.run")
 
-	issueTokenTicker := time.NewTicker(60 * time.Second)
-	encodeTicker := time.NewTicker(60 * time.Second)
+	issueTokenTicker := time.NewTicker(3 * time.Second)
+	encodeTicker := time.NewTicker(5 * time.Second)
+	// updateUnencodedTicker := time.NewTicker(30 * time.Second)
 	gcTicker := time.NewTicker(60 * time.Second)
 
 	for {
@@ -89,7 +90,7 @@ func (s *service) run() {
 
 			// Make a token and send to the next region.
 			token := s.tokenM.NewToken(*leg)
-			s.sendToken(token)
+			s.sendToken(token, token.Routing.Current())
 
 		case <-encodeTicker.C:
 			// Check and encode if there are some jobs assigned this region.
@@ -97,15 +98,18 @@ func (s *service) run() {
 
 		case <-gcTicker.C:
 			s.garbageCollect()
+
+			// case <-updateUnencodedTicker.C:
+			// 	s.updateUnencoded()
 		}
 	}
 }
 
-func (s *service) sendToken(t *token.Token) {
+func (s *service) sendToken(t *token.Token, nextRoute token.Stop) {
 	ctxLogger := mlog.GetMethodLogger(logger, "service.sendToken")
 
-	// Get next region to send token.
-	nextRoute := t.Routing.Next()
+	// // Get next region to send token.
+	// nextRoute := t.Routing.Next()
 
 	req := &nilrpc.MGEHandleTokenRequest{Token: *t}
 	res := &nilrpc.MGEHandleTokenResponse{}
@@ -145,19 +149,19 @@ func (s *service) HandleToken(req *nilrpc.MGEHandleTokenRequest, res *nilrpc.MGE
 	if err != nil && err.Error() == "no unencoded chunk" {
 		// There is no candidate for global encoding.
 		// Give up, and send to the next region.
-		s.sendToken(&req.Token)
+		s.sendToken(&req.Token, req.Token.Routing.Next())
 		return nil
 	} else if err != nil {
 		// Internal error is occured, log it.
 		// Give up, and send to the next region.
 		ctxLogger.Error(errors.Wrap(err, "failed to find a global encoding candidate"))
-		s.sendToken(&req.Token)
+		s.sendToken(&req.Token, req.Token.Routing.Next())
 		return nil
 	}
 
 	// Try to add our unencoded chunk into the global encoding request token.
 	req.Token.Add(tkn)
-	s.sendToken(&req.Token)
+	s.sendToken(&req.Token, req.Token.Routing.Next())
 	return nil
 }
 
@@ -174,9 +178,9 @@ func (s *service) findCandidate(region token.Stop) (*token.Unencoded, error) {
 		return nil, fmt.Errorf("no unencoded chunk")
 	}
 
-	v, err := c.Volume().ID(eg.Vols[0]).Do()
+	v, err := c.Volume().ID(eg.Vols[0].ID).Do()
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to search volume ID: %s", eg.Vols[0].String())
+		return nil, errors.Wrapf(err, "failed to search volume ID: %s", eg.Vols[0].ID.String())
 	}
 
 	n, err := c.Node().ID(v.Node).Do()
@@ -184,25 +188,31 @@ func (s *service) findCandidate(region token.Stop) (*token.Unencoded, error) {
 		return nil, errors.Wrapf(err, "failed to search node ID: %s", v.Node.String())
 	}
 
-	conn, err := nilrpc.Dial(n.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
+	// conn, err := nilrpc.Dial(n.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
+	// if err != nil {
+	// 	return nil, errors.Wrap(err, "failed to dial the candidate encoding group's master")
+	// }
+	// defer conn.Close()
+
+	// // TODO: 디비에서 인코딩된 청크 가져오기.
+	// // 장애 안난것으로.
+	// getChunkReq := &nilrpc.DGEGetCandidateChunkRequest{
+	// 	Vol: v.ID,
+	// 	EG:  eg.ID,
+	// }
+	// getChunkRes := &nilrpc.DGEGetCandidateChunkResponse{}
+
+	// // Calling to the our selected encoding group master, to tell me what is the name of unencoded chunk.
+	// cli := rpc.NewClient(conn)
+	// if err := cli.Call(nilrpc.DsGencodingGetCandidateChunk.String(), getChunkReq, getChunkRes); err != nil {
+	// 	return nil, errors.Wrap(err, "failed to call the candidate encoding group's master")
+	// }
+	// if getChunkRes.Chunk == "" {
+	// 	return nil, fmt.Errorf("no unencoded chunk")
+	// }
+	cID, err := s.store.GetCandidateChunk(eg.ID, s.cfg.Raft.LocalClusterRegion)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to dial the candidate encoding group's master")
-	}
-	defer conn.Close()
-
-	getChunkReq := &nilrpc.DGEGetCandidateChunkRequest{
-		Vol: v.ID,
-		EG:  eg.ID,
-	}
-	getChunkRes := &nilrpc.DGEGetCandidateChunkResponse{}
-
-	// Calling to the our selected encoding group master, to tell me what is the name of unencoded chunk.
-	cli := rpc.NewClient(conn)
-	if err := cli.Call(nilrpc.DsGencodingGetCandidateChunk.String(), getChunkReq, getChunkRes); err != nil {
-		return nil, errors.Wrap(err, "failed to call the candidate encoding group's master")
-	}
-	if getChunkRes.Chunk == "" {
-		return nil, fmt.Errorf("no unencoded chunk")
+		return nil, errors.Wrap(err, "failed to find candidate chunk")
 	}
 
 	return &token.Unencoded{
@@ -210,7 +220,7 @@ func (s *service) findCandidate(region token.Stop) (*token.Unencoded, error) {
 		Node:     n.ID,
 		Volume:   v.ID,
 		EncGrp:   eg.ID,
-		ChunkID:  getChunkRes.Chunk,
+		ChunkID:  cID,
 		Priority: eg.Uenc,
 	}, nil
 }
@@ -289,6 +299,13 @@ func (s *service) SetJobStatus(req *nilrpc.MGESetJobStatusRequest, res *nilrpc.M
 	return s.store.SetJobStatus(req.ID, Status(req.Status))
 }
 
+func (s *service) SetPrimaryChunk(req *nilrpc.MGESetPrimaryChunkRequest, res *nilrpc.MGESetPrimaryChunkResponse) error {
+	if !s.store.AmILeader() {
+		return s.setPrimaryChunk(req.Primary, req.Job)
+	}
+	return s.store.SetPrimaryChunk(req.Primary, req.Job)
+}
+
 func (s *service) JobFinished(req *nilrpc.MGEJobFinishedRequest, res *nilrpc.MGEJobFinishedResponse) error {
 	if !s.store.AmILeader() {
 		return s.jobFinished(&req.Token)
@@ -326,6 +343,26 @@ func (s *service) garbageCollect() {
 
 	s.store.RemoveFailedJobs()
 }
+
+// func (s *service) updateUnencoded() {
+// 	ctxLogger := mlog.GetMethodLogger(logger, "service.updateUnencoded")
+
+// 	egs, err := s.cmapAPI.SearchCall().EncGrp().Status(cmap.EGAlive).DoAll()
+// 	if err != nil {
+// 		ctxLogger.Error(err)
+// 		return
+// 	}
+
+// 	egs, err = s.store.UpdateUnencoded(egs)
+// 	if err != nil {
+// 		ctxLogger.Error(err)
+// 		return
+// 	}
+
+// 	for _, eg := range egs {
+// 		s.cmapAPI.UpdateUnencoded(eg.ID, eg.Uenc)
+// 	}
+// }
 
 // Service is the interface that provides global encoding domain's service
 type Service interface {

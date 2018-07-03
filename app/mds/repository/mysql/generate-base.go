@@ -74,6 +74,7 @@ var generateSQLBase = []string{
 			egv_id int unsigned NOT NULL AUTO_INCREMENT,
 			egv_encoding_group int unsigned NOT NULL,
 			egv_volume int unsigned NOT NULL,
+			egv_move_to int unsigned NOT NULL DEFAULT 0,
 			egv_role int unsigned NOT NULL,
 			PRIMARY KEY (egv_id),
 			FOREIGN KEY (egv_encoding_group) REFERENCES encoding_group (eg_id),
@@ -92,11 +93,10 @@ var generateSQLBase = []string{
 			obj_name varchar(255) NOT NULL,
 			obj_bucket int unsigned NOT NULL,
 			obj_encoding_group int unsigned NOT NULL,
-			obj_volume int unsigned NOT NULL,
+			obj_role int unsigned NOT NULL,
 			PRIMARY KEY (obj_id),
 			FOREIGN KEY (obj_bucket) REFERENCES bucket (bk_id),
-			FOREIGN KEY (obj_encoding_group) REFERENCES encoding_group (eg_id),
-			FOREIGN KEY (obj_volume) REFERENCES volume (vl_id)
+			FOREIGN KEY (obj_encoding_group) REFERENCES encoding_group (eg_id)
 		) ENGINE=InnoDB DEFAULT CHARSET=ascii
 	`,
 	`
@@ -118,7 +118,7 @@ var generateSQLBase = []string{
 			clj_event_time varchar(32) CHARACTER SET ascii NOT NULL,
 			clj_scheduled_at varchar(32) CHARACTER SET ascii,
 			clj_finished_at varchar(32) CHARACTER SET ascii,
-			clj_log varchar(64) CHARACTER SET ascii,
+			clj_log varchar(256) CHARACTER SET ascii,
 			PRIMARY KEY (clj_id)
 		)
 	`,
@@ -140,12 +140,11 @@ var generateSQLBase = []string{
 	`
 		CREATE TABLE IF NOT EXISTS global_encoded_chunk (
 			gec_id int unsigned NOT NULL AUTO_INCREMENT,
-			gec_chunk_id int unsigned NOT NULL,
 			gec_global_encoding_group int unsigned NOT NULL,
-			gec_local_encoding_group_first int unsigned NOT NULL,
-			gec_local_encoding_group_second int unsigned NOT NULL,
-			gec_local_encoding_group_third int unsigned NOT NULL,
-			gec_local_encoding_group_parity int unsigned NOT NULL,
+			gec_local_chunk_first int unsigned NOT NULL,
+			gec_local_chunk_second int unsigned NOT NULL,
+			gec_local_chunk_third int unsigned NOT NULL,
+			gec_local_chunk_parity int unsigned NOT NULL,
 			PRIMARY KEY (gec_id),
 			FOREIGN KEY (gec_global_encoding_group) REFERENCES global_encoding_group (geg_id)
 		)

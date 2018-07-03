@@ -15,6 +15,8 @@ import (
 
 var logger *logrus.Entry
 
+var region string
+
 type service struct {
 	cfg     *config.Mds
 	jFact   *jobFactory
@@ -26,6 +28,8 @@ type service struct {
 // NewService creates a client service with necessary dependencies.
 func NewService(cfg *config.Mds, cmapAPI cmap.MasterAPI, s Repository) Service {
 	logger = mlog.GetPackageLogger("app/mds/usecase/cluster")
+
+	region = cfg.Raft.LocalClusterRegion
 
 	localParityShards, err := strconv.Atoi(cfg.LocalParityShards)
 	if err != nil {
@@ -42,19 +46,19 @@ func NewService(cfg *config.Mds, cmapAPI cmap.MasterAPI, s Repository) Service {
 	}
 	service.runStateChangedObserver()
 
-	// If I am the very firstman of the land, then version up myself to prevent merged by others.
-	if cfg.Swim.CoordinatorAddr == cfg.ServerAddr+":"+cfg.ServerPort {
-		n, err := service.cmapAPI.SearchCall().Node().Type(cmap.MDS).Status(cmap.NodeAlive).Do()
-		if err != nil {
-			return nil
-		}
-		service.store.LocalJoin(n)
+	// // If I am the very firstman of the land, then version up myself to prevent merged by others.
+	// if cfg.Swim.CoordinatorAddr == cfg.ServerAddr+":"+cfg.ServerPort {
+	// 	n, err := service.cmapAPI.SearchCall().Node().Type(cmap.MDS).Status(cmap.NodeAlive).Do()
+	// 	if err != nil {
+	// 		return nil
+	// 	}
+	// 	service.store.LocalJoin(n)
 
-		m := service.cmapAPI.GetLatestCMap()
-		ver := m.Version.Int64() + 1
-		m.Version = cmap.Version(ver)
-		service.cmapAPI.UpdateCMap(&m)
-	}
+	// 	m := service.cmapAPI.GetLatestCMap()
+	// 	ver := m.Version.Int64() + 1
+	// 	m.Version = cmap.Version(ver)
+	// 	service.cmapAPI.UpdateCMap(&m)
+	// }
 
 	return service
 }

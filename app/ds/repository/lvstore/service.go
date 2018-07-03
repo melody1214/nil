@@ -181,6 +181,10 @@ func (s *service) MigrateData() error {
 	return nil
 }
 
+func (s *service) ChunkExist(pgID, chkID string) bool {
+	return false
+}
+
 func (s *service) GetObjectSize(lvID, objID string) (int64, bool) {
 	lv, ok := s.lvs[lvID]
 	if ok == false {

@@ -17,6 +17,7 @@ const (
 
 	DsClusterPrefix   = "DS_CLUSTER"
 	DsGencodingPrefix = "DS_GENCODING"
+	DsObjectPrefix    = "DS_OBJECT"
 )
 
 // MethodName indicates what procedure will be called.
@@ -50,15 +51,19 @@ const (
 	MdsGencodingGetEncodingJob
 	MdsGencodingSetJobStatus
 	MdsGencodingJobFinished
+	MdsGencodingSetPrimaryChunk
 
 	// DS cluster domain methods.
 	DsClusterAddVolume
+	DsClusterRecoveryChunk
 
 	// Ds gencoding domain methods.
 	DsGencodingRenameChunk
 	DsGencodingTruncateChunk
 	DsGencodingEncode
 	DsGencodingGetCandidateChunk
+
+	DsObjectSetChunkPool
 )
 
 func (m MethodName) String() string {
@@ -106,9 +111,13 @@ func (m MethodName) String() string {
 		return MdsGencodingPrefix + "." + "SetJobStatus"
 	case MdsGencodingJobFinished:
 		return MdsGencodingPrefix + "." + "JobFinished"
+	case MdsGencodingSetPrimaryChunk:
+		return MdsGencodingPrefix + "." + "SetPrimaryChunk"
 
 	case DsClusterAddVolume:
 		return DsClusterPrefix + "." + "AddVolume"
+	case DsClusterRecoveryChunk:
+		return DsClusterPrefix + "." + "RecoveryChunk"
 
 	case DsGencodingRenameChunk:
 		return DsGencodingPrefix + "." + "RenameChunk"
@@ -118,6 +127,9 @@ func (m MethodName) String() string {
 		return DsGencodingPrefix + "." + "Encode"
 	case DsGencodingGetCandidateChunk:
 		return DsGencodingPrefix + "." + "GetCandidateChunk"
+
+	case DsObjectSetChunkPool:
+		return DsObjectPrefix + "." + "SetChunkPool"
 
 	default:
 		return "unknown"

@@ -164,7 +164,7 @@ func (e *endec) _genLocalParity(c chunk, stop <-chan interface{}) <-chan error {
 				Op:     repository.ReadAll,
 				Vol:    string(c.volume),
 				LocGid: string(c.encodingGroup),
-				Cid:    string(c.id) + "_" + strconv.FormatInt(i+1, 10),
+				Cid:    c.status.String() + "_" + string(c.id) + "_" + strconv.FormatInt(i+1, 10),
 				Osize:  c.size,
 				Out:    pwArr[i],
 			}
@@ -200,7 +200,7 @@ func (e *endec) _genLocalParity(c chunk, stop <-chan interface{}) <-chan error {
 			Vol:    string(c.volume),
 			LocGid: string(c.encodingGroup),
 			Oid:    string(c.id),
-			Cid:    string(c.id),
+			Cid:    c.status.String() + "_" + string(c.id),
 			Osize:  c.size,
 			In:     parityReader,
 		}
@@ -234,7 +234,7 @@ func (e *endec) _genLocalParity(c chunk, stop <-chan interface{}) <-chan error {
 					Op:     repository.DeleteReal,
 					Vol:    string(c.volume),
 					LocGid: string(c.encodingGroup),
-					Cid:    string(c.id),
+					Cid:    c.status.String() + "_" + string(c.id),
 					Oid:    string(c.id),
 				}
 				e.store.Push(deleteParityReq)
@@ -258,16 +258,17 @@ func (e *endec) _genLocalParity(c chunk, stop <-chan interface{}) <-chan error {
 				Op:     repository.DeleteReal,
 				Vol:    string(c.volume),
 				LocGid: string(c.encodingGroup),
-				Cid:    string(c.id) + "_" + strconv.FormatInt(i+1, 10),
+				Cid:    c.status.String() + "_" + string(c.id) + "_" + strconv.FormatInt(i+1, 10),
 				Oid:    string(c.id) + "_" + strconv.FormatInt(i+1, 10),
 			}
 
 			e.store.Push(deleteReqArr[i])
 		}
 
-		// if err := e.renameToL(c); err != nil {
-		// 	fmt.Printf("%+v\n\n", err)
-		// }
+		if err := e.renameToL(c); err != nil {
+			fmt.Printf("%+v\n\n", err)
+		}
+
 		if err := e.updateToLocal(c); err != nil {
 			fmt.Printf("%+v\n\n", err)
 		}
@@ -294,7 +295,7 @@ func (e *endec) updateToLocal(c chunk) error {
 	req := &nilrpc.MOBSetChunkRequest{
 		Chunk:         string(c.id),
 		EncodingGroup: cmap.ID(egID),
-		Status:        "local",
+		Status:        L.String(),
 	}
 	res := &nilrpc.MOBSetChunkResponse{}
 
@@ -316,7 +317,7 @@ func (e *endec) renameToL(c chunk) error {
 
 	vols := make([]cmap.Volume, len(eg.Vols))
 	for i := 0; i < len(eg.Vols); i++ {
-		v, err := call.Volume().ID(eg.Vols[i]).Do()
+		v, err := call.Volume().ID(eg.Vols[i].ID).Do()
 		if err != nil {
 			return errors.Wrap(err, "failed to find such volume")
 		}
@@ -342,9 +343,8 @@ func (e *endec) renameToL(c chunk) error {
 		req := &nilrpc.DGERenameChunkRequest{
 			Vol:      vols[i].ID.String(),
 			EncGrp:   string(c.encodingGroup),
-			OldChunk: string(c.id),
-			// NewChunk: "L_" + string(c.id),
-			NewChunk: string(c.id),
+			OldChunk: c.status.String() + "_" + string(c.id),
+			NewChunk: L.String() + "_" + string(c.id),
 		}
 		res := &nilrpc.DGERenameChunkResponse{}
 
@@ -369,7 +369,7 @@ func (e *endec) truncateAllChunks(c chunk) error {
 		Md5:    "fakemd5stringfakemd5stringfakemd",
 	}
 	for i := int64(0); i < e.chunkPool.shardSize; i++ {
-		truncateReq.Cid = string(c.id) + "_" + strconv.FormatInt(i+1, 10)
+		truncateReq.Cid = string(c.status) + "_" + string(c.id) + "_" + strconv.FormatInt(i+1, 10)
 		if err := e.store.Push(truncateReq); err != nil {
 			return err
 		}
@@ -391,7 +391,7 @@ func (e *endec) truncateAllChunks(c chunk) error {
 
 	vols := make([]cmap.Volume, len(eg.Vols)-1)
 	for i := 1; i < len(eg.Vols); i++ {
-		v, err := call.Volume().ID(eg.Vols[i]).Do()
+		v, err := call.Volume().ID(eg.Vols[i].ID).Do()
 		if err != nil {
 			return errors.Wrap(err, "failed to find such volume")
 		}
@@ -416,7 +416,7 @@ func (e *endec) truncateAllChunks(c chunk) error {
 		req := &nilrpc.DGETruncateChunkRequest{
 			Vol:    vols[i].ID.String(),
 			EncGrp: string(c.encodingGroup),
-			Chunk:  string(c.id),
+			Chunk:  c.status.String() + "_" + string(c.id),
 		}
 		res := &nilrpc.DGETruncateChunkResponse{}
 

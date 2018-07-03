@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"fmt"
 	"net/rpc"
 	"strconv"
 	"time"
@@ -92,6 +93,7 @@ func (s *service) AddVolume(req *nilrpc.DCLAddVolumeRequest, res *nilrpc.DCLAddV
 	// 2) Add lv to the store service.
 	if err := s.store.AddVolume(vol); err != nil {
 		// TODO: remove added volume in the mds.
+		logger.Error(err)
 		return err
 	}
 
@@ -119,7 +121,23 @@ func (s *service) AddVolume(req *nilrpc.DCLAddVolumeRequest, res *nilrpc.DCLAddV
 	return nil
 }
 
+func (s *service) RecoveryChunk(req *nilrpc.DCLRecoveryChunkRequest, res *nilrpc.DCLRecoveryChunkResponse) error {
+	switch req.Type {
+	case "LocalPrimary":
+		return s.recoveryLocalPrimary(req, res)
+	case "LocalFollower":
+		return s.recoveryLocalFollower(req, res)
+	case "GlobalPrimary":
+		return s.recoveryGlobalPrimary(req, res)
+	case "GlobalFollower":
+		return s.recoveryGlobalFollower(req, res)
+	default:
+		return fmt.Errorf("invalid recovery type")
+	}
+}
+
 // Service is the interface that provides rpc handlers.
 type Service interface {
 	AddVolume(req *nilrpc.DCLAddVolumeRequest, res *nilrpc.DCLAddVolumeResponse) error
+	RecoveryChunk(req *nilrpc.DCLRecoveryChunkRequest, res *nilrpc.DCLRecoveryChunkResponse) error
 }

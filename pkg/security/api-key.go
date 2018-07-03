@@ -40,6 +40,13 @@ func NewAPIKey() APIKey {
 	return ak
 }
 
+func DummyKey(s string) APIKey {
+	return APIKey{
+		accessKey: s,
+		secretKey: s,
+	}
+}
+
 // AccessKey returns access key.
 func (ak *APIKey) AccessKey() string {
 	return ak.accessKey

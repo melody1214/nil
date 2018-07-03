@@ -18,7 +18,7 @@ import (
 func TestServiceAPIs(t *testing.T) {
 	dir := "testServiceAPIs"
 	os.Mkdir(dir, 0775)
-	//	defer os.RemoveAll(dir)
+	defer os.RemoveAll(dir)
 
 	os.Mkdir(dir+"/pg1", 0775)
 	pg1 := &pg{

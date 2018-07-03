@@ -111,7 +111,7 @@ func isUnbalanced(v cmap.Volume) bool {
 		return true
 	}
 
-	return (len(v.EncGrps)*100)/v.MaxEG < 70
+	return (len(v.EncGrps)*100)/v.MaxEG < 50
 }
 
 // ByFreeChain for sorting volumes by free chain.
@@ -206,10 +206,10 @@ func (w *worker) newEncodingGroup(primary cmap.Volume, vols []cmap.Volume, shard
 	// Make encoding group.
 	eg := cmap.EncodingGroup{
 		Stat: cmap.EGAlive,
-		Vols: make([]cmap.ID, shards+1),
+		Vols: make([]cmap.EGVol, shards+1),
 	}
 	for i, p := range picked {
-		eg.Vols[i] = p.ID
+		eg.Vols[i].ID = p.ID
 	}
 
 	// TODO: prevent duplicated encoding group.

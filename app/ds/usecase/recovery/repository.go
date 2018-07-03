@@ -1,4 +1,4 @@
-package gencoding
+package recovery
 
 import "github.com/chanyoung/nil/app/ds/repository"
 

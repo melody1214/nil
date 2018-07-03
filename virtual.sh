@@ -13,20 +13,29 @@ MNT=$DIR/mnt
 PENDINGCMD=$DIR/pending
 
 # Region names follow ISO-3166-1
-# REGIONS=("KR" "US" "HK" "SG" "JP" "DE")
-REGIONS=("KR")
+# REGIONS=("idckr" "idcus" "idchk" "idcsg" "idcjp" "idcde")
+REGIONS=("idckr")
+GW=1
+MDS=1
+# DS=12
+DS=10
 GWBASEPORT=50000
 MDSBASEPORT=51000
 DSBASEPORT=52000
 
-# Disk configuration.
-DISKSIZE=100 # megabytes
-DISKNUM=2    # per ds
+# # Disk configuration.
+# DISKSIZE=400 # megabytes
+# DISKNUM=5    # per ds
+DISKSIZE=400
+DISKNUM=2
 
 # User per region
 TOTALUSERS=0    # (REGIONUSERS) * (number of regions)
 REGIONUSERS=5   # 5 users per region
                 # In this test, users are only allowed to create bucket in own region.
+
+RAFT="localhost"
+HOST="localhost"
 
 # Buckets per user
 BUCKETS=3
@@ -49,11 +58,17 @@ usage() {
 }
 
 function changeset() {
+    if [ ! $(command -v gsettings) &>/dev/null ]; then
+        return
+    fi
     AUTOMOUNT_OPEN="$(gsettings get org.gnome.desktop.media-handling automount-open)"
     gsettings set org.gnome.desktop.media-handling automount-open false
 }
 
 function restore() {
+    if [ ! $(command -v gsettings) &>/dev/null ]; then
+        return
+    fi
     gsettings set org.gnome.desktop.media-handling automount-open $AUTOMOUNT_OPEN
 }
 
@@ -72,7 +87,7 @@ function createsdisks() {
 
         # Add to ds.
         echo $dev >> $MNT
-        echo $NIL ds volume add dev$i -p $dsport >> $PENDINGCMD
+        echo $NIL ds volume add dev$i -b $HOST -p $dsport >> $PENDINGCMD
     done
 }
 
@@ -183,9 +198,10 @@ function rungw() {
 
     # Run gw.
     $NIL gw \
+      -b $HOST \
       -p $port \
       --work-dir $workdir \
-      --first-mds localhost:$MDSBASEPORT \
+      --first-mds $HOST:$MDSBASEPORT \
       --secure-certs-dir $CERTSDIR \
       -l log &
     echo $region gw $! >> $PID
@@ -201,13 +217,15 @@ function runmds() {
 
     # Run mds.
     $NIL mds \
+      -b $HOST \
       -p $port \
       --mysql-user testNil \
       --mysql-database nil$region \
       --work-dir $workdir \
-      --raft-local-cluster-addr localhost:$((GWBASEPORT - 1)) \
+      --raft-local-cluster-addr $HOST:$((GWBASEPORT - 1)) \
       --raft-local-cluster-region $region \
-      --swim-coordinator-addr localhost:$MDSBASEPORT \
+      --raft-global-cluster-addr $RAFT:50000 \
+      --swim-coordinator-addr $HOST:$MDSBASEPORT \
       --secure-certs-dir $CERTSDIR \
       -l log &
     echo $region mds $! >> $PID
@@ -223,14 +241,27 @@ function runds() {
 
     # Run ds.
     $NIL ds \
+      -b $HOST \
       -p $port \
-      --swim-coordinator-addr localhost:$((MDSBASEPORT - 1)) \
+      --swim-coordinator-addr $HOST:$((MDSBASEPORT - 1)) \
       --work-dir $workdir \
       --secure-certs-dir $CERTSDIR \
       -l log &
     echo $region ds $! >> $PID
+    # createsdisks "$DISKNUM" "$DISKSIZE" "$workdir" "$port"
+}
 
-    createsdisks "$DISKNUM" "$DISKSIZE" "$workdir" "$port"
+function creatediskall() {
+    local dsbaseport=52000
+    for region in ${REGIONS[@]}; do
+        for ds in $(eval echo "{1..$DS}"); do
+            local port=$dsbaseport
+            dsbaseport=$((dsbaseport + 1))
+            local workdir=$DIR/$region/ds$ds
+
+            createsdisks "$DISKNUM" "$DISKSIZE" "$workdir" "$port"
+        done
+    done
 }
 
 function ggg() {
@@ -262,7 +293,7 @@ function ggg() {
                     fi
 
                     local selectedRegions=$first,$second,$third,$fourth
-                    $NIL mds ggg $selectedRegions
+                    $NIL mds ggg $selectedRegions -b $HOST
                 done
             done
         done
@@ -343,6 +374,8 @@ function putobjects() {
         base64 /dev/urandom | head -c $dummysize > $DIR/$dummysize.txt
         dummyarray+=($DIR/$dummysize.txt)
     done
+    # base64 /dev/urandom | head -c 6400 > $DIR/6400.txt
+    # dummyarray+=($DIR/6400.txt)
 
     for i in $(seq 1 50); do
         for j in $(seq 1 $BUCKETS); do
@@ -414,14 +447,56 @@ function testlocalrecovery() {
     getobjects
 }
 
+function checkportisinuse() {
+    result=0
+
+    # Check required gw port.
+    for port in $(seq $GWBASEPORT $(($GWBASEPORT+$((${#REGIONS[@]} * $GW))))); do
+        if netstat -ant | awk '{print $4}' | grep $port >/dev/null ; then
+            echo "check gw port is in use failed."
+            echo "$port is in use."
+            result=1
+            return
+        fi
+    done
+
+    # Check required mds port.
+    for port in $(seq $MDSBASEPORT $(($MDSBASEPORT+$((${#REGIONS[@]} * $MDS))))); do
+        if netstat -ant | awk '{print $4}' | grep $port >/dev/null ; then
+            echo "check mds port is in use failed."
+            echo "$port is in use."
+            result=1
+            return
+        fi
+    done
+
+    # Check required ds port.
+    for port in $(seq $DSBASEPORT $(($DSBASEPORT+$((${#REGIONS[@]} * $DS))))); do
+        if netstat -ant | awk '{print $4}' | grep $port >/dev/null ; then
+            echo "check ds port is in use failed."
+            echo "$port is in use."
+            result=1
+            return
+        fi
+    done
+}
+
 function main() {
     purge
 
+    checkportisinuse
+    while [ $result -eq 1 ]; do
+        echo "retry after 5 seconds."
+        sleep 5
+        checkportisinuse
+    done
+
     for region in ${REGIONS[@]}; do
         echo "set region $region ..."
-        runregion "$region" 1 1 10
-        sleep 3
+        runregion "$region" $GW $MDS $DS
     done
+
+    creatediskall
 
     # Generate global encoding group.
     ggg 300
@@ -450,8 +525,16 @@ function main() {
     putobjects
 
     # Get objects.
-    sleep 5
-    getobjects
+    echo -n "Do you want to download all chunks? [y/n] "
+    read ANSWER
+    case $ANSWER in
+        y|Y)
+            echo " Start downloads."
+            getobjects
+            ;;
+        *)
+            echo " No downloads."
+    esac
 
     # Test local recovery
     if [ $TESTLOCALRECOVERY = true ]; then
@@ -471,7 +554,7 @@ changeset
 trap restore SIGINT
 trap restore EXIT
 
-while getopts plsh o; do
+while getopts plsheg:f:r: o; do
     case $o in
     p)
         purge
@@ -486,6 +569,20 @@ while getopts plsh o; do
         ;;
     h)
         usage
+        exit 0
+        ;;
+    g)
+        RAFT=$OPTARG
+        ;;
+    f)
+        HOST=$OPTARG
+        ;;
+    r)
+        REGIONS=($OPTARG)
+        ;;
+    e)
+        REGIONS=("idckr" "idcus" "idchk" "idcsg" "idcjp" "idcde")
+        ggg
         exit 0
         ;;
     ?)

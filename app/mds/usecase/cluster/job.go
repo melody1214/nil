@@ -68,10 +68,10 @@ func (t JobType) String() string {
 type JobLog string
 
 func newJobLog(s string) JobLog {
-	if len(s) < 64 {
+	if len(s) < 256 {
 		return JobLog(s)
 	}
-	return JobLog(string(s[:64]))
+	return JobLog(string(s[:256]))
 }
 
 // String returns the string type of its value.

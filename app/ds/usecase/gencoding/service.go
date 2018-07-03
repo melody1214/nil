@@ -103,6 +103,10 @@ func (s *service) RenameChunk(req *nilrpc.DGERenameChunkRequest, res *nilrpc.DGE
 }
 
 func (s *service) TruncateChunk(req *nilrpc.DGETruncateChunkRequest, res *nilrpc.DGETruncateChunkResponse) error {
+	if s.store.ChunkExist(req.Vol, req.Chunk) == false {
+		return fmt.Errorf("chunk is not exist")
+	}
+
 	truncateReq := &repository.Request{
 		Op:     repository.Write,
 		Vol:    req.Vol,

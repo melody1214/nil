@@ -70,6 +70,7 @@ func (s *service) Run() {
 				go s.handleCall(c)
 			}
 		case <-spinUpCheckTicker.C:
+			// fmt.Printf("spinUpCheckTicker, uid : %d\n", os.Getuid())
 			if os.Getuid() != 0 {
 				if c, err := s.CheckSpinUp(); err == nil {
 					fmt.Printf("Migrate Data..\n")
@@ -547,6 +548,18 @@ func (s *service) MigrateData(DestPartID string) error {
 	}
 
 	return nil
+}
+
+func (s *service) ChunkExist(pgID, chkID string) bool {
+	pg, ok := s.pgs[pgID]
+	if ok == false {
+		return false
+	}
+
+	pg.Lock.Chk.RLock()
+	_, ok = pg.ChunkMap[chkID]
+	pg.Lock.Chk.RUnlock()
+	return ok
 }
 
 func (s *service) GetObjectSize(pgID, objID string) (int64, bool) {

@@ -20,6 +20,7 @@ func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 	req, err := h.requestEventFactory.CreateRequestEvent(w, r)
 	if err == client.ErrInvalidProtocol {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	// Extract bucket name and object name.
@@ -53,7 +54,7 @@ func (h *handlers) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 
 	const primary = 0
 	proxy := httputil.NewSingleHostReverseProxy(rpURL)
-	r.Header.Add("Volume-Id", eg.Vols[primary].String())
+	r.Header.Add("Volume-Id", eg.Vols[primary].ID.String())
 	r.Header.Add("Local-Chain-Id", eg.ID.String())
 	r.Header.Add("Request-Type", client.WriteToPrimary.String())
 	proxy.ErrorLog = log.New(logger.Writer(), "http reverse proxy", log.Lshortfile)
@@ -67,10 +68,9 @@ func (h *handlers) findRandomPlaceToWrite() (cmap.EncodingGroup, cmap.Node, erro
 		return cmap.EncodingGroup{}, cmap.Node{}, errors.Wrap(err, "failed to search writable encoding group")
 	}
 
-	const primary = 0
-	vol, err := c.Volume().ID(eg.Vols[primary]).Status(cmap.VolActive).Do()
+	vol, err := c.Volume().ID(eg.LeaderVol()).Status(cmap.VolActive).Do()
 	if err != nil {
-		return cmap.EncodingGroup{}, cmap.Node{}, errors.Wrapf(err, "failed to search active volume %+v", eg.Vols[primary])
+		return cmap.EncodingGroup{}, cmap.Node{}, errors.Wrapf(err, "failed to search active volume %+v", eg.LeaderVol())
 	}
 
 	node, err := c.Node().ID(vol.Node).Status(cmap.NodeAlive).Do()

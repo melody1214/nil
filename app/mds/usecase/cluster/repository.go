@@ -20,6 +20,8 @@ type Repository interface {
 	Rollback(repository.TxID) error
 	Commit(repository.TxID) error
 	Open(raftL *nilmux.Layer) error
+	FindGblChunks(egID cmap.ID) ([]int, error)
+	SelectRegions(here string) ([]string, error)
 	Close() error
 
 	// jobRepository methods.
@@ -29,6 +31,11 @@ type Repository interface {
 	RegisterVolume(txid repository.TxID, v *cmap.Volume) error
 	MakeNewEncodingGroup(txid repository.TxID, encGrp *cmap.EncodingGroup) error
 	FindReplaceableVolume(txid repository.TxID, failedEG *cmap.EncodingGroup, failedVol *cmap.Volume, failureDomain ...cmap.ID) (cmap.ID, error)
+	SetEGV(txid repository.TxID, egID cmap.ID, role int, volID, moveTo cmap.ID) error
+	VolEGIncr(txid repository.TxID, vID cmap.ID) error
+	VolEGDecr(txid repository.TxID, vID cmap.ID) error
+	FindAllChunks(egID cmap.ID, status string) ([]int, error)
+	RecoveryFinishEG(txid repository.TxID, egID cmap.ID) error
 }
 
 // jobRepository is repository for storing and tracking jobs.
@@ -41,6 +48,8 @@ type jobRepository interface {
 	UpdateJob(repository.TxID, *Job) error
 	LocalJoin(cmap.Node) error
 
+	FindGblChunks(egID cmap.ID) ([]int, error)
+	SelectRegions(here string) ([]string, error)
 	GetNewClusterMapVer(repository.TxID) (cmap.Version, error)
 	FindAllNodes(repository.TxID) ([]cmap.Node, error)
 	FindAllVolumes(repository.TxID) (vols []cmap.Volume, err error)
@@ -48,6 +57,11 @@ type jobRepository interface {
 	RegisterVolume(txid repository.TxID, v *cmap.Volume) error
 	MakeNewEncodingGroup(txid repository.TxID, encGrp *cmap.EncodingGroup) error
 	FindReplaceableVolume(txid repository.TxID, failedEG *cmap.EncodingGroup, failedVol *cmap.Volume, failureDomain ...cmap.ID) (cmap.ID, error)
+	SetEGV(txid repository.TxID, egID cmap.ID, role int, volID, moveTo cmap.ID) error
+	VolEGIncr(txid repository.TxID, vID cmap.ID) error
+	VolEGDecr(txid repository.TxID, vID cmap.ID) error
+	FindAllChunks(egID cmap.ID, status string) ([]int, error)
+	RecoveryFinishEG(txid repository.TxID, egID cmap.ID) error
 }
 
 func newJobRepository(r Repository) jobRepository {

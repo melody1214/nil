@@ -125,8 +125,8 @@ func (s *clusterStore) FindAllVolumes(txid repository.TxID) (vols []cmap.Volume,
 			FROM
 				encoding_group_volume
 			WHERE
-				egv_volume=%d
-			`, v.ID,
+				egv_volume=%d OR egv_move_to=%d
+			`, v.ID, v.ID,
 		)
 
 		var egID cmap.ID
@@ -184,17 +184,15 @@ func (s *clusterStore) FindAllEncGrps(txid repository.TxID) (egs []cmap.Encoding
 	return
 }
 
-func (s *clusterStore) FindAllEncGrpVols(txid repository.TxID, id cmap.ID) (vols []cmap.ID, err error) {
+func (s *clusterStore) FindAllEncGrpVols(txid repository.TxID, id cmap.ID) (vols []cmap.EGVol, err error) {
 	q := fmt.Sprintf(
 		`
 		SELECT
-			egv_volume
+			egv_volume, egv_move_to
 		FROM
 			encoding_group_volume
 		WHERE
 			egv_encoding_group = '%s'
-		ORDER BY 
-			egv_role DESC
 		`, id.String(),
 	)
 
@@ -205,18 +203,50 @@ func (s *clusterStore) FindAllEncGrpVols(txid repository.TxID, id cmap.ID) (vols
 	}
 	defer rows.Close()
 
-	vols = make([]cmap.ID, 0)
+	vols = make([]cmap.EGVol, 0)
 	for rows.Next() {
-		var volID cmap.ID
+		var v cmap.EGVol
 
-		if err = rows.Scan(&volID); err != nil {
+		if err = rows.Scan(&v.ID, &v.MoveTo); err != nil {
 			return nil, err
 		}
 
-		vols = append(vols, volID)
+		vols = append(vols, v)
 	}
 
 	return
+}
+
+func (s *clusterStore) FindAllChunks(egID cmap.ID, status string) ([]int, error) {
+	list := make([]int, 0)
+
+	q := fmt.Sprintf(
+		`
+		SELECT
+			chk_id
+		FROM
+			chunk
+		WHERE
+			chk_encoding_group=%d AND chk_status='%s'
+		`, egID, status,
+	)
+
+	var rows *sql.Rows
+	rows, err := s.Query(repository.NotTx, q)
+	if err != nil {
+		return list, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var chunkID int
+		if err = rows.Scan(&chunkID); err != nil {
+			return list, err
+		}
+
+		list = append(list, chunkID)
+	}
+	return list, nil
 }
 
 func (s *clusterStore) GetNewClusterMapVer(txid repository.TxID) (cmap.Version, error) {
@@ -454,27 +484,43 @@ func (s *clusterStore) MakeNewEncodingGroup(txid repository.TxID, encGrp *cmap.E
 			`
 			INSERT INTO encoding_group_volume (egv_encoding_group, egv_volume, egv_role)
 			VALUES ('%d', '%d', '%d')
-			`, egID, v.Int64(), role,
+			`, egID, v.ID.Int64(), role,
 		)
 		_, err = s.Store.Execute(txid, q)
 		if err != nil {
 			return errors.Wrap(err, "failed to create volume in encoding group table")
 		}
 
-		q = fmt.Sprintf(
-			`
-			UPDATE volume
-			SET vl_encoding_group=vl_encoding_group+1
-			WHERE vl_id in ('%d')
-			`, v.Int64(),
-		)
-		_, err = s.Store.Execute(txid, q)
-		if err != nil {
+		if err = s.VolEGIncr(txid, v.ID); err != nil {
 			return errors.Wrap(err, "failed to increase encoding group counting in volume")
 		}
 	}
 
 	return nil
+}
+
+func (s *clusterStore) VolEGIncr(txid repository.TxID, vID cmap.ID) error {
+	q := fmt.Sprintf(
+		`
+		UPDATE volume
+		SET vl_encoding_group=vl_encoding_group+1
+		WHERE vl_id in ('%d')
+		`, vID,
+	)
+	_, err := s.Store.Execute(txid, q)
+	return err
+}
+
+func (s *clusterStore) VolEGDecr(txid repository.TxID, vID cmap.ID) error {
+	q := fmt.Sprintf(
+		`
+		UPDATE volume
+		SET vl_encoding_group=vl_encoding_group-1
+		WHERE vl_id in ('%d')
+		`, vID,
+	)
+	_, err := s.Store.Execute(txid, q)
+	return err
 }
 
 func (s *clusterStore) UpdateChangedCMap(txid repository.TxID, m *cmap.CMap) error {
@@ -581,9 +627,112 @@ func (s *clusterStore) FindReplaceableVolume(txid repository.TxID, failedEG *cma
 	for _, id := range failureDomain {
 		q += " AND vl_node!=" + id.String()
 	}
-	q += " ORDER BY vl_encoding_group DESC"
+	q += " ORDER BY vl_encoding_group ASC"
 
 	var selected cmap.ID
 	err := s.QueryRow(txid, q).Scan(&selected)
 	return selected, err
+}
+
+func (s *clusterStore) SetEGV(txid repository.TxID, egID cmap.ID, role int, volID, moveTo cmap.ID) error {
+	q := fmt.Sprintf(
+		`
+		UPDATE encoding_group_volume
+		SET egv_volume=%d, egv_move_to=%d
+		WHERE egv_encoding_group=%d AND egv_role=%d
+		`, volID, moveTo, egID, role,
+	)
+	_, err := s.Execute(txid, q)
+	return err
+}
+
+func (s *clusterStore) RecoveryFinishEG(txid repository.TxID, egID cmap.ID) error {
+	q := fmt.Sprintf(
+		`
+		SELECT COUNT(*)
+		FROM volume
+		WHERE vl_status!='%s' AND vl_id IN (
+			SELECT egv_volume
+			FROM encoding_group_volume
+			WHERE egv_encoding_group=%d
+		)
+		`, cmap.VolActive, egID,
+	)
+
+	var count int
+	err := s.QueryRow(txid, q).Scan(&count)
+	if err != nil {
+		return fmt.Errorf("error in recovery finish eg: %v", err)
+	}
+
+	if count != 0 {
+		return fmt.Errorf("still have errored volume")
+	}
+
+	q = fmt.Sprintf(
+		`
+		UPDATE encoding_group
+		SET eg_status='%s'
+		WHERE eg_id=%d
+		`, cmap.EGAlive, egID,
+	)
+	_, err = s.Execute(txid, q)
+	return err
+}
+
+func (s *clusterStore) FindGblChunks(egID cmap.ID) ([]int, error) {
+	q := fmt.Sprintf(
+		`
+		SELECT chk_id
+		FROM chunk
+		WHERE chk_encoding_group=%d AND chk_status='G'
+		`, egID.Int64(),
+	)
+
+	rows, err := s.Query(repository.NotTx, q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	chunks := make([]int, 0)
+	for rows.Next() {
+		var c int
+
+		if err = rows.Scan(&c); err != nil {
+			return nil, err
+		}
+
+		chunks = append(chunks, c)
+	}
+	return chunks, nil
+}
+
+func (s *clusterStore) SelectRegions(here string) ([]string, error) {
+	q := fmt.Sprintf(
+		`
+		SELECT rg_end_point
+		FROM region
+		WHERE rg_name != '%s'
+		ORDER BY rand() limit 3
+		`, here,
+	)
+
+	rows, err := s.Query(repository.NotTx, q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	eps := make([]string, 0)
+	for rows.Next() {
+		var ep string
+
+		if err = rows.Scan(&ep); err != nil {
+			return nil, err
+		}
+
+		eps = append(eps, ep)
+	}
+	return eps, nil
 }

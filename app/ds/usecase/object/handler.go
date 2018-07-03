@@ -43,7 +43,7 @@ func NewHandlers(cfg *config.Ds, cmapAPI cmap.SlaveAPI, f *cr.RequestEventFactor
 		return nil, err
 	}
 
-	pool := newChunkPool(cmapAPI, shards, chunkSize, s.GetChunkHeaderSize(), s.GetObjectHeaderSize(), chunkSize-40000)
+	pool := newChunkPool(cmapAPI, shards, chunkSize, s.GetChunkHeaderSize(), s.GetObjectHeaderSize(), chunkSize-300000)
 
 	ed, err := newEndec(cmapAPI, pool, s)
 	if err != nil {
@@ -91,6 +91,57 @@ func (h *handlers) GetChunkHandler(w http.ResponseWriter, r *http.Request) {
 		Cid:    r.Header.Get("Chunk-Name"),
 		Osize:  h.chunkPool.chunkSize,
 		Out:    w,
+	}
+
+	shard := r.Header.Get("Shard")
+	if shard != "" {
+		truncateReq := &repository.Request{
+			Op:     repository.Write,
+			Vol:    r.Header.Get("Volume"),
+			LocGid: r.Header.Get("Encoding-Group"),
+			Oid:    "fake, just for truncating",
+			Osize:  1000000000,
+			Cid:    r.Header.Get("Chunk-Name") + "_" + shard,
+			In:     &io.PipeReader{},
+			Md5:    "fakemd5stringfakemd5stringfakemd",
+		}
+
+		c, ok := h.chunkPool.pool[chunkID(storeReq.Cid)[2:]]
+		if ok {
+			if err := h.store.Push(truncateReq); err != nil {
+				logger.Error(errors.Wrap(err, "failed to push truncated request"))
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			if err := truncateReq.Wait(); err == nil {
+				logger.Error(fmt.Errorf("truncate request returns no error"))
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			} else if err.Error() != "truncated" {
+				logger.Error(errors.Wrap(err, "failed to truncat chunk"))
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			h.chunkPool.FinishWriting(chunkID(truncateReq.Cid), h.chunkPool.chunkSize)
+		}
+
+		c, ok = h.chunkPool.writing[chunkID(storeReq.Cid[2:])]
+		if ok {
+			err := fmt.Errorf("try later. requested chunk is writing now")
+			logger.Error(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		c, ok = h.chunkPool.encoding[chunkID(storeReq.Cid[2:])]
+		if ok && c.encoding {
+			err := fmt.Errorf("try later. requested chunk is encoding now")
+			logger.Error(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		storeReq.Cid = storeReq.Cid + "_" + shard
 	}
 
 	h.store.Push(storeReq)
@@ -225,7 +276,7 @@ func (h *handlers) writeToRemoteFollower(req client.RequestEvent, size int64, ci
 		return errors.Wrapf(err, "failed to find such encoding group: %d", encGrpID)
 	}
 
-	vol, err := call.Volume().ID(encGrp.Vols[c.shard]).Do()
+	vol, err := call.Volume().ID(encGrp.Vols[c.shard].ID).Do()
 	if err != nil {
 		return errors.Wrapf(err, "failed to find such volume: %d", encGrp.Vols[c.shard])
 	}
@@ -244,7 +295,7 @@ func (h *handlers) writeToRemoteFollower(req client.RequestEvent, size int64, ci
 		Vol:    string(c.volume),
 		LocGid: string(c.encodingGroup),
 		Oid:    strings.Replace(strings.Trim(req.Request().RequestURI, "/"), "/", ".", -1),
-		Cid:    string(c.id),
+		Cid:    string(cid),
 		Osize:  size,
 
 		Out: pWriter,
@@ -267,7 +318,7 @@ func (h *handlers) writeToRemoteFollower(req client.RequestEvent, size int64, ci
 	headers := client.NewHeaders()
 	headers.SetLocalChainID(encGrp.ID.String())
 	headers.SetVolumeID(vol.ID.String())
-	headers.SetChunkID(string(c.id))
+	headers.SetChunkID(c.status.String() + "_" + string(c.id))
 	headers.SetMD5(req.MD5())
 
 	copyReq, err := cr.NewRequest(
@@ -465,6 +516,15 @@ func (h *handlers) DeleteObjectHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "not implemented", http.StatusNotImplemented)
 }
 
+func (h *handlers) SetChunkPool(req *nilrpc.DOBSetChunkPoolRequest, res *nilrpc.DOBSetChunkPoolResponse) error {
+	return h.chunkPool.moveChunk(
+		egID(req.EG.String()),
+		vID(req.Vol.String()),
+		chunkID(req.ID),
+		req.Shard,
+	)
+}
+
 // Handlers is the interface that provides client http handlers.
 type Handlers interface {
 	PutObjectHandler(w http.ResponseWriter, r *http.Request)
@@ -472,4 +532,19 @@ type Handlers interface {
 	DeleteObjectHandler(w http.ResponseWriter, r *http.Request)
 	GetChunkHandler(w http.ResponseWriter, r *http.Request)
 	PutChunkHandler(w http.ResponseWriter, r *http.Request)
+	RPCHandler() RPCHandler
+}
+
+// RPCHandler returns the RPC handler which will handle
+// the requests from the delivery layer.
+func (h *handlers) RPCHandler() RPCHandler {
+	// This is a trick to hide inadvertently exposed methods,
+	// such as Join() or Leave().
+	type handler struct{ RPCHandler }
+	return handler{RPCHandler: h}
+}
+
+// RPCHandler is the interface that provides clustermap domain's rpc handlers.
+type RPCHandler interface {
+	SetChunkPool(*nilrpc.DOBSetChunkPoolRequest, *nilrpc.DOBSetChunkPoolResponse) error
 }
