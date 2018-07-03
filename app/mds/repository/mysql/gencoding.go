@@ -79,8 +79,11 @@ func (s *gencodingStore) GenerateGencodingGroup(regions []string) error {
 	}
 }
 
-func (s *gencodingStore) AmILeader() bool {
-	return s.raft.State() == raft.Leader
+func (s *gencodingStore) AmILeader() (bool, error) {
+	if s.raft == nil {
+		return false, fmt.Errorf("raft is not initialized yet")
+	}
+	return s.raft.State() == raft.Leader, nil
 }
 
 // MakeGlobalEncodingJob creates the global encoding job by the given token information.

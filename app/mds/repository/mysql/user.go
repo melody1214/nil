@@ -23,8 +23,11 @@ func NewUserRepository(s *Store) user.Repository {
 }
 
 // AmILeader returns true if I am the global cluster leader mds.
-func (s *userStore) AmILeader() bool {
-	return s.raft.State() == raft.Leader
+func (s *userStore) AmILeader() (bool, error) {
+	if s.raft == nil {
+		return false, fmt.Errorf("raft is not initialized yet")
+	}
+	return s.raft.State() == raft.Leader, nil
 }
 
 func (s *userStore) LeaderEndpoint() (endpoint string) {

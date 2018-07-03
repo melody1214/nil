@@ -114,7 +114,11 @@ func (s *service) setPrimaryChunk(primary token.Unencoded, jobID int64) error {
 // Get the token for encoding job.
 func (s *service) getEncodingJobToken() (*token.Token, error) {
 	// If this node is the leader of the global cluster.
-	if s.store.AmILeader() {
+	leader, err := s.store.AmILeader()
+	if err != nil {
+		return nil, err
+	}
+	if !leader {
 		return s.store.GetJob(s.cfg.Raft.LocalClusterRegion)
 	}
 

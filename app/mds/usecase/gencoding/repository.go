@@ -13,7 +13,7 @@ type Repository interface {
 	Commit(repository.TxID) error
 	GenerateGencodingGroup(regions []string) error
 	// UpdateUnencodedChunks(regionName string, unencoded int) error
-	AmILeader() bool
+	AmILeader() (bool, error)
 	LeaderEndpoint() string
 	// Make() (*Table, error)
 	RegionEndpoint(regionID int) (endpoint string)

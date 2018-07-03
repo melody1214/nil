@@ -32,7 +32,11 @@ func NewService(cfg *config.Mds, s Repository) Service {
 
 	go func() {
 		time.Sleep(10 * time.Second)
-		if !sv.store.AmILeader() {
+		leader, err := s.AmILeader()
+		if err != nil {
+			return
+		}
+		if !leader {
 			return
 		}
 
@@ -59,7 +63,11 @@ func (s *service) AddUser(req *nilrpc.MUSAddUserRequest, res *nilrpc.MUSAddUserR
 	// User is the globally shared metadata.
 	// If this node is not a leader but has received a request, it forwards
 	// the request to the leader node instead.
-	if !s.store.AmILeader() {
+	leader, err := s.store.AmILeader()
+	if err != nil {
+		return err
+	}
+	if !leader {
 		leaderEndpoint := s.store.LeaderEndpoint()
 		if leaderEndpoint == "" {
 			return fmt.Errorf("This node is not leader, and the leader is not exist in global cluster")
@@ -90,7 +98,11 @@ func (s *service) MakeBucket(req *nilrpc.MUSMakeBucketRequest, res *nilrpc.MUSMa
 	// Bucket is the globally shared metadata.
 	// If this node is not a leader but has received a request, it forwards
 	// the request to the leader node instead.
-	if !s.store.AmILeader() {
+	leader, err := s.store.AmILeader()
+	if err != nil {
+		return err
+	}
+	if !leader {
 		leaderEndpoint := s.store.LeaderEndpoint()
 		if leaderEndpoint == "" {
 			return fmt.Errorf("This node is not leader, and the leader is not exist in global cluster")
@@ -108,7 +120,7 @@ func (s *service) MakeBucket(req *nilrpc.MUSMakeBucketRequest, res *nilrpc.MUSMa
 		return cli.Call(nilrpc.MdsUserMakeBucket.String(), req, res)
 	}
 
-	err := s.store.MakeBucket(req.BucketName, req.AccessKey, req.Region)
+	err = s.store.MakeBucket(req.BucketName, req.AccessKey, req.Region)
 	if err == repository.ErrDuplicateEntry {
 		res.S3ErrCode = s3.ErrBucketAlreadyExists
 	} else if err != nil {

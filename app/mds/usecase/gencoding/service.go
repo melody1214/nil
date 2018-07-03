@@ -77,7 +77,11 @@ func (s *service) run() {
 		select {
 		case <-issueTokenTicker.C:
 			// Only global cluster leader can issue encoding tokens.
-			if !s.store.AmILeader() {
+			leader, err := s.store.AmILeader()
+			if err != nil {
+				break
+			}
+			if !leader {
 				break
 			}
 
@@ -293,21 +297,33 @@ func (s *service) GetEncodingJob(req *nilrpc.MGEGetEncodingJobRequest, res *nilr
 }
 
 func (s *service) SetJobStatus(req *nilrpc.MGESetJobStatusRequest, res *nilrpc.MGESetJobStatusResponse) error {
-	if !s.store.AmILeader() {
+	leader, err := s.store.AmILeader()
+	if err != nil {
+		return err
+	}
+	if !leader {
 		return s.setJobStatus(req.ID, Status(req.Status))
 	}
 	return s.store.SetJobStatus(req.ID, Status(req.Status))
 }
 
 func (s *service) SetPrimaryChunk(req *nilrpc.MGESetPrimaryChunkRequest, res *nilrpc.MGESetPrimaryChunkResponse) error {
-	if !s.store.AmILeader() {
+	leader, err := s.store.AmILeader()
+	if err != nil {
+		return err
+	}
+	if !leader {
 		return s.setPrimaryChunk(req.Primary, req.Job)
 	}
 	return s.store.SetPrimaryChunk(req.Primary, req.Job)
 }
 
 func (s *service) JobFinished(req *nilrpc.MGEJobFinishedRequest, res *nilrpc.MGEJobFinishedResponse) error {
-	if !s.store.AmILeader() {
+	leader, err := s.store.AmILeader()
+	if err != nil {
+		return err
+	}
+	if !leader {
 		return s.jobFinished(&req.Token)
 	}
 	return s.store.JobFinished(&req.Token)
@@ -337,7 +353,11 @@ func (s *service) jobFinished(t *token.Token) error {
 
 func (s *service) garbageCollect() {
 	// Remove failed or timeouted jobs.
-	if !s.store.AmILeader() {
+	leader, err := s.store.AmILeader()
+	if err != nil {
+		return
+	}
+	if !leader {
 		return
 	}
 
