@@ -93,6 +93,7 @@ func (s *service) AddVolume(req *nilrpc.DCLAddVolumeRequest, res *nilrpc.DCLAddV
 	// 2) Add lv to the store service.
 	if err := s.store.AddVolume(vol); err != nil {
 		// TODO: remove added volume in the mds.
+		logger.Error(err)
 		return err
 	}
 

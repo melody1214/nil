@@ -70,7 +70,7 @@ func (s *service) Run() {
 				go s.handleCall(c)
 			}
 		case <-spinUpCheckTicker.C:
-			fmt.Printf("spinUpCheckTicker, uid : %d\n", os.Getuid())
+			// fmt.Printf("spinUpCheckTicker, uid : %d\n", os.Getuid())
 			if os.Getuid() != 0 {
 				if c, err := s.CheckSpinUp(); err == nil {
 					fmt.Printf("Migrate Data..\n")
