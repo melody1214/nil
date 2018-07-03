@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/chanyoung/nil/app/ds/repository"
@@ -22,9 +24,11 @@ import (
 // service is the backend store service.
 type service struct {
 	pgs          map[string]*pg
+	devs         map[string]*dev
 	basePath     string
 	requestQueue queue
 	pushCh       chan interface{}
+	devLock      sync.RWMutex
 }
 
 // NewService returns a new backend store service.
@@ -32,6 +36,7 @@ func NewService(basePath string) repository.Service {
 	return &service{
 		basePath: basePath,
 		pgs:      map[string]*pg{},
+		devs:     map[string]*dev{},
 		pushCh:   make(chan interface{}, 1),
 	}
 }
@@ -42,6 +47,7 @@ func newService(basePath string) *service {
 	return &service{
 		basePath: basePath,
 		pgs:      map[string]*pg{},
+		devs:     map[string]*dev{},
 		pushCh:   make(chan interface{}, 1),
 	}
 }
@@ -49,7 +55,8 @@ func newService(basePath string) *service {
 // Run starts to serve backend store service.
 func (s *service) Run() {
 	checkTicker := time.NewTicker(100 * time.Millisecond)
-	spinUpTicker := time.NewTicker(30 * time.Second)
+	spinUpCheckTicker := time.NewTicker(10 * time.Second)
+	spinDownTicker := time.NewTicker(15 * time.Second)
 
 	// TODO: change to do not pollin.
 	for {
@@ -62,8 +69,23 @@ func (s *service) Run() {
 			if c := s.requestQueue.pop(); c != nil {
 				go s.handleCall(c)
 			}
-		case <-spinUpTicker.C:
-			go s.MigrateData()
+		case <-spinUpCheckTicker.C:
+			fmt.Printf("spinUpCheckTicker, uid : %d\n", os.Getuid())
+			if os.Getuid() != 0 {
+				if c, err := s.CheckSpinUp(); err == nil {
+					fmt.Printf("Migrate Data..\n")
+					go s.MigrateData(c)
+				}
+			} else {
+				if c, err := s.checkSpinUp(); err == nil {
+					fmt.Printf("Migrate data......\n")
+					go s.MigrateData(c)
+				}
+			}
+		case <-spinDownTicker.C:
+			for p, dev := range s.devs {
+				go s.SpinDown(p, dev)
+			}
 		}
 	}
 }
@@ -114,15 +136,299 @@ func (s *service) AddVolume(v *repository.Vol) error {
 		Vol: v,
 	}
 
+	// Get a path of block device files using mount point of cold partitions, and assign that to dev.
+	for i := 1; 1 <= int(v.SubPartGroup.Cold.NumOfPart); i++ {
+		partID := "cold_part" + strconv.Itoa(i)
+
+		s.devLock.RLock()
+		_, ok := s.devs[partID]
+		if ok {
+			break
+		}
+		s.devLock.RUnlock()
+
+		re := regexp.MustCompile("/dev/sd.?")
+
+		devPath, err := exec.Command("di", "-n", "-f", "S", v.MntPoint+"/"+partID).CombinedOutput()
+		if err != nil {
+			return err
+		}
+
+		t := time.Now()
+		tn := t.Nanosecond()
+
+		s.devLock.Lock()
+		s.devs[partID] = &dev{
+			Name:      re.FindString(string(devPath)),
+			Timestamp: uint(tn),
+		}
+		s.devLock.Unlock()
+	}
+
+	// Get a path of block device files using mount point of hot partitions, and assign that to dev.
+	for i := 1; i <= int(v.SubPartGroup.Hot.NumOfPart); i++ {
+		partID := "hot_part" + strconv.Itoa(i)
+
+		s.devLock.RLock()
+		_, ok := s.devs[partID]
+		if ok {
+			break
+		}
+		s.devLock.RUnlock()
+
+		re := regexp.MustCompile("/dev/sd.?")
+
+		devPath, err := exec.Command("di", "-n", "-f", "S", v.MntPoint+"/"+partID).CombinedOutput()
+		if err != nil {
+			return err
+		}
+
+		t := time.Now()
+		tn := t.Nanosecond()
+
+		s.devLock.Lock()
+		s.devs[partID] = &dev{
+			Name:      re.FindString(string(devPath)),
+			State:     "Active",
+			Timestamp: uint(tn),
+		}
+		s.devLock.Unlock()
+	}
+
+	// Check the user previllige and initially spin-down cold storages.
+	s.devLock.Lock()
+	if os.Getuid() != 0 {
+		for partID, di := range s.devs {
+			if strings.HasPrefix(partID, "cold_part") {
+				di.State = "Standby"
+			}
+		}
+	} else {
+		for partID, di := range s.devs {
+			if !strings.HasPrefix(partID, "cold_part") {
+				continue
+			}
+
+			_, err := exec.Command("sdparm", "--readonly", "--command=stop", di.Name).CombinedOutput()
+			if err != nil {
+				return err
+			}
+
+			di.State = "Standby"
+		}
+	}
+	s.devLock.Unlock()
+
 	// Set volume has running state.
 	v.Status = repository.Active
 
 	return nil
 }
 
+func getRWbytes(path string) (int, error) {
+	f, err := os.Open("/proc/diskstats")
+	if err != nil {
+		return -1, err
+	}
+
+	defer f.Close()
+
+	var diskstat []string
+	var reads uint64
+	var writes uint64
+
+	r := bufio.NewReader(f)
+
+	for {
+		line, err := r.ReadString('\n')
+		if err != nil {
+			break
+		}
+		diskstat = append(diskstat, strings.Trim(line, "\n"))
+	}
+
+	for _, line := range diskstat {
+		fields := strings.Fields(line)
+
+		if len(fields) < 14 {
+			// malformed line in /proc/diskstats
+			continue
+		}
+		name := fields[2]
+
+		if !strings.HasSuffix(path, name) {
+			continue
+		}
+
+		reads, err = strconv.ParseUint((fields[3]), 10, 64)
+		if err != nil {
+			return -1, err
+		}
+
+		writes, err = strconv.ParseUint((fields[7]), 10, 64)
+		if err != nil {
+			return -1, err
+		}
+		break
+	}
+
+	// TODO: Need to change unit in bytes
+	totalIO := reads + writes
+	return int(totalIO), nil
+}
+
+func (s *service) SpinDown(p string, d *dev) {
+	var oldTotalIO uint
+	var newTotalIO uint
+	var diffTotalIO uint
+	if !strings.HasPrefix(p, "cold_part") {
+		return
+	}
+
+	if d.State != "Active" {
+		return
+	}
+
+	if os.Getuid() != 0 {
+		s.devLock.RLock()
+		oldTotalIO = d.TotalIO
+		s.devLock.RUnlock()
+	} else {
+		oldTotalIO, err := getRWbytes(d.Name)
+		if err != nil {
+			return
+		}
+		d.TotalIO = uint(oldTotalIO)
+	}
+
+	timer := time.NewTimer(10 * time.Second)
+	<-timer.C
+	fmt.Println("Timer expired")
+
+	if os.Getuid() != 0 {
+		s.devLock.RLock()
+		newTotalIO = d.TotalIO
+		s.devLock.RUnlock()
+	} else {
+		newTotalIO, err := getRWbytes(d.Name)
+		if err != nil {
+			return
+		}
+		d.TotalIO = uint(newTotalIO)
+	}
+
+	diffTotalIO = newTotalIO - oldTotalIO
+	// TODO: change threshold for diffTotalIO
+	if diffTotalIO > 0 {
+		return
+	}
+
+	t := time.Now()
+	tn := t.Nanosecond()
+
+	tDiff := uint(tn) - d.Timestamp
+	if os.Getuid() != 0 {
+		s.devLock.Lock()
+		d.State = "Standby"
+		d.Timestamp = uint(tn)
+		d.ActiveTime = d.ActiveTime + tDiff
+		s.devLock.Unlock()
+		return
+	}
+
+	_, err := exec.Command("sdparm", "--readonly", "--command=stop", d.Name).CombinedOutput()
+	if err != nil {
+		return
+	}
+
+	s.devLock.Lock()
+	d.State = "Standby"
+	d.Timestamp = uint(tn)
+	d.ActiveTime = d.ActiveTime + tDiff
+	s.devLock.Unlock()
+
+	return
+}
+
+// For test
+func (s *service) CheckSpinUp() (string, error) {
+	oldDev := dev{}
+	var spinUpPart = ""
+
+	s.devLock.RLock()
+	for part, dev := range s.devs {
+		fmt.Printf("%s\n", part)
+		if dev.State != "Active" {
+			continue
+		}
+		if !strings.HasPrefix(part, "cold_part") {
+			continue
+		}
+		if !strings.HasPrefix(spinUpPart, "cold_part") {
+			oldDev = *dev
+			spinUpPart = part
+			continue
+		}
+		if oldDev.Free < dev.Free {
+			oldDev = *dev
+			spinUpPart = part
+			continue
+		}
+	}
+	s.devLock.RUnlock()
+
+	if !strings.HasPrefix(spinUpPart, "cold_part") {
+		err := fmt.Errorf("there are no spin-up partitions")
+		return "", err
+	}
+	return spinUpPart, nil
+}
+
+// For real experimental environment
+func (s *service) checkSpinUp() (string, error) {
+	oldDev := dev{}
+	var spinUpPart = ""
+
+	s.devLock.Lock()
+	for part, dev := range s.devs {
+		cmd := exec.Command("smartctl", "-n", "standby", dev.Name)
+
+		err := cmd.Start()
+		if err != nil {
+			err = fmt.Errorf("error occurs during run of smartctl")
+			return "", err
+		}
+
+		err = cmd.Wait()
+		if err != nil {
+			continue
+		}
+
+		if !strings.HasPrefix(oldDev.Name, "/dev/sd") {
+			oldDev = *dev
+			spinUpPart = part
+			continue
+		}
+
+		if oldDev.Free < dev.Free {
+			oldDev = *dev
+			spinUpPart = part
+			continue
+		}
+	}
+	s.devLock.Unlock()
+
+	if !strings.HasPrefix(spinUpPart, "/dev/sd") {
+		err := fmt.Errorf("there are no spin-up disks")
+		return "", err
+	}
+	return spinUpPart, nil
+}
+
 // MigrateData moves data from service to archive archive.
-func (s *service) MigrateData() error {
+func (s *service) MigrateData(DestPartID string) error {
 	for _, pg := range s.pgs {
+		pg.Lock.Chk.RLock()
 		for key, value := range pg.ChunkMap {
 			// After check type of each chunks, migrate only parity chunk in hot storage into cold partition.
 			PartID := value.PartID
@@ -140,9 +446,9 @@ func (s *service) MigrateData() error {
 				}
 
 				// Scheduling for cold partitions.
-				pg.SubPartGroup.Cold.DiskSched = pg.SubPartGroup.Cold.DiskSched%pg.SubPartGroup.Cold.NumOfPart + 1
-				DiskSched := pg.SubPartGroup.Cold.DiskSched
-				DestPartID := "cold_part" + strconv.Itoa(int(DiskSched))
+				//pg.SubPartGroup.Cold.DiskSched = pg.SubPartGroup.Cold.DiskSched%pg.SubPartGroup.Cold.NumOfPart + 1
+				//DiskSched := pg.SubPartGroup.Cold.DiskSched
+				//DestPartID := "cold_part" + strconv.Itoa(int(DiskSched))
 
 				// Create a directory for a local group if not exist.
 				lgDir := pg.MntPoint + "/" + DestPartID + "/" + value.ChunkInfo.LocGid
@@ -157,11 +463,44 @@ func (s *service) MigrateData() error {
 				}
 
 				// Copy the chunk in the hot storage to the cold storage.
-				_, err = io.Copy(fChunkDest, fChunkSrc)
+				n, err := io.Copy(fChunkDest, fChunkSrc)
+
+				s.devLock.RLock()
+				dstDev, ok := s.devs[DestPartID]
+				if !ok {
+					err = fmt.Errorf("no such device named as such partition")
+					return err
+				}
+				s.devLock.RUnlock()
+
+				s.devLock.RLock()
+				srcDev, ok := s.devs[PartID]
+				if !ok {
+					err = fmt.Errorf("no such device named as such partition")
+					return err
+				}
+				s.devLock.RUnlock()
+
+				s.devLock.Lock()
+				srcDev.Used = srcDev.Used - uint(n)
+				srcDev.Free = srcDev.Free + uint(n)
+				srcDev.Size = srcDev.Used + srcDev.Free
+				srcDev.TotalIO = srcDev.TotalIO + uint(n)
+				s.devLock.Unlock()
+
+				s.devLock.Lock()
+				dstDev.Used = dstDev.Used + uint(n)
+				dstDev.Free = dstDev.Free - uint(n)
+				dstDev.Size = dstDev.Used + dstDev.Free
+				dstDev.TotalIO = dstDev.TotalIO + uint(n)
+				s.devLock.Unlock()
 
 				// Update ChunkMap for complitely migrated chunk.
 				value.PartID = DestPartID
+
+				pg.Lock.Chk.Lock()
 				pg.ChunkMap[key] = value
+				pg.Lock.Chk.Unlock()
 
 				err = fChunkSrc.Close()
 				if err != nil {
@@ -294,6 +633,29 @@ func (s *service) read(r *repository.Request) {
 	}
 	defer fChunk.Close()
 
+	// If the partition is one of the spin-down disks, spin-up the disk immediately.
+	s.devLock.RLock()
+	dev, ok := s.devs[chk.PartID]
+	if !ok {
+		r.Err = fmt.Errorf("no such partition in partgroup : %s", chk.PartID)
+		return
+	}
+	s.devLock.RUnlock()
+
+	t := time.Now()
+	tn := t.Nanosecond()
+	tDiff := uint(tn) - dev.Timestamp
+	dev.Timestamp = uint(tn)
+
+	s.devLock.Lock()
+	if dev.State == "Standby" {
+		dev.State = "Active"
+		dev.StandbyTime = dev.StandbyTime + tDiff
+	} else {
+		dev.ActiveTime = dev.ActiveTime + tDiff
+	}
+	s.devLock.Unlock()
+
 	// Seek offset beginning of the requested object in the chunk.
 	_, err = fChunk.Seek(obj.Offset, os.SEEK_SET)
 	if err != nil {
@@ -316,12 +678,15 @@ func (s *service) read(r *repository.Request) {
 	}
 
 	// Read contents of the requested object from the chunk.
-	_, err = io.CopyN(r.Out, fChunk, r.Osize)
+	n, err := io.CopyN(r.Out, fChunk, r.Osize)
 	if err != nil {
 		r.Err = err
 		return
 	}
 
+	if dev.Name != "" {
+		dev.TotalIO = dev.TotalIO + uint(n)
+	}
 	// Complete to read the requested object.
 	r.Err = nil
 	return
@@ -351,19 +716,47 @@ func (s *service) readAll(r *repository.Request) {
 	}
 	defer fChunk.Close()
 
+	// If the partition is one of the spin-down disks, spin-up the disk immediately.
+	s.devLock.RLock()
+	dev, ok := s.devs[chk.PartID]
+	if !ok {
+		r.Err = fmt.Errorf("no such partition in partgroup : %s", chk.PartID)
+		return
+	}
+	s.devLock.RUnlock()
+
+	t := time.Now()
+	tn := t.Nanosecond()
+	tDiff := uint(tn) - dev.Timestamp
+	dev.Timestamp = uint(tn)
+
+	s.devLock.Lock()
+	if dev.State == "Standby" {
+		dev.State = "Active"
+		dev.StandbyTime = dev.StandbyTime + tDiff
+	} else {
+		dev.ActiveTime = dev.ActiveTime + tDiff
+	}
+	s.devLock.Unlock()
+
 	// Read all contents from the chunk to a writer stream.
-	_, err = io.Copy(r.Out, fChunk)
+	n, err := io.Copy(r.Out, fChunk)
 	if err != nil {
 		r.Err = err
 		return
 	}
 
+	if dev.Name != "" {
+		dev.TotalIO = dev.TotalIO + uint(n)
+	}
 	// Complete to read the all contents from the chunk.
 	r.Err = nil
 	return
 }
 
 func (s *service) write(r *repository.Request) {
+	var totalWrite uint
+
 	// Find and get a logical volume.
 	pg, ok := s.pgs[r.Vol]
 	if !ok {
@@ -456,6 +849,8 @@ func (s *service) write(r *repository.Request) {
 			r.Err = err
 			return
 		}
+
+		totalWrite = totalWrite + uint(n)
 	}
 	// Get an information of the chunk.
 	fChunkInfo, err = os.Lstat(fChunkName)
@@ -500,12 +895,41 @@ func (s *service) write(r *repository.Request) {
 
 	//fmt.Println(b.Len())
 
+	// If the partition is one of the spin-down disks, spin-up the disk immediately.
+	s.devLock.RLock()
+	dev, ok := s.devs[chk.PartID]
+	if !ok {
+		r.Err = fmt.Errorf("no such partition in partgroup : %s", chk.PartID)
+		return
+	}
+	s.devLock.RUnlock()
+
+	t := time.Now()
+	tn := t.Nanosecond()
+	tDiff := uint(tn) - dev.Timestamp
+	dev.Timestamp = uint(tn)
+
+	s.devLock.Lock()
+	if dev.State == "Standby" {
+		dev.State = "Active"
+		dev.StandbyTime = dev.StandbyTime + tDiff
+	} else {
+		dev.ActiveTime = dev.ActiveTime + tDiff
+	}
+	s.devLock.Unlock()
+
 	// Check whether the chunk is full or has not enough space to write the object.
 	if fChunkLen >= pg.ChunkSize {
 		r.Err = fmt.Errorf("chunk full")
 		return
 	} else if fChunkLen+int64(b.Len())+r.Osize > pg.ChunkSize {
 		err = fChunk.Truncate(pg.ChunkSize)
+		totalWrite = totalWrite + uint(pg.ChunkSize-fChunkLen)
+		if dev.Name != "" {
+			dev.TotalIO = dev.TotalIO + totalWrite
+			dev.Free = dev.Free - totalWrite
+			dev.Used = dev.Used + totalWrite
+		}
 		r.Err = fmt.Errorf("truncated")
 		return
 	}
@@ -522,6 +946,7 @@ func (s *service) write(r *repository.Request) {
 
 	// Write the object header into the chunk.
 	n, err := fChunk.Write(b.Bytes())
+	totalWrite = totalWrite + uint(n)
 	//fmt.Printf("buf len: %d, object written: %d\n", b.Len(), n)
 
 	// ToDo: implement more information of cHeader.
@@ -551,6 +976,12 @@ func (s *service) write(r *repository.Request) {
 
 	pg.Lock.Obj.Unlock()
 
+	if dev.Name != "" {
+		dev.TotalIO = dev.TotalIO + totalWrite + uint(r.Osize)
+		dev.Free = dev.Free - (totalWrite + uint(r.Osize))
+		dev.Used = dev.Used + (totalWrite + uint(r.Osize))
+	}
+
 	// Complete to write the object into the chunk.
 	r.Err = nil
 	return
@@ -565,7 +996,7 @@ func (s *service) writeAll(r *repository.Request) {
 	}
 
 	pg.Lock.Chk.RLock()
-	_, ok = pg.ChunkMap[r.Cid]
+	chk, ok := pg.ChunkMap[r.Cid]
 	pg.Lock.Chk.RUnlock()
 	if ok {
 		r.Err = fmt.Errorf("chunk is already exists: %s", r.Cid)
@@ -607,6 +1038,35 @@ func (s *service) writeAll(r *repository.Request) {
 		},
 	}
 	pg.Lock.Chk.Unlock()
+
+	// If the partition is one of the spin-down disks, spin-up the disk immediately.
+	s.devLock.RLock()
+	dev, ok := s.devs[chk.PartID]
+	if !ok {
+		r.Err = fmt.Errorf("no such partition in partgroup : %s", chk.PartID)
+		return
+	}
+	s.devLock.RUnlock()
+
+	t := time.Now()
+	tn := t.Nanosecond()
+	tDiff := uint(tn) - dev.Timestamp
+	dev.Timestamp = uint(tn)
+
+	s.devLock.Lock()
+	if dev.State == "Standby" {
+		dev.State = "Active"
+		dev.StandbyTime = dev.StandbyTime + tDiff
+	} else {
+		dev.ActiveTime = dev.ActiveTime + tDiff
+	}
+	s.devLock.Unlock()
+
+	if dev.Name != "" {
+		dev.TotalIO = dev.TotalIO + uint(n)
+		dev.Free = dev.Free - uint(n)
+		dev.Used = dev.Used + uint(n)
+	}
 
 	// Completely write the chunk.
 	r.Err = nil
@@ -666,7 +1126,15 @@ func (s *service) deleteReal(r *repository.Request) {
 		}
 		pg.Lock.Obj.Unlock()
 
-		err := os.Remove(lgDir + "/" + r.Cid)
+		fChunkInfo, err := os.Lstat(lgDir + "/" + r.Cid)
+		if err != nil {
+			r.Err = err
+			return
+		}
+
+		fChunkLen := fChunkInfo.Size()
+
+		err = os.Remove(lgDir + "/" + r.Cid)
 		if err != nil {
 			r.Err = fmt.Errorf("no such chunk: %s", r.Cid)
 			return
@@ -675,6 +1143,16 @@ func (s *service) deleteReal(r *repository.Request) {
 		pg.Lock.Chk.Lock()
 		delete(pg.ChunkMap, r.Cid)
 		pg.Lock.Chk.Unlock()
+
+		s.devLock.RLock()
+		dev, ok := s.devs[chk.PartID]
+		if ok {
+			dev.TotalIO = dev.TotalIO + uint(fChunkLen)
+			dev.Used = dev.Used - uint(fChunkLen)
+			dev.Free = dev.Free + uint(fChunkLen)
+			dev.Size = dev.Used + dev.Free
+		}
+		s.devLock.RUnlock()
 
 		r.Err = nil
 		return
@@ -728,6 +1206,17 @@ func (s *service) deleteReal(r *repository.Request) {
 	pg.Lock.Obj.Lock()
 	delete(pg.ObjMap, r.Oid)
 	pg.Lock.Obj.Unlock()
+
+	s.devLock.RLock()
+	dev, ok := s.devs[chk.PartID]
+	s.devLock.RUnlock()
+
+	if ok {
+		dev.TotalIO = dev.TotalIO + uint(fChunkLen-obj.Offset)
+		dev.Free = dev.Free + uint(fChunkLen-obj.Offset)
+		dev.Used = dev.Free - uint(fChunkLen-obj.Offset)
+		dev.Size = dev.Free + dev.Used
+	}
 
 	r.Err = nil
 	return
