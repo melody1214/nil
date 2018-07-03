@@ -139,6 +139,16 @@ func (s *service) AddVolume(v *repository.Vol) error {
 	// Get a path of block device files using mount point of cold partitions, and assign that to dev.
 	for i := 1; 1 <= int(v.SubPartGroup.Cold.NumOfPart); i++ {
 		partID := "cold_part" + strconv.Itoa(i)
+		partPath := v.MntPoint + "/" + partID
+
+		_, err := os.Stat(partPath)
+		if os.IsNotExist(err) {
+			os.MkdirAll(partPath, 0775)
+		}
+
+		if uint(i) < v.SubPartGroup.Cold.NumOfPart {
+			continue
+		}
 
 		s.devLock.RLock()
 		_, ok := s.devs[partID]
@@ -147,9 +157,12 @@ func (s *service) AddVolume(v *repository.Vol) error {
 		}
 		s.devLock.RUnlock()
 
-		re := regexp.MustCompile("/dev/sd.?")
+		// For test
+		re := regexp.MustCompile(`/dev/loop[0-9]+`)
 
-		devPath, err := exec.Command("di", "-n", "-f", "S", v.MntPoint+"/"+partID).CombinedOutput()
+		//re := regexp.MustCompile("/dev/sd.?")
+
+		devPath, err := exec.Command("di", "-n", "-f", "S", partPath).CombinedOutput()
 		if err != nil {
 			return err
 		}
@@ -168,6 +181,16 @@ func (s *service) AddVolume(v *repository.Vol) error {
 	// Get a path of block device files using mount point of hot partitions, and assign that to dev.
 	for i := 1; i <= int(v.SubPartGroup.Hot.NumOfPart); i++ {
 		partID := "hot_part" + strconv.Itoa(i)
+		partPath := v.MntPoint + "/" + partID
+
+		_, err := os.Stat(partPath)
+		if os.IsNotExist(err) {
+			os.MkdirAll(partPath, 0775)
+		}
+
+		if uint(i) < v.SubPartGroup.Hot.NumOfPart {
+			continue
+		}
 
 		s.devLock.RLock()
 		_, ok := s.devs[partID]
@@ -176,9 +199,12 @@ func (s *service) AddVolume(v *repository.Vol) error {
 		}
 		s.devLock.RUnlock()
 
-		re := regexp.MustCompile("/dev/sd.?")
+		// For test
+		re := regexp.MustCompile(`/dev/loop[0-9]+`)
 
-		devPath, err := exec.Command("di", "-n", "-f", "S", v.MntPoint+"/"+partID).CombinedOutput()
+		//re := regexp.MustCompile("/dev/sd.?")
+
+		devPath, err := exec.Command("di", "-n", "-f", "S", partPath).CombinedOutput()
 		if err != nil {
 			return err
 		}
@@ -209,7 +235,7 @@ func (s *service) AddVolume(v *repository.Vol) error {
 				continue
 			}
 
-			_, err := exec.Command("sdparm", "--readonly", "--command=stop", di.Name).CombinedOutput()
+			_, err := exec.Command("hdparm", "-qy", di.Name).CombinedOutput()
 			if err != nil {
 				return err
 			}
@@ -336,7 +362,7 @@ func (s *service) SpinDown(p string, d *dev) {
 		return
 	}
 
-	_, err := exec.Command("sdparm", "--readonly", "--command=stop", d.Name).CombinedOutput()
+	_, err := exec.Command("hdparm", "-qy", d.Name).CombinedOutput()
 	if err != nil {
 		return
 	}
