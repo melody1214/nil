@@ -137,7 +137,7 @@ func (s *service) AddVolume(v *repository.Vol) error {
 	}
 
 	// Get a path of block device files using mount point of cold partitions, and assign that to dev.
-	for i := 1; 1 <= int(v.SubPartGroup.Cold.NumOfPart); i++ {
+	for i := 1; i <= int(v.SubPartGroup.Cold.NumOfPart); i++ {
 		partID := "cold_part" + strconv.Itoa(i)
 		partPath := v.MntPoint + "/" + partID
 
@@ -146,16 +146,12 @@ func (s *service) AddVolume(v *repository.Vol) error {
 			os.MkdirAll(partPath, 0775)
 		}
 
-		if uint(i) < v.SubPartGroup.Cold.NumOfPart {
-			continue
-		}
-
 		s.devLock.RLock()
 		_, ok := s.devs[partID]
+		s.devLock.RUnlock()
 		if ok {
 			break
 		}
-		s.devLock.RUnlock()
 
 		// For test
 		re := regexp.MustCompile(`/dev/loop[0-9]+`)
@@ -188,16 +184,12 @@ func (s *service) AddVolume(v *repository.Vol) error {
 			os.MkdirAll(partPath, 0775)
 		}
 
-		if uint(i) < v.SubPartGroup.Hot.NumOfPart {
-			continue
-		}
-
 		s.devLock.RLock()
 		_, ok := s.devs[partID]
+		s.devLock.RUnlock()
 		if ok {
 			break
 		}
-		s.devLock.RUnlock()
 
 		// For test
 		re := regexp.MustCompile(`/dev/loop[0-9]+`)
@@ -235,11 +227,13 @@ func (s *service) AddVolume(v *repository.Vol) error {
 				continue
 			}
 
-			_, err := exec.Command("hdparm", "-qy", di.Name).CombinedOutput()
-			if err != nil {
-				return err
+			if strings.HasPrefix(di.Name, "/dev/sd") {
+				_, err := exec.Command("hdparm", "-qy", di.Name).CombinedOutput()
+				if err != nil {
+					s.devLock.Unlock()
+					return err
+				}
 			}
-
 			di.State = "Standby"
 		}
 	}
@@ -362,9 +356,11 @@ func (s *service) SpinDown(p string, d *dev) {
 		return
 	}
 
-	_, err := exec.Command("hdparm", "-qy", d.Name).CombinedOutput()
-	if err != nil {
-		return
+	if strings.HasPrefix(d.Name, "/dev/sd") {
+		_, err := exec.Command("hdparm", "-qy", d.Name).CombinedOutput()
+		if err != nil {
+			return
+		}
 	}
 
 	s.devLock.Lock()
@@ -422,6 +418,7 @@ func (s *service) checkSpinUp() (string, error) {
 		err := cmd.Start()
 		if err != nil {
 			err = fmt.Errorf("error occurs during run of smartctl")
+			s.devLock.Unlock()
 			return "", err
 		}
 
@@ -454,7 +451,9 @@ func (s *service) checkSpinUp() (string, error) {
 // MigrateData moves data from service to archive archive.
 func (s *service) MigrateData(DestPartID string) error {
 	for _, pg := range s.pgs {
-		pg.Lock.Chk.RLock()
+		pg.Lock.Chk.Lock()
+		defer pg.Lock.Chk.Unlock()
+
 		for key, value := range pg.ChunkMap {
 			// After check type of each chunks, migrate only parity chunk in hot storage into cold partition.
 			PartID := value.PartID
@@ -493,19 +492,19 @@ func (s *service) MigrateData(DestPartID string) error {
 
 				s.devLock.RLock()
 				dstDev, ok := s.devs[DestPartID]
+				s.devLock.RUnlock()
 				if !ok {
 					err = fmt.Errorf("no such device named as such partition")
 					return err
 				}
-				s.devLock.RUnlock()
 
 				s.devLock.RLock()
 				srcDev, ok := s.devs[PartID]
+				s.devLock.RUnlock()
 				if !ok {
 					err = fmt.Errorf("no such device named as such partition")
 					return err
 				}
-				s.devLock.RUnlock()
 
 				s.devLock.Lock()
 				srcDev.Used = srcDev.Used - uint(n)
@@ -524,9 +523,7 @@ func (s *service) MigrateData(DestPartID string) error {
 				// Update ChunkMap for complitely migrated chunk.
 				value.PartID = DestPartID
 
-				pg.Lock.Chk.Lock()
 				pg.ChunkMap[key] = value
-				pg.Lock.Chk.Unlock()
 
 				err = fChunkSrc.Close()
 				if err != nil {
@@ -662,11 +659,11 @@ func (s *service) read(r *repository.Request) {
 	// If the partition is one of the spin-down disks, spin-up the disk immediately.
 	s.devLock.RLock()
 	dev, ok := s.devs[chk.PartID]
+	s.devLock.RUnlock()
 	if !ok {
 		r.Err = fmt.Errorf("no such partition in partgroup : %s", chk.PartID)
 		return
 	}
-	s.devLock.RUnlock()
 
 	t := time.Now()
 	tn := t.Nanosecond()
@@ -745,11 +742,11 @@ func (s *service) readAll(r *repository.Request) {
 	// If the partition is one of the spin-down disks, spin-up the disk immediately.
 	s.devLock.RLock()
 	dev, ok := s.devs[chk.PartID]
+	s.devLock.RUnlock()
 	if !ok {
 		r.Err = fmt.Errorf("no such partition in partgroup : %s", chk.PartID)
 		return
 	}
-	s.devLock.RUnlock()
 
 	t := time.Now()
 	tn := t.Nanosecond()
@@ -924,11 +921,11 @@ func (s *service) write(r *repository.Request) {
 	// If the partition is one of the spin-down disks, spin-up the disk immediately.
 	s.devLock.RLock()
 	dev, ok := s.devs[chk.PartID]
+	s.devLock.RUnlock()
 	if !ok {
 		r.Err = fmt.Errorf("no such partition in partgroup : %s", chk.PartID)
 		return
 	}
-	s.devLock.RUnlock()
 
 	t := time.Now()
 	tn := t.Nanosecond()
@@ -1068,11 +1065,11 @@ func (s *service) writeAll(r *repository.Request) {
 	// If the partition is one of the spin-down disks, spin-up the disk immediately.
 	s.devLock.RLock()
 	dev, ok := s.devs[chk.PartID]
+	s.devLock.RUnlock()
 	if !ok {
 		r.Err = fmt.Errorf("no such partition in partgroup : %s", chk.PartID)
 		return
 	}
-	s.devLock.RUnlock()
 
 	t := time.Now()
 	tn := t.Nanosecond()
