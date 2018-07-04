@@ -5,7 +5,8 @@ import (
 	"net/rpc"
 	"time"
 
-	"github.com/chanyoung/nil/app/gw/usecase/auth"
+	"github.com/chanyoung/nil/app/gw/application/auth"
+	"github.com/chanyoung/nil/app/gw/domain/model/cred"
 	"github.com/chanyoung/nil/pkg/client"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
@@ -24,7 +25,7 @@ func (h *handlers) MakeBucketHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sk, err := h.authHandlers.GetSecretKey(req.AccessKey())
+	sk, err := h.authHandlers.GetSecretKey(cred.Key(req.AccessKey()))
 	if err == auth.ErrInternal {
 		req.SendInternalError()
 		return
@@ -33,7 +34,7 @@ func (h *handlers) MakeBucketHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Auth(sk) == false {
+	if req.Auth(sk.String()) == false {
 		req.SendIncorrectKey()
 		return
 	}

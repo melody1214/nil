@@ -5,12 +5,12 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/chanyoung/nil/app/gw/application/admin"
+	"github.com/chanyoung/nil/app/gw/application/auth"
+	"github.com/chanyoung/nil/app/gw/application/client"
+	"github.com/chanyoung/nil/app/gw/application/clustermap"
 	"github.com/chanyoung/nil/app/gw/delivery"
-	"github.com/chanyoung/nil/app/gw/repository/inmem"
-	"github.com/chanyoung/nil/app/gw/usecase/admin"
-	"github.com/chanyoung/nil/app/gw/usecase/auth"
-	"github.com/chanyoung/nil/app/gw/usecase/client"
-	"github.com/chanyoung/nil/app/gw/usecase/clustermap"
+	"github.com/chanyoung/nil/app/gw/infrastructure/repository/inmem"
 	"github.com/chanyoung/nil/pkg/client/request"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -37,7 +37,7 @@ func Bootstrap(cfg config.Gw) error {
 	cfg.ID = uuid.Gen()
 
 	// Setup repository.
-	authCache := inmem.NewAuthRepository()
+	authCache := inmem.NewCredRepository()
 
 	// Setup request event factory.
 	requestEventFactory := request.NewRequestEventFactory()

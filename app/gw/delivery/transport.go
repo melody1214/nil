@@ -3,7 +3,7 @@ package delivery
 import (
 	"net/http"
 
-	"github.com/chanyoung/nil/app/gw/usecase/client"
+	"github.com/chanyoung/nil/app/gw/application/client"
 	"github.com/gorilla/mux"
 )
 

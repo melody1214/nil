@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/chanyoung/nil/app/gw/usecase/admin"
-	"github.com/chanyoung/nil/app/gw/usecase/client"
+	"github.com/chanyoung/nil/app/gw/application/admin"
+	"github.com/chanyoung/nil/app/gw/application/client"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"

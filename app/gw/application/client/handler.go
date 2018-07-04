@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/chanyoung/nil/app/gw/usecase/auth"
+	"github.com/chanyoung/nil/app/gw/application/auth"
 	"github.com/chanyoung/nil/pkg/client/request"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
@@ -25,7 +25,7 @@ type handlers struct {
 
 // NewHandlers creates a client handlers with necessary dependencies.
 func NewHandlers(cmapAPI cmap.SlaveAPI, f *request.RequestEventFactory, authHandlers auth.Handlers) Handlers {
-	logger = mlog.GetPackageLogger("app/gw/usecase/client")
+	logger = mlog.GetPackageLogger("app/gw/application/client")
 
 	return &handlers{
 		requestEventFactory: f,

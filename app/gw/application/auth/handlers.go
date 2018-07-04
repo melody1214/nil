@@ -4,6 +4,7 @@ import (
 	"net/rpc"
 	"time"
 
+	"github.com/chanyoung/nil/app/gw/domain/model/cred"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/mlog"
@@ -15,41 +16,47 @@ var logger *logrus.Entry
 
 // Handlers provides access an authentication domain.
 type Handlers interface {
-	GetSecretKey(accessKey string) (secretKey string, err error)
+	GetSecretKey(access cred.Key) (secret cred.Key, err error)
 }
 
 type handlers struct {
-	cache   Repository
-	cmapAPI cmap.SlaveAPI
+	credRepository cred.Repository
+	cmapAPI        cmap.SlaveAPI
 }
 
 // NewHandlers creates an authentication handlers with necessary dependencies.
-func NewHandlers(cmapAPI cmap.SlaveAPI, repo Repository) Handlers {
+func NewHandlers(cmapAPI cmap.SlaveAPI, credRepository cred.Repository) Handlers {
 	logger = mlog.GetPackageLogger("app/gw/usecase/auth")
 
 	return &handlers{
-		cache:   repo,
-		cmapAPI: cmapAPI,
+		credRepository: credRepository,
+		cmapAPI:        cmapAPI,
 	}
 }
 
 // GetSecretKey returns a matched secret key with the given access key.
-func (h *handlers) GetSecretKey(accessKey string) (secretKey string, err error) {
-	sk, ok := h.cache.Find(accessKey)
-	if ok {
-		return sk, nil
+func (h *handlers) GetSecretKey(access cred.Key) (cred.Key, error) {
+	c, err := h.credRepository.Find(access)
+	if err == nil {
+		return c.SecretKey(), nil
 	}
 
-	secretKey, err = h.getSecretKeyFromRemote(accessKey)
+	secretStr, err := h.getSecretKeyFromRemote(access.String())
 	if err != nil {
-		return
+		return cred.Key(""), err
 	}
+	secret := cred.Key(secretStr)
 
 	// Access to cache needs to hold mutex.
 	// Dealing with add cache job to goroutine.
-	go h.cache.Add(accessKey, secretKey)
+	c, err = cred.New(access, secret)
+	if err != nil {
+		logger.Errorf("failed to cache credential %s: %v", secret.String(), err)
+	} else {
+		h.credRepository.Store(c)
+	}
 
-	return
+	return secret, nil
 }
 
 func (h *handlers) getSecretKeyFromRemote(accessKey string) (secretKey string, err error) {
