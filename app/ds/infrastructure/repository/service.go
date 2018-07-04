@@ -2,6 +2,7 @@ package repository
 
 import (
 	"github.com/chanyoung/nil/app/ds/domain/model/device"
+	"github.com/chanyoung/nil/app/ds/domain/model/volume"
 )
 
 // Service is a backend store interface.
@@ -32,4 +33,5 @@ type Service interface {
 
 	// Refactoring //
 	NewDeviceRepository() device.Repository
+	NewVolumeRepository() volume.Repository
 }

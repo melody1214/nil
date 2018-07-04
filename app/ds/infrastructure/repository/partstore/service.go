@@ -15,7 +15,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/chanyoung/nil/app/ds/application/cluster"
 	"github.com/chanyoung/nil/app/ds/application/gencoding"
 	"github.com/chanyoung/nil/app/ds/application/object"
 	"github.com/chanyoung/nil/app/ds/domain/model/device"
@@ -1437,11 +1436,6 @@ func (s *service) BuildObjectMap(Vol string, cid string) error {
 	}
 
 	return nil
-}
-
-// NewClusterRepository returns a new part store inteface in a view of cluster domain.
-func NewClusterRepository(store repository.Service) cluster.Repository {
-	return store
 }
 
 // NewObjectRepository returns a new part store inteface in a view of object domain.

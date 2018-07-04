@@ -10,6 +10,8 @@ import (
 	"github.com/chanyoung/nil/app/ds/application/gencoding"
 	"github.com/chanyoung/nil/app/ds/application/object"
 	"github.com/chanyoung/nil/app/ds/delivery"
+	"github.com/chanyoung/nil/app/ds/domain/model/device"
+	"github.com/chanyoung/nil/app/ds/domain/model/volume"
 	"github.com/chanyoung/nil/app/ds/infrastructure/repository"
 	"github.com/chanyoung/nil/app/ds/infrastructure/repository/partstore"
 	"github.com/chanyoung/nil/pkg/client/request"
@@ -39,16 +41,18 @@ func Bootstrap(cfg config.Ds) error {
 
 	// Setup repository.
 	var (
-		store          repository.Service
-		clusterStore   cluster.Repository
-		objectStore    object.Repository
-		gencodingStore gencoding.Repository
+		store            repository.Service
+		objectStore      object.Repository
+		gencodingStore   gencoding.Repository
+		deviceRepository device.Repository
+		volumeRepository volume.Repository
 	)
 	if cfg.Store == "part" {
 		store = partstore.NewService(cfg.WorkDir)
-		clusterStore = partstore.NewClusterRepository(store)
 		objectStore = partstore.NewObjectRepository(store)
 		gencodingStore = partstore.NewGencodingRepository(store)
+		deviceRepository = store.NewDeviceRepository()
+		volumeRepository = store.NewVolumeRepository()
 	} else {
 		return fmt.Errorf("not supported store type: %s", cfg.Store)
 	}
@@ -67,7 +71,7 @@ func Bootstrap(cfg config.Ds) error {
 	}
 
 	// Setup each application handlers.
-	clusterService := cluster.NewService(&cfg, cmapService.SlaveAPI(), clusterStore)
+	clusterService := cluster.NewService(&cfg, cmapService.SlaveAPI(), deviceRepository, volumeRepository)
 	objectHandlers, err := object.NewHandlers(&cfg, cmapService.SlaveAPI(), requestEventFactory, objectStore)
 	if err != nil {
 		return errors.Wrap(err, "failed to setup object handler")
