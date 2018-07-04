@@ -41,6 +41,10 @@ func (n Name) IsValid() bool {
 	return true
 }
 
+func (n Name) String() string {
+	return string(n)
+}
+
 // State represents the current state of disk.
 type State string
 

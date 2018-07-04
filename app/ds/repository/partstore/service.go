@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/chanyoung/nil/app/ds/domain/model/device"
+	"github.com/chanyoung/nil/app/ds/domain/model/volume"
 	"github.com/chanyoung/nil/app/ds/repository"
 	"github.com/chanyoung/nil/app/ds/usecase/cluster"
 	"github.com/chanyoung/nil/app/ds/usecase/gencoding"
@@ -1453,6 +1454,8 @@ func NewGencodingRepository(store repository.Service) gencoding.Repository {
 	return store
 }
 
+// Refactoring //
+
 type devRepository struct {
 	*service
 }
@@ -1461,9 +1464,26 @@ func (r *devRepository) Create(given *device.Device) error {
 	return nil
 }
 
-// Refactoring //
 func (s *service) NewDeviceRepository() device.Repository {
 	return &devRepository{
+		service: s,
+	}
+}
+
+type volumeRepository struct {
+	*service
+}
+
+func (r *volumeRepository) Find(name volume.Name) (volume.Volume, error) {
+	return volume.Volume{}, nil
+}
+
+func (r *volumeRepository) FindAll() []volume.Volume {
+	return nil
+}
+
+func (s *service) NewVolumeRepository() volume.Repository {
+	return &volumeRepository{
 		service: s,
 	}
 }
