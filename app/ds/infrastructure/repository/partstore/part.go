@@ -1,7 +1,7 @@
 package partstore
 
 import (
-	"github.com/chanyoung/nil/app/ds/repository"
+	"github.com/chanyoung/nil/app/ds/infrastructure/repository"
 )
 
 type pg struct {

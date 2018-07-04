@@ -498,8 +498,8 @@ function main() {
 
     creatediskall
 
-    # Generate global encoding group.
-    ggg 300
+    # # Generate global encoding group.
+    # ggg 300
 
     # Execute pending command.
     if [ -e $PENDINGCMD ]; then
@@ -512,34 +512,34 @@ function main() {
         done < $PENDINGCMD
     fi
 
-    # Create users.
-    sleep 3
-    createusers
+    # # Create users.
+    # sleep 3
+    # createusers
 
-    # Create buckets.
-    sleep 5
-    createbuckets
+    # # Create buckets.
+    # sleep 5
+    # createbuckets
 
-    # Put objects.
-    sleep 15
-    putobjects
+    # # Put objects.
+    # sleep 15
+    # putobjects
 
-    # Get objects.
-    echo -n "Do you want to download all chunks? [y/n] "
-    read ANSWER
-    case $ANSWER in
-        y|Y)
-            echo " Start downloads."
-            getobjects
-            ;;
-        *)
-            echo " No downloads."
-    esac
+    # # Get objects.
+    # echo -n "Do you want to download all chunks? [y/n] "
+    # read ANSWER
+    # case $ANSWER in
+    #     y|Y)
+    #         echo " Start downloads."
+    #         getobjects
+    #         ;;
+    #     *)
+    #         echo " No downloads."
+    # esac
 
-    # Test local recovery
-    if [ $TESTLOCALRECOVERY = true ]; then
-        testlocalrecovery
-    fi
+    # # Test local recovery
+    # if [ $TESTLOCALRECOVERY = true ]; then
+    #     testlocalrecovery
+    # fi
 }
 
 # Run as root.

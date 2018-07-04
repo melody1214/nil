@@ -3,7 +3,7 @@ package partstore
 import (
 	"sync"
 
-	"github.com/chanyoung/nil/app/ds/repository"
+	"github.com/chanyoung/nil/app/ds/infrastructure/repository"
 )
 
 // queue is a FIFO queue for handling io requests(struct request.Call).

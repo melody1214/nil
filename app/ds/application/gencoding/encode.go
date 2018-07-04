@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/chanyoung/nil/app/ds/repository"
+	"github.com/chanyoung/nil/app/ds/infrastructure/repository"
 	mdsgencoding "github.com/chanyoung/nil/app/mds/usecase/gencoding"
 	"github.com/chanyoung/nil/app/mds/usecase/gencoding/token"
 	"github.com/chanyoung/nil/pkg/cmap"

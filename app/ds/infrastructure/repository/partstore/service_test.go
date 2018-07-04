@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/chanyoung/nil/app/ds/repository"
+	"github.com/chanyoung/nil/app/ds/infrastructure/repository"
 )
 
 func TestServiceAPIs(t *testing.T) {

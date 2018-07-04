@@ -6,12 +6,12 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/chanyoung/nil/app/ds/application/cluster"
+	"github.com/chanyoung/nil/app/ds/application/gencoding"
+	"github.com/chanyoung/nil/app/ds/application/object"
 	"github.com/chanyoung/nil/app/ds/delivery"
-	"github.com/chanyoung/nil/app/ds/repository"
-	"github.com/chanyoung/nil/app/ds/repository/partstore"
-	"github.com/chanyoung/nil/app/ds/usecase/cluster"
-	"github.com/chanyoung/nil/app/ds/usecase/gencoding"
-	"github.com/chanyoung/nil/app/ds/usecase/object"
+	"github.com/chanyoung/nil/app/ds/infrastructure/repository"
+	"github.com/chanyoung/nil/app/ds/infrastructure/repository/partstore"
 	"github.com/chanyoung/nil/pkg/client/request"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -66,7 +66,7 @@ func Bootstrap(cfg config.Ds) error {
 		return errors.Wrap(err, "failed to create cmap service")
 	}
 
-	// Setup each usecase handlers.
+	// Setup each application handlers.
 	clusterService := cluster.NewService(&cfg, cmapService.SlaveAPI(), clusterStore)
 	objectHandlers, err := object.NewHandlers(&cfg, cmapService.SlaveAPI(), requestEventFactory, objectStore)
 	if err != nil {

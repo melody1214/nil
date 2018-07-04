@@ -1,6 +1,6 @@
-package recovery
+package gencoding
 
-import "github.com/chanyoung/nil/app/ds/repository"
+import "github.com/chanyoung/nil/app/ds/infrastructure/repository"
 
 // Repository provides an persistent object store.
 type Repository interface {

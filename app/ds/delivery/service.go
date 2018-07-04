@@ -7,9 +7,9 @@ import (
 	"net/rpc"
 	"time"
 
-	"github.com/chanyoung/nil/app/ds/usecase/cluster"
-	"github.com/chanyoung/nil/app/ds/usecase/gencoding"
-	"github.com/chanyoung/nil/app/ds/usecase/object"
+	"github.com/chanyoung/nil/app/ds/application/cluster"
+	"github.com/chanyoung/nil/app/ds/application/gencoding"
+	"github.com/chanyoung/nil/app/ds/application/object"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/nilrpc"

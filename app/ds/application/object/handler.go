@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/chanyoung/nil/app/ds/repository"
+	"github.com/chanyoung/nil/app/ds/infrastructure/repository"
 	"github.com/chanyoung/nil/pkg/client"
 	cr "github.com/chanyoung/nil/pkg/client/request"
 	"github.com/chanyoung/nil/pkg/cmap"

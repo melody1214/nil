@@ -15,12 +15,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/chanyoung/nil/app/ds/application/cluster"
+	"github.com/chanyoung/nil/app/ds/application/gencoding"
+	"github.com/chanyoung/nil/app/ds/application/object"
 	"github.com/chanyoung/nil/app/ds/domain/model/device"
 	"github.com/chanyoung/nil/app/ds/domain/model/volume"
-	"github.com/chanyoung/nil/app/ds/repository"
-	"github.com/chanyoung/nil/app/ds/usecase/cluster"
-	"github.com/chanyoung/nil/app/ds/usecase/gencoding"
-	"github.com/chanyoung/nil/app/ds/usecase/object"
+	"github.com/chanyoung/nil/app/ds/infrastructure/repository"
 )
 
 // service is the backend store service.
