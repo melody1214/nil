@@ -8,7 +8,6 @@ import (
 
 	"github.com/chanyoung/nil/app/ds/delivery"
 	"github.com/chanyoung/nil/app/ds/repository"
-	"github.com/chanyoung/nil/app/ds/repository/lvstore"
 	"github.com/chanyoung/nil/app/ds/repository/partstore"
 	"github.com/chanyoung/nil/app/ds/usecase/cluster"
 	"github.com/chanyoung/nil/app/ds/usecase/gencoding"
@@ -45,12 +44,7 @@ func Bootstrap(cfg config.Ds) error {
 		objectStore    object.Repository
 		gencodingStore gencoding.Repository
 	)
-	if cfg.Store == "lv" {
-		store = lvstore.NewService(cfg.WorkDir)
-		clusterStore = lvstore.NewClusterRepository(store)
-		objectStore = lvstore.NewObjectRepository(store)
-		gencodingStore = lvstore.NewGencodingRepository(store)
-	} else if cfg.Store == "part" {
+	if cfg.Store == "part" {
 		store = partstore.NewService(cfg.WorkDir)
 		clusterStore = partstore.NewClusterRepository(store)
 		objectStore = partstore.NewObjectRepository(store)

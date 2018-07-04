@@ -1,5 +1,9 @@
 package repository
 
+import (
+	"github.com/chanyoung/nil/app/ds/domain/model/device"
+)
+
 // Service is a backend store interface.
 type Service interface {
 	// Run starts to service backend store.
@@ -25,4 +29,7 @@ type Service interface {
 	GetNonCodedChunk(Vol string, LocGid string) (string, error)
 
 	BuildObjectMap(Vol string, cid string) error
+
+	// Refactoring //
+	NewDeviceRepository() device.Repository
 }

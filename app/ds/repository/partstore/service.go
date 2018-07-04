@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/chanyoung/nil/app/ds/domain/model/device"
 	"github.com/chanyoung/nil/app/ds/repository"
 	"github.com/chanyoung/nil/app/ds/usecase/cluster"
 	"github.com/chanyoung/nil/app/ds/usecase/gencoding"
@@ -136,7 +137,7 @@ func (s *service) AddVolume(v *repository.Vol) error {
 		Vol: v,
 	}
 
-	// Get a path of block device files using mount point of cold partitions, and assign that to dev.
+	// Get a path of block dev files using mount point of cold partitions, and assign that to dev.
 	for i := 1; i <= int(v.SubPartGroup.Cold.NumOfPart); i++ {
 		partID := "cold_part" + strconv.Itoa(i)
 		partPath := v.MntPoint + "/" + partID
@@ -174,7 +175,7 @@ func (s *service) AddVolume(v *repository.Vol) error {
 		s.devLock.Unlock()
 	}
 
-	// Get a path of block device files using mount point of hot partitions, and assign that to dev.
+	// Get a path of block dev files using mount point of hot partitions, and assign that to dev.
 	for i := 1; i <= int(v.SubPartGroup.Hot.NumOfPart); i++ {
 		partID := "hot_part" + strconv.Itoa(i)
 		partPath := v.MntPoint + "/" + partID
@@ -494,7 +495,7 @@ func (s *service) MigrateData(DestPartID string) error {
 				dstDev, ok := s.devs[DestPartID]
 				s.devLock.RUnlock()
 				if !ok {
-					err = fmt.Errorf("no such device named as such partition")
+					err = fmt.Errorf("no such dev named as such partition")
 					return err
 				}
 
@@ -502,7 +503,7 @@ func (s *service) MigrateData(DestPartID string) error {
 				srcDev, ok := s.devs[PartID]
 				s.devLock.RUnlock()
 				if !ok {
-					err = fmt.Errorf("no such device named as such partition")
+					err = fmt.Errorf("no such dev named as such partition")
 					return err
 				}
 
@@ -1450,4 +1451,19 @@ func NewObjectRepository(store repository.Service) object.Repository {
 // NewGencodingRepository returns a new part store inteface in a view of gencoding domain.
 func NewGencodingRepository(store repository.Service) gencoding.Repository {
 	return store
+}
+
+type devRepository struct {
+	*service
+}
+
+func (r *devRepository) Create(given *device.Device) error {
+	return nil
+}
+
+// Refactoring //
+func (s *service) NewDeviceRepository() device.Repository {
+	return &devRepository{
+		service: s,
+	}
 }
