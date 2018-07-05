@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/chanyoung/nil/app/mds/repository"
-	"github.com/chanyoung/nil/app/mds/usecase/user"
+	"github.com/chanyoung/nil/app/mds/application/user"
+	"github.com/chanyoung/nil/app/mds/infrastructure/repository"
 	"github.com/chanyoung/nil/pkg/security"
 	"github.com/go-sql-driver/mysql"
 	"github.com/hashicorp/raft"

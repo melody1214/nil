@@ -5,7 +5,7 @@ import (
 	"net/rpc"
 	"time"
 
-	"github.com/chanyoung/nil/app/mds/repository"
+	"github.com/chanyoung/nil/app/mds/infrastructure/repository"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/s3"
 	"github.com/chanyoung/nil/pkg/security"

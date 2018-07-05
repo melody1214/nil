@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/chanyoung/nil/app/ds/infrastructure/repository"
-	mdsgencoding "github.com/chanyoung/nil/app/mds/usecase/gencoding"
-	"github.com/chanyoung/nil/app/mds/usecase/gencoding/token"
+	mdsgencoding "github.com/chanyoung/nil/app/mds/application/gencoding"
+	"github.com/chanyoung/nil/app/mds/application/gencoding/token"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/mlog"

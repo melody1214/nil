@@ -1,7 +1,7 @@
 package nilrpc
 
 import (
-	"github.com/chanyoung/nil/app/mds/usecase/gencoding/token"
+	"github.com/chanyoung/nil/app/mds/application/gencoding/token"
 	"github.com/chanyoung/nil/pkg/cmap"
 )
 

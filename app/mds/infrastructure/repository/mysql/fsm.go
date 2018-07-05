@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/chanyoung/nil/app/mds/repository"
+	"github.com/chanyoung/nil/app/mds/infrastructure/repository"
 	"github.com/hashicorp/raft"
 )
 

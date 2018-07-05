@@ -1,8 +1,8 @@
 package gencoding
 
 import (
-	"github.com/chanyoung/nil/app/mds/repository"
-	"github.com/chanyoung/nil/app/mds/usecase/gencoding/token"
+	"github.com/chanyoung/nil/app/mds/application/gencoding/token"
+	"github.com/chanyoung/nil/app/mds/infrastructure/repository"
 	"github.com/chanyoung/nil/pkg/cmap"
 )
 

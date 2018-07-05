@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/chanyoung/nil/app/mds/repository"
-	"github.com/chanyoung/nil/app/mds/usecase/cluster"
+	"github.com/chanyoung/nil/app/mds/application/cluster"
+	"github.com/chanyoung/nil/app/mds/infrastructure/repository"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/pkg/errors"
 )

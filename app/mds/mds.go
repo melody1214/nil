@@ -6,12 +6,12 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/chanyoung/nil/app/mds/application/cluster"
+	"github.com/chanyoung/nil/app/mds/application/gencoding"
+	"github.com/chanyoung/nil/app/mds/application/object"
+	"github.com/chanyoung/nil/app/mds/application/user"
 	"github.com/chanyoung/nil/app/mds/delivery"
-	"github.com/chanyoung/nil/app/mds/repository/mysql"
-	"github.com/chanyoung/nil/app/mds/usecase/cluster"
-	"github.com/chanyoung/nil/app/mds/usecase/gencoding"
-	"github.com/chanyoung/nil/app/mds/usecase/object"
-	"github.com/chanyoung/nil/app/mds/usecase/user"
+	"github.com/chanyoung/nil/app/mds/infrastructure/repository/mysql"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
@@ -65,7 +65,7 @@ func Bootstrap(cfg config.Mds) error {
 		return errors.Wrap(err, "failed to create cmap service")
 	}
 
-	// Setup usecase handlers.
+	// Setup application handlers.
 	userService := user.NewService(&cfg, userStore)
 	clusterService := cluster.NewService(&cfg, cmapService.MasterAPI(), clusterStore)
 	objectHandlers := object.NewHandlers(objectStore)

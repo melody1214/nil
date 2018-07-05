@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/chanyoung/nil/app/mds/repository"
-	"github.com/chanyoung/nil/app/mds/usecase/gencoding"
-	"github.com/chanyoung/nil/app/mds/usecase/gencoding/token"
+	"github.com/chanyoung/nil/app/mds/application/gencoding"
+	"github.com/chanyoung/nil/app/mds/application/gencoding/token"
+	"github.com/chanyoung/nil/app/mds/infrastructure/repository"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/go-sql-driver/mysql"
 	"github.com/hashicorp/raft"

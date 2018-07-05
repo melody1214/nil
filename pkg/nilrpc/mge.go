@@ -1,6 +1,6 @@
 package nilrpc
 
-import "github.com/chanyoung/nil/app/mds/usecase/gencoding/token"
+import "github.com/chanyoung/nil/app/mds/application/gencoding/token"
 
 // MGEGGGRequest requests to generate global encoding group
 // with the given regions

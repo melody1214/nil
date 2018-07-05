@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/chanyoung/nil/app/mds/repository"
+	"github.com/chanyoung/nil/app/mds/infrastructure/repository"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
@@ -50,7 +50,7 @@ type Store struct {
 
 // New creates a Store object.
 func New(cfg *config.Mds) *Store {
-	logger = mlog.GetPackageLogger("app/mds/repository/mysql")
+	logger = mlog.GetPackageLogger("app/mds/infrastructure/repository/mysql")
 
 	return &Store{
 		cfg: cfg,

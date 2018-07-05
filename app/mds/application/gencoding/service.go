@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/chanyoung/nil/app/mds/usecase/gencoding/token"
+	"github.com/chanyoung/nil/app/mds/application/gencoding/token"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/config"
@@ -29,7 +29,7 @@ type service struct {
 
 // NewService creates a global encoding service with necessary dependencies.
 func NewService(cfg *config.Mds, cmapAPI cmap.SlaveAPI, store Repository) (Service, error) {
-	logger = mlog.GetPackageLogger("app/mds/usecase/gencoding")
+	logger = mlog.GetPackageLogger("app/mds/application/gencoding")
 
 	s := &service{
 		cfg:     cfg,
