@@ -125,6 +125,6 @@ func (s Status) String() string {
 
 // Repository provides to access volume objects.
 type Repository interface {
-	Find(name Name) (Volume, error)
-	FindAll() []Volume
+	Find(name Name) (*Volume, error)
+	FindAll() []*Volume
 }

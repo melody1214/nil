@@ -2,17 +2,14 @@ package partstore
 
 import (
 	"bufio"
-	"bytes"
-	"encoding/binary"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/chanyoung/nil/app/ds/application/gencoding"
@@ -24,7 +21,7 @@ import (
 
 // service is the backend store service.
 type service struct {
-	pgs          map[string]*pg
+	vols         map[string]*vol
 	devs         map[string]*dev
 	basePath     string
 	requestQueue queue
@@ -36,7 +33,7 @@ type service struct {
 func NewService(basePath string) repository.Service {
 	return &service{
 		basePath: basePath,
-		pgs:      map[string]*pg{},
+		vols:     map[string]*vol{},
 		devs:     map[string]*dev{},
 		pushCh:   make(chan interface{}, 1),
 	}
@@ -47,7 +44,7 @@ func NewService(basePath string) repository.Service {
 func newService(basePath string) *service {
 	return &service{
 		basePath: basePath,
-		pgs:      map[string]*pg{},
+		vols:     map[string]*vol{},
 		devs:     map[string]*dev{},
 		pushCh:   make(chan interface{}, 1),
 	}
@@ -97,9 +94,14 @@ func (s *service) Stop() {
 	// Tracking all jobs and wait them until finished.
 
 	// Deletes all volumes in the store.
-	for _, pg := range s.pgs {
-		pg.Umount()
-	}
+
+	// refactoring
+
+	/*
+		for _, vol := range s.vols {
+			vol.Umount()
+		}
+	*/
 }
 
 // Push pushes an io request into the scheduling queue.
@@ -115,9 +117,9 @@ func (s *service) Push(r *repository.Request) error {
 	return nil
 }
 
-// AddVolume adds a volume into the pg map.
+// AddVolume adds a volume into the vol map.
 func (s *service) AddVolume(v *repository.Vol) error {
-	if _, ok := s.pgs[v.Name]; ok {
+	if _, ok := s.vols[v.Name]; ok {
 		return fmt.Errorf("Volume name %s already exists", v.Name)
 	}
 
@@ -133,9 +135,12 @@ func (s *service) AddVolume(v *repository.Vol) error {
 	// TODO: Set the disk speed.
 	v.SetSpeed()
 
-	s.pgs[v.Name] = &pg{
-		Vol: v,
-	}
+	// refactroing
+	/*
+		s.vols[v.Name] = &vol{
+			Vol: v,
+		}
+	*/
 
 	// Get a path of block dev files using mount point of cold partitions, and assign that to dev.
 	for i := 1; i <= int(v.SubPartGroup.Cold.NumOfPart); i++ {
@@ -451,147 +456,167 @@ func (s *service) checkSpinUp() (string, error) {
 
 // MigrateData moves data from service to archive archive.
 func (s *service) MigrateData(DestPartID string) error {
-	for _, pg := range s.pgs {
-		pg.Lock.Chk.Lock()
-		defer pg.Lock.Chk.Unlock()
+	// refactoring
+	/*
 
-		for key, value := range pg.ChunkMap {
-			// After check type of each chunks, migrate only parity chunk in hot storage into cold partition.
-			PartID := value.PartID
-			if value.ChunkInfo.Type == "Data" {
-				continue
-			}
-			if strings.HasPrefix(PartID, "hot_") {
-				if !strings.HasPrefix(key, "G_") {
-					continue
+		for _, vol := range s.vols {
+
+				vol.Lock.Chk.Lock()
+				defer vol.Lock.Chk.Unlock()
+
+				for key, value := range vol.ChunkMap {
+					// After check type of each chunks, migrate only parity chunk in hot storage into cold partition.
+					PartID := value.PartID
+					if value.ChunkInfo.Type == "Data" {
+						continue
+					}
+					if strings.HasPrefix(PartID, "hot_") {
+						if !strings.HasPrefix(key, "G_") {
+							continue
+						}
+
+						fChunkSrc, err := os.OpenFile(vol.MntPoint+"/"+PartID+"/"+value.ChunkInfo.LocGid+"/"+key, os.O_RDWR, 0775)
+						if err != nil {
+							return err
+						}
+
+						// Scheduling for cold partitions.
+						//vol.SubPartGroup.Cold.DiskSched = vol.SubPartGroup.Cold.DiskSched%vol.SubPartGroup.Cold.NumOfPart + 1
+						//DiskSched := vol.SubPartGroup.Cold.DiskSched
+						//DestPartID := "cold_part" + strconv.Itoa(int(DiskSched))
+
+						// Create a directory for a local group if not exist.
+						lgDir := vol.MntPoint + "/" + DestPartID + "/" + value.ChunkInfo.LocGid
+						_, err = os.Stat(lgDir)
+						if os.IsNotExist(err) {
+							os.MkdirAll(lgDir, 0775)
+						}
+
+						fChunkDest, err := os.OpenFile(lgDir+"/"+key, os.O_CREATE|os.O_WRONLY, 0775)
+						if err != nil {
+							return err
+						}
+
+						// Copy the chunk in the hot storage to the cold storage.
+						n, err := io.Copy(fChunkDest, fChunkSrc)
+
+						s.devLock.RLock()
+						dstDev, ok := s.devs[DestPartID]
+						s.devLock.RUnlock()
+						if !ok {
+							err = fmt.Errorf("no such dev named as such partition")
+							return err
+						}
+
+						s.devLock.RLock()
+						srcDev, ok := s.devs[PartID]
+						s.devLock.RUnlock()
+						if !ok {
+							err = fmt.Errorf("no such dev named as such partition")
+							return err
+						}
+
+						s.devLock.Lock()
+						srcDev.Used = srcDev.Used - uint(n)
+						srcDev.Free = srcDev.Free + uint(n)
+						srcDev.Size = srcDev.Used + srcDev.Free
+						srcDev.TotalIO = srcDev.TotalIO + uint(n)
+						s.devLock.Unlock()
+
+						s.devLock.Lock()
+						dstDev.Used = dstDev.Used + uint(n)
+						dstDev.Free = dstDev.Free - uint(n)
+						dstDev.Size = dstDev.Used + dstDev.Free
+						dstDev.TotalIO = dstDev.TotalIO + uint(n)
+						s.devLock.Unlock()
+
+						// Update ChunkMap for complitely migrated chunk.
+						value.PartID = DestPartID
+
+						vol.ChunkMap[key] = value
+
+						err = fChunkSrc.Close()
+						if err != nil {
+							return err
+						}
+
+						// Remove the chunk from the hot storage.
+						err = os.Remove(vol.MntPoint + "/" + PartID + "/" + value.ChunkInfo.LocGid + "/" + key)
+						if err != nil {
+							return err
+						}
+
+						err = fChunkDest.Close()
+						if err != nil {
+							return err
+						}
+					}
 				}
-
-				fChunkSrc, err := os.OpenFile(pg.MntPoint+"/"+PartID+"/"+value.ChunkInfo.LocGid+"/"+key, os.O_RDWR, 0775)
-				if err != nil {
-					return err
-				}
-
-				// Scheduling for cold partitions.
-				//pg.SubPartGroup.Cold.DiskSched = pg.SubPartGroup.Cold.DiskSched%pg.SubPartGroup.Cold.NumOfPart + 1
-				//DiskSched := pg.SubPartGroup.Cold.DiskSched
-				//DestPartID := "cold_part" + strconv.Itoa(int(DiskSched))
-
-				// Create a directory for a local group if not exist.
-				lgDir := pg.MntPoint + "/" + DestPartID + "/" + value.ChunkInfo.LocGid
-				_, err = os.Stat(lgDir)
-				if os.IsNotExist(err) {
-					os.MkdirAll(lgDir, 0775)
-				}
-
-				fChunkDest, err := os.OpenFile(lgDir+"/"+key, os.O_CREATE|os.O_WRONLY, 0775)
-				if err != nil {
-					return err
-				}
-
-				// Copy the chunk in the hot storage to the cold storage.
-				n, err := io.Copy(fChunkDest, fChunkSrc)
-
-				s.devLock.RLock()
-				dstDev, ok := s.devs[DestPartID]
-				s.devLock.RUnlock()
-				if !ok {
-					err = fmt.Errorf("no such dev named as such partition")
-					return err
-				}
-
-				s.devLock.RLock()
-				srcDev, ok := s.devs[PartID]
-				s.devLock.RUnlock()
-				if !ok {
-					err = fmt.Errorf("no such dev named as such partition")
-					return err
-				}
-
-				s.devLock.Lock()
-				srcDev.Used = srcDev.Used - uint(n)
-				srcDev.Free = srcDev.Free + uint(n)
-				srcDev.Size = srcDev.Used + srcDev.Free
-				srcDev.TotalIO = srcDev.TotalIO + uint(n)
-				s.devLock.Unlock()
-
-				s.devLock.Lock()
-				dstDev.Used = dstDev.Used + uint(n)
-				dstDev.Free = dstDev.Free - uint(n)
-				dstDev.Size = dstDev.Used + dstDev.Free
-				dstDev.TotalIO = dstDev.TotalIO + uint(n)
-				s.devLock.Unlock()
-
-				// Update ChunkMap for complitely migrated chunk.
-				value.PartID = DestPartID
-
-				pg.ChunkMap[key] = value
-
-				err = fChunkSrc.Close()
-				if err != nil {
-					return err
-				}
-
-				// Remove the chunk from the hot storage.
-				err = os.Remove(pg.MntPoint + "/" + PartID + "/" + value.ChunkInfo.LocGid + "/" + key)
-				if err != nil {
-					return err
-				}
-
-				err = fChunkDest.Close()
-				if err != nil {
-					return err
-				}
-			}
 		}
-	}
 
+	*/
 	return nil
 }
 
-func (s *service) ChunkExist(pgID, chkID string) bool {
-	pg, ok := s.pgs[pgID]
-	if ok == false {
-		return false
-	}
+func (s *service) ChunkExist(volID, chkID string) bool {
+	// refactoring
 
-	pg.Lock.Chk.RLock()
-	_, ok = pg.ChunkMap[chkID]
-	pg.Lock.Chk.RUnlock()
-	return ok
+	/*
+		vol, ok := s.vols[volID]
+		if ok == false {
+			return false
+		}
+
+
+			vol.Lock.Chk.RLock()
+			_, ok = vol.ChunkMap[chkID]
+			vol.Lock.Chk.RUnlock()
+	*/
+	return false
 }
 
-func (s *service) GetObjectSize(pgID, objID string) (int64, bool) {
-	pg, ok := s.pgs[pgID]
-	if ok == false {
-		return 0, false
-	}
+func (s *service) GetObjectSize(volID, objID string) (int64, bool) {
+	// refactoring
 
-	pg.Lock.Obj.RLock()
-	obj, ok := pg.ObjMap[objID]
-	pg.Lock.Obj.RUnlock()
-	if ok == false {
-		return 0, false
-	}
+	/*
+		vol, ok := s.vols[volID]
+		if ok == false {
+			return 0, false
+		}
 
-	objSize := obj.ObjInfo.Size
 
-	return objSize, true
+				vol.Lock.Obj.RLock()
+				obj, ok := vol.ObjMap[objID]
+				vol.Lock.Obj.RUnlock()
+
+			if ok == false {
+				return 0, false
+			}
+
+			objSize := obj.ObjInfo.Size
+	*/
+	return 100, true
 }
 
-func (s *service) GetObjectMD5(pgID, objID string) (string, bool) {
-	pg, ok := s.pgs[pgID]
-	if ok == false {
-		return "", false
-	}
+func (s *service) GetObjectMD5(volID, objID string) (string, bool) {
+	// refactoring
 
-	pg.Lock.Obj.RLock()
-	obj, ok := pg.ObjMap[objID]
-	pg.Lock.Obj.RUnlock()
-	if ok == false {
-		return "", false
-	}
+	/*
+		vol, ok := s.vols[volID]
+		if ok == false {
+			return "", false
+		}
 
-	return obj.ObjInfo.MD5, true
+
+			vol.Lock.Obj.RLock()
+			obj, ok := vol.ObjMap[objID]
+			vol.Lock.Obj.RUnlock()
+			if ok == false {
+				return "", false
+			}
+
+	*/
+	return "", true
 }
 
 func (s *service) GetChunkHeaderSize() int64 {
@@ -625,624 +650,661 @@ func (s *service) handleCall(r *repository.Request) {
 
 func (s *service) read(r *repository.Request) {
 	// Find and get the requested logical volume.
-	pg, ok := s.pgs[r.Vol]
-	if !ok {
-		r.Err = fmt.Errorf("no such partition group: %s", r.Vol)
-		return
-	}
 
-	pg.Lock.Obj.RLock()
-	obj, ok := pg.ObjMap[r.Oid]
-	pg.Lock.Obj.RUnlock()
-	if !ok {
-		r.Err = fmt.Errorf("no such object: %s", r.Oid)
-		return
-	}
+	// refactoring
 
-	// Find and get the requested object.
-	pg.Lock.Chk.RLock()
-	chk, ok := pg.ChunkMap[obj.Cid]
-	pg.Lock.Chk.RUnlock()
-	if !ok {
-		r.Err = fmt.Errorf("no chunk of such object: %s", r.Oid)
-		return
-	}
+	/*
+		vol, ok := s.vols[r.Vol]
+		if !ok {
+			r.Err = fmt.Errorf("no such partition group: %s", r.Vol)
+			return
+		}
 
-	// Open a chunk requested by a client.
-	lgDir := pg.MntPoint + "/" + chk.PartID + "/" + r.LocGid
-	fChunk, err := os.Open(lgDir + "/" + obj.Cid)
-	if err != nil {
-		r.Err = err
-		return
-	}
-	defer fChunk.Close()
 
-	// If the partition is one of the spin-down disks, spin-up the disk immediately.
-	s.devLock.RLock()
-	dev, ok := s.devs[chk.PartID]
-	s.devLock.RUnlock()
-	if !ok {
-		r.Err = fmt.Errorf("no such partition in partgroup : %s", chk.PartID)
-		return
-	}
+			vol.Lock.Obj.RLock()
+			obj, ok := vol.ObjMap[r.Oid]
+			vol.Lock.Obj.RUnlock()
+			if !ok {
+				r.Err = fmt.Errorf("no such object: %s", r.Oid)
+				return
+			}
 
-	t := time.Now()
-	tn := t.Nanosecond()
-	tDiff := uint(tn) - dev.Timestamp
-	dev.Timestamp = uint(tn)
+			// Find and get the requested object.
+			vol.Lock.Chk.RLock()
+			chk, ok := vol.ChunkMap[obj.Cid]
+			vol.Lock.Chk.RUnlock()
+			if !ok {
+				r.Err = fmt.Errorf("no chunk of such object: %s", r.Oid)
+				return
+			}
 
-	s.devLock.Lock()
-	if dev.State == "Standby" {
-		dev.State = "Active"
-		dev.StandbyTime = dev.StandbyTime + tDiff
-	} else {
-		dev.ActiveTime = dev.ActiveTime + tDiff
-	}
-	s.devLock.Unlock()
+			// Open a chunk requested by a client.
+			lgDir := vol.MntPoint + "/" + chk.PartID + "/" + r.LocGid
+			fChunk, err := os.Open(lgDir + "/" + obj.Cid)
+			if err != nil {
+				r.Err = err
+				return
+			}
+			defer fChunk.Close()
 
-	// Seek offset beginning of the requested object in the chunk.
-	_, err = fChunk.Seek(obj.Offset, os.SEEK_SET)
-	if err != nil {
-		r.Err = err
-		return
-	}
+			// If the partition is one of the spin-down disks, spin-up the disk immediately.
+			s.devLock.RLock()
+			dev, ok := s.devs[chk.PartID]
+			s.devLock.RUnlock()
+			if !ok {
+				r.Err = fmt.Errorf("no such partition in partgroup : %s", chk.PartID)
+				return
+			}
 
-	oHeader := new(repository.ObjHeader)
-	err = binary.Read(fChunk, binary.LittleEndian, oHeader)
-	//fmt.Printf("%s, %d, %d\n", oHeader.Name, oHeader.Size, oHeader.Offset)
-	if err != nil {
-		r.Err = err
-		return
-	}
+			t := time.Now()
+			tn := t.Nanosecond()
+			tDiff := uint(tn) - dev.Timestamp
+			dev.Timestamp = uint(tn)
 
-	_, err = fChunk.Seek(oHeader.Offset, os.SEEK_SET)
-	if err != nil {
-		r.Err = err
-		return
-	}
+			s.devLock.Lock()
+			if dev.State == "Standby" {
+				dev.State = "Active"
+				dev.StandbyTime = dev.StandbyTime + tDiff
+			} else {
+				dev.ActiveTime = dev.ActiveTime + tDiff
+			}
+			s.devLock.Unlock()
 
-	// Read contents of the requested object from the chunk.
-	n, err := io.CopyN(r.Out, fChunk, r.Osize)
-	if err != nil {
-		r.Err = err
-		return
-	}
+			// Seek offset beginning of the requested object in the chunk.
+			_, err = fChunk.Seek(obj.Offset, os.SEEK_SET)
+			if err != nil {
+				r.Err = err
+				return
+			}
 
-	if dev.Name != "" {
-		dev.TotalIO = dev.TotalIO + uint(n)
-	}
-	// Complete to read the requested object.
-	r.Err = nil
+			oHeader := new(repository.ObjHeader)
+			err = binary.Read(fChunk, binary.LittleEndian, oHeader)
+			//fmt.Printf("%s, %d, %d\n", oHeader.Name, oHeader.Size, oHeader.Offset)
+			if err != nil {
+				r.Err = err
+				return
+			}
+
+			_, err = fChunk.Seek(oHeader.Offset, os.SEEK_SET)
+			if err != nil {
+				r.Err = err
+				return
+			}
+
+			// Read contents of the requested object from the chunk.
+			n, err := io.CopyN(r.Out, fChunk, r.Osize)
+			if err != nil {
+				r.Err = err
+				return
+			}
+
+			if dev.Name != "" {
+				dev.TotalIO = dev.TotalIO + uint(n)
+			}
+			// Complete to read the requested object.
+			r.Err = nil
+	*/
 	return
 }
 
 func (s *service) readAll(r *repository.Request) {
 	// Find and get a logical volume.
-	pg, ok := s.pgs[r.Vol]
-	if !ok {
-		r.Err = fmt.Errorf("no such partition group: %s", r.Vol)
-		return
-	}
-	pg.Lock.Chk.RLock()
-	chk, ok := pg.ChunkMap[r.Cid]
-	pg.Lock.Chk.RUnlock()
-	if !ok {
-		r.Err = fmt.Errorf("no chunk of such object: %s", r.Oid)
-		return
-	}
 
-	// Open a chunk requested by a client.
-	lgDir := pg.MntPoint + "/" + chk.PartID + "/" + r.LocGid
-	fChunk, err := os.Open(lgDir + "/" + r.Cid)
-	if err != nil {
-		r.Err = err
-		return
-	}
-	defer fChunk.Close()
+	// refactoring
 
-	// If the partition is one of the spin-down disks, spin-up the disk immediately.
-	s.devLock.RLock()
-	dev, ok := s.devs[chk.PartID]
-	s.devLock.RUnlock()
-	if !ok {
-		r.Err = fmt.Errorf("no such partition in partgroup : %s", chk.PartID)
-		return
-	}
+	/*
+		vol, ok := s.vols[r.Vol]
+		if !ok {
+			r.Err = fmt.Errorf("no such partition group: %s", r.Vol)
+			return
+		}
 
-	t := time.Now()
-	tn := t.Nanosecond()
-	tDiff := uint(tn) - dev.Timestamp
-	dev.Timestamp = uint(tn)
 
-	s.devLock.Lock()
-	if dev.State == "Standby" {
-		dev.State = "Active"
-		dev.StandbyTime = dev.StandbyTime + tDiff
-	} else {
-		dev.ActiveTime = dev.ActiveTime + tDiff
-	}
-	s.devLock.Unlock()
+			vol.Lock.Chk.RLock()
+			chk, ok := vol.ChunkMap[r.Cid]
+			vol.Lock.Chk.RUnlock()
+			if !ok {
+				r.Err = fmt.Errorf("no chunk of such object: %s", r.Oid)
+				return
+			}
 
-	// Read all contents from the chunk to a writer stream.
-	n, err := io.Copy(r.Out, fChunk)
-	if err != nil {
-		r.Err = err
-		return
-	}
+			// Open a chunk requested by a client.
+			lgDir := vol.MntPoint + "/" + chk.PartID + "/" + r.LocGid
+			fChunk, err := os.Open(lgDir + "/" + r.Cid)
+			if err != nil {
+				r.Err = err
+				return
+			}
+			defer fChunk.Close()
 
-	if dev.Name != "" {
-		dev.TotalIO = dev.TotalIO + uint(n)
-	}
-	// Complete to read the all contents from the chunk.
-	r.Err = nil
+			// If the partition is one of the spin-down disks, spin-up the disk immediately.
+			s.devLock.RLock()
+			dev, ok := s.devs[chk.PartID]
+			s.devLock.RUnlock()
+			if !ok {
+				r.Err = fmt.Errorf("no such partition in partgroup : %s", chk.PartID)
+				return
+			}
+
+			t := time.Now()
+			tn := t.Nanosecond()
+			tDiff := uint(tn) - dev.Timestamp
+			dev.Timestamp = uint(tn)
+
+			s.devLock.Lock()
+			if dev.State == "Standby" {
+				dev.State = "Active"
+				dev.StandbyTime = dev.StandbyTime + tDiff
+			} else {
+				dev.ActiveTime = dev.ActiveTime + tDiff
+			}
+			s.devLock.Unlock()
+
+			// Read all contents from the chunk to a writer stream.
+			n, err := io.Copy(r.Out, fChunk)
+			if err != nil {
+				r.Err = err
+				return
+			}
+
+			if dev.Name != "" {
+				dev.TotalIO = dev.TotalIO + uint(n)
+			}
+			// Complete to read the all contents from the chunk.
+			r.Err = nil
+	*/
 	return
 }
 
 func (s *service) write(r *repository.Request) {
-	var totalWrite uint
+	//var totalWrite uint
 
 	// Find and get a logical volume.
-	pg, ok := s.pgs[r.Vol]
-	if !ok {
-		r.Err = fmt.Errorf("no such partition group: %s", r.Vol)
-		return
-	}
+	// refactoring
 
-	pg.Lock.Obj.RLock()
-	_, ok = pg.ObjMap[r.Oid]
-	pg.Lock.Obj.RUnlock()
-	if ok {
-		r.Err = fmt.Errorf("object is already existed: %s", r.Oid)
-		return
-	}
+	/*
 
-	pg.Lock.Chk.RLock()
-	chk, ok := pg.ChunkMap[r.Cid]
-	pg.Lock.Chk.RUnlock()
-	if !ok {
-		pg.SubPartGroup.Hot.DiskSched = pg.SubPartGroup.Hot.DiskSched%pg.SubPartGroup.Hot.NumOfPart + 1
-		DiskSched := pg.SubPartGroup.Hot.DiskSched
-		PartID := "hot_part" + strconv.Itoa(int(DiskSched))
-
-		pg.Lock.Chk.Lock()
-		pg.ChunkMap[r.Cid] = repository.ChunkMap{
-			PartID: PartID,
-			ChunkInfo: repository.ChunkInfo{
-				Type:   r.Type,
-				LocGid: r.LocGid,
-			},
-		}
-		pg.Lock.Chk.Unlock()
-
-		pg.Lock.Chk.RLock()
-		chk = pg.ChunkMap[r.Cid]
-		pg.Lock.Chk.RUnlock()
-	}
-
-	// Create a directory for a local group if not exist.
-	lgDir := pg.MntPoint + "/" + chk.PartID + "/" + r.LocGid
-	_, err := os.Stat(lgDir)
-	if os.IsNotExist(err) {
-		os.MkdirAll(lgDir, 0775)
-	}
-
-	// Open a chunk that objects will be written to.
-	fChunk, err := os.OpenFile(lgDir+"/"+r.Cid, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0775)
-	if err != nil {
-		r.Err = err
-		return
-	}
-	defer fChunk.Close()
-
-	// Obtain a path of the chunk.
-	fChunkName := fChunk.Name()
-
-	// Get an information of the chunk.
-	fChunkInfo, err := os.Lstat(fChunkName)
-	if err != nil {
-		r.Err = err
-		return
-	}
-
-	// Get current length of the chunk.
-	fChunkLen := fChunkInfo.Size()
-
-	// If the chunk is newly generated, write a chunk header.
-	if fChunkLen == 0 {
-		cHeader := repository.ChunkHeader{
-			Magic:   [4]byte{0x7f, 'c', 'h', 'k'},
-			Type:    [1]byte{},
-			State:   [1]byte{'P'},
-			Encoded: false,
-		}
-
-		cHeader.Type[0] = 'D'
-
-		b := new(bytes.Buffer)
-		bufio.NewWriter(b)
-		err := binary.Write(b, binary.LittleEndian, cHeader)
-		if err != nil {
-			r.Err = err
+		vol, ok := s.vols[r.Vol]
+		if !ok {
+			r.Err = fmt.Errorf("no such partition group: %s", r.Vol)
 			return
 		}
 
-		n, err := fChunk.Write(b.Bytes())
-		//fmt.Printf("chunk written: %d\n", n)
 
-		if n != b.Len() {
-			r.Err = err
-			return
-		}
+			vol.Lock.Obj.RLock()
+			_, ok = vol.ObjMap[r.Oid]
+			vol.Lock.Obj.RUnlock()
+			if ok {
+				r.Err = fmt.Errorf("object is already existed: %s", r.Oid)
+				return
+			}
 
-		totalWrite = totalWrite + uint(n)
-	}
-	// Get an information of the chunk.
-	fChunkInfo, err = os.Lstat(fChunkName)
-	if err != nil {
-		r.Err = err
-		return
-	}
+			vol.Lock.Chk.RLock()
+			chk, ok := vol.ChunkMap[r.Cid]
+			vol.Lock.Chk.RUnlock()
+			if !ok {
+				vol.SubPartGroup.Hot.DiskSched = vol.SubPartGroup.Hot.DiskSched%vol.SubPartGroup.Hot.NumOfPart + 1
+				DiskSched := vol.SubPartGroup.Hot.DiskSched
+				PartID := "hot_part" + strconv.Itoa(int(DiskSched))
 
-	// Get current length of the chunk.
-	fChunkLen = fChunkInfo.Size()
+				vol.Lock.Chk.Lock()
+				vol.ChunkMap[r.Cid] = repository.ChunkMap{
+					PartID: PartID,
+					ChunkInfo: repository.ChunkInfo{
+						Type:   r.Type,
+						LocGid: r.LocGid,
+					},
+				}
+				vol.Lock.Chk.Unlock()
 
-	// Create an object header for requested object.
-	oHeader := repository.ObjHeader{
-		Magic:  [4]byte{0x7f, 'o', 'b', 'j'},
-		Name:   [48]byte{},
-		MD5:    [32]byte{},
-		Size:   r.Osize,
-		Offset: fChunkLen + s.GetObjectHeaderSize(),
-	}
+				vol.Lock.Chk.RLock()
+				chk = vol.ChunkMap[r.Cid]
+				vol.Lock.Chk.RUnlock()
+			}
 
-	for i := 0; i < len(r.Oid); i++ {
-		oHeader.Name[i] = r.Oid[i]
-	}
-	//fmt.Println("len(r.Oid) : ", len(r.Oid))
+			// Create a directory for a local group if not exist.
+			lgDir := vol.MntPoint + "/" + chk.PartID + "/" + r.LocGid
+			_, err := os.Stat(lgDir)
+			if os.IsNotExist(err) {
+				os.MkdirAll(lgDir, 0775)
+			}
 
-	for i := len(r.Oid); i < len(oHeader.Name); i++ {
-		oHeader.Name[i] = '\x00'
-	}
+			// Open a chunk that objects will be written to.
+			fChunk, err := os.OpenFile(lgDir+"/"+r.Cid, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0775)
+			if err != nil {
+				r.Err = err
+				return
+			}
+			defer fChunk.Close()
 
-	//fmt.Printf("len(r.Md5) : %d, len(oHeader.MD5) : %d\n", len(r.Md5), len(oHeader.MD5))
-	for i := 0; i < len(r.Md5); i++ {
-		oHeader.MD5[i] = r.Md5[i]
-	}
+			// Obtain a path of the chunk.
+			fChunkName := fChunk.Name()
 
-	b := new(bytes.Buffer)
-	bufio.NewWriter(b)
-	err = binary.Write(b, binary.LittleEndian, oHeader)
-	if err != nil {
-		r.Err = err
-		return
-	}
+			// Get an information of the chunk.
+			fChunkInfo, err := os.Lstat(fChunkName)
+			if err != nil {
+				r.Err = err
+				return
+			}
 
-	//fmt.Println(b.Len())
+			// Get current length of the chunk.
+			fChunkLen := fChunkInfo.Size()
 
-	// If the partition is one of the spin-down disks, spin-up the disk immediately.
-	s.devLock.RLock()
-	dev, ok := s.devs[chk.PartID]
-	s.devLock.RUnlock()
-	if !ok {
-		r.Err = fmt.Errorf("no such partition in partgroup : %s", chk.PartID)
-		return
-	}
+			// If the chunk is newly generated, write a chunk header.
+			if fChunkLen == 0 {
+				cHeader := repository.ChunkHeader{
+					Magic:   [4]byte{0x7f, 'c', 'h', 'k'},
+					Type:    [1]byte{},
+					State:   [1]byte{'P'},
+					Encoded: false,
+				}
 
-	t := time.Now()
-	tn := t.Nanosecond()
-	tDiff := uint(tn) - dev.Timestamp
-	dev.Timestamp = uint(tn)
+				cHeader.Type[0] = 'D'
 
-	s.devLock.Lock()
-	if dev.State == "Standby" {
-		dev.State = "Active"
-		dev.StandbyTime = dev.StandbyTime + tDiff
-	} else {
-		dev.ActiveTime = dev.ActiveTime + tDiff
-	}
-	s.devLock.Unlock()
+				b := new(bytes.Buffer)
+				bufio.NewWriter(b)
+				err := binary.Write(b, binary.LittleEndian, cHeader)
+				if err != nil {
+					r.Err = err
+					return
+				}
 
-	// Check whether the chunk is full or has not enough space to write the object.
-	if fChunkLen >= pg.ChunkSize {
-		r.Err = fmt.Errorf("chunk full")
-		return
-	} else if fChunkLen+int64(b.Len())+r.Osize > pg.ChunkSize {
-		err = fChunk.Truncate(pg.ChunkSize)
-		totalWrite = totalWrite + uint(pg.ChunkSize-fChunkLen)
-		if dev.Name != "" {
-			dev.TotalIO = dev.TotalIO + totalWrite
-			dev.Free = dev.Free - totalWrite
-			dev.Used = dev.Used + totalWrite
-		}
-		r.Err = fmt.Errorf("truncated")
-		return
-	}
+				n, err := fChunk.Write(b.Bytes())
+				//fmt.Printf("chunk written: %d\n", n)
 
-	// Get an information of the chunk.
-	fChunkInfo, err = os.Lstat(fChunkName)
-	if err != nil {
-		r.Err = err
-		return
-	}
+				if n != b.Len() {
+					r.Err = err
+					return
+				}
 
-	// Get current length of the chunk.
-	fChunkLen = fChunkInfo.Size()
+				totalWrite = totalWrite + uint(n)
+			}
+			// Get an information of the chunk.
+			fChunkInfo, err = os.Lstat(fChunkName)
+			if err != nil {
+				r.Err = err
+				return
+			}
 
-	// Write the object header into the chunk.
-	n, err := fChunk.Write(b.Bytes())
-	totalWrite = totalWrite + uint(n)
-	//fmt.Printf("buf len: %d, object written: %d\n", b.Len(), n)
+			// Get current length of the chunk.
+			fChunkLen = fChunkInfo.Size()
 
-	// ToDo: implement more information of cHeader.
-	if n != b.Len() {
-		r.Err = err
-		return
-	}
+			// Create an object header for requested object.
+			oHeader := repository.ObjHeader{
+				Magic:  [4]byte{0x7f, 'o', 'b', 'j'},
+				Name:   [48]byte{},
+				MD5:    [32]byte{},
+				Size:   r.Osize,
+				Offset: fChunkLen + s.GetObjectHeaderSize(),
+			}
 
-	// Write the object into the chunk if it will not be full.
-	_, err = io.CopyN(fChunk, r.In, r.Osize)
-	if err != nil {
-		r.Err = err
-		return
-	}
+			for i := 0; i < len(r.Oid); i++ {
+				oHeader.Name[i] = r.Oid[i]
+			}
+			//fmt.Println("len(r.Oid) : ", len(r.Oid))
 
-	// Store mapping information between the object and the chunk.
-	pg.Lock.Obj.Lock()
+			for i := len(r.Oid); i < len(oHeader.Name); i++ {
+				oHeader.Name[i] = '\x00'
+			}
 
-	pg.ObjMap[r.Oid] = repository.ObjMap{
-		Cid: r.Cid,
-		ObjInfo: repository.ObjInfo{
-			Size: r.Osize,
-			MD5:  r.Md5,
-		},
-		Offset: fChunkLen,
-	}
+			//fmt.Printf("len(r.Md5) : %d, len(oHeader.MD5) : %d\n", len(r.Md5), len(oHeader.MD5))
+			for i := 0; i < len(r.Md5); i++ {
+				oHeader.MD5[i] = r.Md5[i]
+			}
 
-	pg.Lock.Obj.Unlock()
+			b := new(bytes.Buffer)
+			bufio.NewWriter(b)
+			err = binary.Write(b, binary.LittleEndian, oHeader)
+			if err != nil {
+				r.Err = err
+				return
+			}
 
-	if dev.Name != "" {
-		dev.TotalIO = dev.TotalIO + totalWrite + uint(r.Osize)
-		dev.Free = dev.Free - (totalWrite + uint(r.Osize))
-		dev.Used = dev.Used + (totalWrite + uint(r.Osize))
-	}
+			//fmt.Println(b.Len())
 
-	// Complete to write the object into the chunk.
-	r.Err = nil
+			// If the partition is one of the spin-down disks, spin-up the disk immediately.
+			s.devLock.RLock()
+			dev, ok := s.devs[chk.PartID]
+			s.devLock.RUnlock()
+			if !ok {
+				r.Err = fmt.Errorf("no such partition in partgroup : %s", chk.PartID)
+				return
+			}
+
+			t := time.Now()
+			tn := t.Nanosecond()
+			tDiff := uint(tn) - dev.Timestamp
+			dev.Timestamp = uint(tn)
+
+			s.devLock.Lock()
+			if dev.State == "Standby" {
+				dev.State = "Active"
+				dev.StandbyTime = dev.StandbyTime + tDiff
+			} else {
+				dev.ActiveTime = dev.ActiveTime + tDiff
+			}
+			s.devLock.Unlock()
+
+			// Check whether the chunk is full or has not enough space to write the object.
+			if fChunkLen >= vol.ChunkSize {
+				r.Err = fmt.Errorf("chunk full")
+				return
+			} else if fChunkLen+int64(b.Len())+r.Osize > vol.ChunkSize {
+				err = fChunk.Truncate(vol.ChunkSize)
+				totalWrite = totalWrite + uint(vol.ChunkSize-fChunkLen)
+				if dev.Name != "" {
+					dev.TotalIO = dev.TotalIO + totalWrite
+					dev.Free = dev.Free - totalWrite
+					dev.Used = dev.Used + totalWrite
+				}
+				r.Err = fmt.Errorf("truncated")
+				return
+			}
+
+			// Get an information of the chunk.
+			fChunkInfo, err = os.Lstat(fChunkName)
+			if err != nil {
+				r.Err = err
+				return
+			}
+
+			// Get current length of the chunk.
+			fChunkLen = fChunkInfo.Size()
+
+			// Write the object header into the chunk.
+			n, err := fChunk.Write(b.Bytes())
+			totalWrite = totalWrite + uint(n)
+			//fmt.Printf("buf len: %d, object written: %d\n", b.Len(), n)
+
+			// ToDo: implement more information of cHeader.
+			if n != b.Len() {
+				r.Err = err
+				return
+			}
+
+			// Write the object into the chunk if it will not be full.
+			_, err = io.CopyN(fChunk, r.In, r.Osize)
+			if err != nil {
+				r.Err = err
+				return
+			}
+
+			// Store mapping information between the object and the chunk.
+			vol.Lock.Obj.Lock()
+
+			vol.ObjMap[r.Oid] = repository.ObjMap{
+				Cid: r.Cid,
+				ObjInfo: repository.ObjInfo{
+					Size: r.Osize,
+					MD5:  r.Md5,
+				},
+				Offset: fChunkLen,
+			}
+
+			vol.Lock.Obj.Unlock()
+
+			if dev.Name != "" {
+				dev.TotalIO = dev.TotalIO + totalWrite + uint(r.Osize)
+				dev.Free = dev.Free - (totalWrite + uint(r.Osize))
+				dev.Used = dev.Used + (totalWrite + uint(r.Osize))
+			}
+
+			// Complete to write the object into the chunk.
+			r.Err = nil
+	*/
 	return
 }
 
 func (s *service) writeAll(r *repository.Request) {
 	// Find and get a logical volume.
-	pg, ok := s.pgs[r.Vol]
-	if !ok {
-		r.Err = fmt.Errorf("no such partition group: %s", r.Vol)
-		return
-	}
 
-	pg.Lock.Chk.RLock()
-	chk, ok := pg.ChunkMap[r.Cid]
-	pg.Lock.Chk.RUnlock()
-	if ok {
-		r.Err = fmt.Errorf("chunk is already exists: %s", r.Cid)
-		return
-	}
+	// refactoring
 
-	pg.SubPartGroup.Hot.DiskSched = pg.SubPartGroup.Hot.DiskSched%pg.SubPartGroup.Hot.NumOfPart + 1
-	DiskSched := pg.SubPartGroup.Hot.DiskSched
-	PartID := "hot_part" + strconv.Itoa(int(DiskSched))
+	/*
+		vol, ok := s.vols[r.Vol]
+		if !ok {
+			r.Err = fmt.Errorf("no such partition group: %s", r.Vol)
+			return
+		}
 
-	// Create a directory for a local group if not exist.
-	lgDir := pg.MntPoint + "/" + PartID + "/" + r.LocGid
-	_, err := os.Stat(lgDir)
-	if os.IsNotExist(err) {
-		os.MkdirAll(lgDir, 0775)
-	}
 
-	// Open a chunk that objects will be written to.
-	fChunk, err := os.OpenFile(lgDir+"/"+r.Cid, os.O_CREATE|os.O_WRONLY, 0775)
-	if err != nil {
-		r.Err = err
-		return
-	}
-	defer fChunk.Close()
+			vol.Lock.Chk.RLock()
+			chk, ok := vol.ChunkMap[r.Cid]
+			vol.Lock.Chk.RUnlock()
+			if ok {
+				r.Err = fmt.Errorf("chunk is already exists: %s", r.Cid)
+				return
+			}
 
-	// Write the object into the chunk if it will not be full.
-	n, err := io.CopyN(fChunk, r.In, pg.ChunkSize)
-	if err != nil || n != pg.ChunkSize {
-		r.Err = err
-		return
-	}
+			vol.SubPartGroup.Hot.DiskSched = vol.SubPartGroup.Hot.DiskSched%vol.SubPartGroup.Hot.NumOfPart + 1
+			DiskSched := vol.SubPartGroup.Hot.DiskSched
+			PartID := "hot_part" + strconv.Itoa(int(DiskSched))
 
-	pg.Lock.Chk.Lock()
-	pg.ChunkMap[r.Cid] = repository.ChunkMap{
-		PartID: PartID,
-		ChunkInfo: repository.ChunkInfo{
-			Type:   r.Type,
-			LocGid: r.LocGid,
-		},
-	}
-	pg.Lock.Chk.Unlock()
+			// Create a directory for a local group if not exist.
+			lgDir := vol.MntPoint + "/" + PartID + "/" + r.LocGid
+			_, err := os.Stat(lgDir)
+			if os.IsNotExist(err) {
+				os.MkdirAll(lgDir, 0775)
+			}
 
-	// If the partition is one of the spin-down disks, spin-up the disk immediately.
-	s.devLock.RLock()
-	dev, ok := s.devs[chk.PartID]
-	s.devLock.RUnlock()
-	if !ok {
-		r.Err = fmt.Errorf("no such partition in partgroup : %s", chk.PartID)
-		return
-	}
+			// Open a chunk that objects will be written to.
+			fChunk, err := os.OpenFile(lgDir+"/"+r.Cid, os.O_CREATE|os.O_WRONLY, 0775)
+			if err != nil {
+				r.Err = err
+				return
+			}
+			defer fChunk.Close()
 
-	t := time.Now()
-	tn := t.Nanosecond()
-	tDiff := uint(tn) - dev.Timestamp
-	dev.Timestamp = uint(tn)
+			// Write the object into the chunk if it will not be full.
+			n, err := io.CopyN(fChunk, r.In, vol.ChunkSize)
+			if err != nil || n != vol.ChunkSize {
+				r.Err = err
+				return
+			}
 
-	s.devLock.Lock()
-	if dev.State == "Standby" {
-		dev.State = "Active"
-		dev.StandbyTime = dev.StandbyTime + tDiff
-	} else {
-		dev.ActiveTime = dev.ActiveTime + tDiff
-	}
-	s.devLock.Unlock()
+			vol.Lock.Chk.Lock()
+			vol.ChunkMap[r.Cid] = repository.ChunkMap{
+				PartID: PartID,
+				ChunkInfo: repository.ChunkInfo{
+					Type:   r.Type,
+					LocGid: r.LocGid,
+				},
+			}
+			vol.Lock.Chk.Unlock()
 
-	if dev.Name != "" {
-		dev.TotalIO = dev.TotalIO + uint(n)
-		dev.Free = dev.Free - uint(n)
-		dev.Used = dev.Used + uint(n)
-	}
+			// If the partition is one of the spin-down disks, spin-up the disk immediately.
+			s.devLock.RLock()
+			dev, ok := s.devs[chk.PartID]
+			s.devLock.RUnlock()
+			if !ok {
+				r.Err = fmt.Errorf("no such partition in partgroup : %s", chk.PartID)
+				return
+			}
 
-	// Completely write the chunk.
-	r.Err = nil
+			t := time.Now()
+			tn := t.Nanosecond()
+			tDiff := uint(tn) - dev.Timestamp
+			dev.Timestamp = uint(tn)
+
+			s.devLock.Lock()
+			if dev.State == "Standby" {
+				dev.State = "Active"
+				dev.StandbyTime = dev.StandbyTime + tDiff
+			} else {
+				dev.ActiveTime = dev.ActiveTime + tDiff
+			}
+			s.devLock.Unlock()
+
+			if dev.Name != "" {
+				dev.TotalIO = dev.TotalIO + uint(n)
+				dev.Free = dev.Free - uint(n)
+				dev.Used = dev.Used + uint(n)
+			}
+
+			// Completely write the chunk.
+			r.Err = nil
+	*/
 	return
 }
 
 func (s *service) delete(r *repository.Request) {
 	// Find and get a logical volume.
-	pg, ok := s.pgs[r.Vol]
-	if !ok {
-		r.Err = fmt.Errorf("no such partition group: %s", r.Vol)
-		return
-	}
+	// refactoring
 
-	// Check if the requested object is in the object map.
-	pg.Lock.Obj.RLock()
-	_, ok = pg.ObjMap[r.Oid]
-	pg.Lock.Obj.RUnlock()
-	if !ok {
-		r.Err = fmt.Errorf("no such object: %s", r.Oid)
-		return
-	}
+	/*
+		vol, ok := s.vols[r.Vol]
+		if !ok {
+			r.Err = fmt.Errorf("no such partition group: %s", r.Vol)
+			return
+		}
 
-	// Delete the object from the map.
-	pg.Lock.Obj.Lock()
-	delete(pg.ObjMap, r.Oid)
-	pg.Lock.Obj.Unlock()
+		// Check if the requested object is in the object map.
 
-	// Complete to delete the object from the map.
-	r.Err = nil
+
+			vol.Lock.Obj.RLock()
+			_, ok = vol.ObjMap[r.Oid]
+			vol.Lock.Obj.RUnlock()
+			if !ok {
+				r.Err = fmt.Errorf("no such object: %s", r.Oid)
+				return
+			}
+
+			// Delete the object from the map.
+			vol.Lock.Obj.Lock()
+			delete(vol.ObjMap, r.Oid)
+			vol.Lock.Obj.Unlock()
+
+			// Complete to delete the object from the map.
+			r.Err = nil
+	*/
 	return
 }
 
 func (s *service) deleteReal(r *repository.Request) {
 	// Find and get a logical volume.
-	pg, ok := s.pgs[r.Vol]
-	if !ok {
-		r.Err = fmt.Errorf("no such partition group: %s", r.Vol)
-		return
-	}
+	// refactoring
 
-	// Check if the requested object is in the object map.
-	pg.Lock.Chk.RLock()
-	chk, ok := pg.ChunkMap[r.Cid]
-	pg.Lock.Chk.RUnlock()
+	/*
+		vol, ok := s.vols[r.Vol]
+		if !ok {
+			r.Err = fmt.Errorf("no such partition group: %s", r.Vol)
+			return
+		}
 
-	// Remove chunk
-	if ok {
-		lgDir := pg.MntPoint + "/" + chk.PartID + "/" + r.LocGid
+		// Check if the requested object is in the object map.
 
-		// Remove all metadata of chunk
-		pg.Lock.Obj.Lock()
-		for key, value := range pg.ObjMap {
-			if value.Cid == r.Cid {
-				delete(pg.ObjMap, key)
+
+			vol.Lock.Chk.RLock()
+			chk, ok := vol.ChunkMap[r.Cid]
+			vol.Lock.Chk.RUnlock()
+
+			// Remove chunk
+			if ok {
+				lgDir := vol.MntPoint + "/" + chk.PartID + "/" + r.LocGid
+
+				// Remove all metadata of chunk
+				vol.Lock.Obj.Lock()
+				for key, value := range vol.ObjMap {
+					if value.Cid == r.Cid {
+						delete(vol.ObjMap, key)
+					}
+				}
+				vol.Lock.Obj.Unlock()
+
+				fChunkInfo, err := os.Lstat(lgDir + "/" + r.Cid)
+				if err != nil {
+					r.Err = err
+					return
+				}
+
+				fChunkLen := fChunkInfo.Size()
+
+				err = os.Remove(lgDir + "/" + r.Cid)
+				if err != nil {
+					r.Err = fmt.Errorf("no such chunk: %s", r.Cid)
+					return
+				}
+
+				vol.Lock.Chk.Lock()
+				delete(vol.ChunkMap, r.Cid)
+				vol.Lock.Chk.Unlock()
+
+				s.devLock.RLock()
+				dev, ok := s.devs[chk.PartID]
+				if ok {
+					dev.TotalIO = dev.TotalIO + uint(fChunkLen)
+					dev.Used = dev.Used - uint(fChunkLen)
+					dev.Free = dev.Free + uint(fChunkLen)
+					dev.Size = dev.Used + dev.Free
+				}
+				s.devLock.RUnlock()
+
+				r.Err = nil
+				return
 			}
-		}
-		pg.Lock.Obj.Unlock()
 
-		fChunkInfo, err := os.Lstat(lgDir + "/" + r.Cid)
-		if err != nil {
-			r.Err = err
-			return
-		}
+			// Remove object
+			vol.Lock.Obj.RLock()
+			obj, ok := vol.ObjMap[r.Oid]
+			vol.Lock.Obj.RUnlock()
+			if !ok {
+				r.Err = fmt.Errorf("no such object: %s", r.Oid)
+				return
+			}
 
-		fChunkLen := fChunkInfo.Size()
+			vol.Lock.Obj.RLock()
+			chk, ok = vol.ChunkMap[obj.Cid]
+			vol.Lock.Obj.RUnlock()
+			if !ok {
+				r.Err = fmt.Errorf("no chunk including such object: %s", r.Cid)
+				return
+			}
 
-		err = os.Remove(lgDir + "/" + r.Cid)
-		if err != nil {
-			r.Err = fmt.Errorf("no such chunk: %s", r.Cid)
-			return
-		}
+			lgDir := vol.MntPoint + "/" + chk.PartID + "/" + r.LocGid
+			fChunk, err := os.OpenFile(lgDir+"/"+obj.Cid, os.O_RDWR, 0775)
+			if err != nil {
+				r.Err = err
+				return
+			}
+			defer fChunk.Close()
 
-		pg.Lock.Chk.Lock()
-		delete(pg.ChunkMap, r.Cid)
-		pg.Lock.Chk.Unlock()
+			// Obtain a path of the chunk.
+			fChunkName := fChunk.Name()
 
-		s.devLock.RLock()
-		dev, ok := s.devs[chk.PartID]
-		if ok {
-			dev.TotalIO = dev.TotalIO + uint(fChunkLen)
-			dev.Used = dev.Used - uint(fChunkLen)
-			dev.Free = dev.Free + uint(fChunkLen)
-			dev.Size = dev.Used + dev.Free
-		}
-		s.devLock.RUnlock()
+			// Get an information of the chunk.
+			fChunkInfo, err := os.Lstat(fChunkName)
+			if err != nil {
+				r.Err = err
+				return
+			}
 
-		r.Err = nil
-		return
-	}
+			// Get current length of the chunk.
+			fChunkLen := fChunkInfo.Size()
 
-	// Remove object
-	pg.Lock.Obj.RLock()
-	obj, ok := pg.ObjMap[r.Oid]
-	pg.Lock.Obj.RUnlock()
-	if !ok {
-		r.Err = fmt.Errorf("no such object: %s", r.Oid)
-		return
-	}
+			if obj.Offset+obj.ObjInfo.Size+s.GetObjectHeaderSize() != fChunkLen {
+				r.Err = fmt.Errorf("can remove only a last object of a chunk")
+				return
+			}
+			fChunk.Seek(obj.Offset, io.SeekStart)
+			fChunk.Truncate(fChunkLen - (fChunkLen - obj.Offset))
 
-	pg.Lock.Obj.RLock()
-	chk, ok = pg.ChunkMap[obj.Cid]
-	pg.Lock.Obj.RUnlock()
-	if !ok {
-		r.Err = fmt.Errorf("no chunk including such object: %s", r.Cid)
-		return
-	}
+			vol.Lock.Obj.Lock()
+			delete(vol.ObjMap, r.Oid)
+			vol.Lock.Obj.Unlock()
 
-	lgDir := pg.MntPoint + "/" + chk.PartID + "/" + r.LocGid
-	fChunk, err := os.OpenFile(lgDir+"/"+obj.Cid, os.O_RDWR, 0775)
-	if err != nil {
-		r.Err = err
-		return
-	}
-	defer fChunk.Close()
+			s.devLock.RLock()
+			dev, ok := s.devs[chk.PartID]
+			s.devLock.RUnlock()
 
-	// Obtain a path of the chunk.
-	fChunkName := fChunk.Name()
+			if ok {
+				dev.TotalIO = dev.TotalIO + uint(fChunkLen-obj.Offset)
+				dev.Free = dev.Free + uint(fChunkLen-obj.Offset)
+				dev.Used = dev.Free - uint(fChunkLen-obj.Offset)
+				dev.Size = dev.Free + dev.Used
+			}
 
-	// Get an information of the chunk.
-	fChunkInfo, err := os.Lstat(fChunkName)
-	if err != nil {
-		r.Err = err
-		return
-	}
-
-	// Get current length of the chunk.
-	fChunkLen := fChunkInfo.Size()
-
-	if obj.Offset+obj.ObjInfo.Size+s.GetObjectHeaderSize() != fChunkLen {
-		r.Err = fmt.Errorf("can remove only a last object of a chunk")
-		return
-	}
-	fChunk.Seek(obj.Offset, io.SeekStart)
-	fChunk.Truncate(fChunkLen - (fChunkLen - obj.Offset))
-
-	pg.Lock.Obj.Lock()
-	delete(pg.ObjMap, r.Oid)
-	pg.Lock.Obj.Unlock()
-
-	s.devLock.RLock()
-	dev, ok := s.devs[chk.PartID]
-	s.devLock.RUnlock()
-
-	if ok {
-		dev.TotalIO = dev.TotalIO + uint(fChunkLen-obj.Offset)
-		dev.Free = dev.Free + uint(fChunkLen-obj.Offset)
-		dev.Used = dev.Free - uint(fChunkLen-obj.Offset)
-		dev.Size = dev.Free + dev.Used
-	}
-
-	r.Err = nil
+			r.Err = nil
+	*/
 	return
 }
 
@@ -1252,47 +1314,51 @@ func (s *service) RenameChunk(src string, dest string, Vol string, LocGid string
 		err := fmt.Errorf("invalid arguments: %s, %s, %s, %s", src, dest, Vol, LocGid)
 		return err
 	}
+	// refactoring
 
-	pg, ok := s.pgs[Vol]
-	if !ok {
-		err := fmt.Errorf("no such partition group: %s", Vol)
-		return err
-	}
-
-	pg.Lock.Chk.RLock()
-	chk, ok := pg.ChunkMap[src]
-	pg.Lock.Chk.RUnlock()
-	if !ok {
-		err := fmt.Errorf("no such chunk: %s", src)
-		return err
-	}
-
-	lgDir := pg.MntPoint + "/" + chk.PartID + "/" + LocGid
-	err := os.Rename(lgDir+"/"+src, lgDir+"/"+dest)
-	if err != nil {
-		return err
-	}
-
-	pg.Lock.Obj.Lock()
-	for key, value := range pg.ObjMap {
-		if value.Cid == src {
-			value.Cid = dest
-			pg.ObjMap[key] = value
+	/*
+		vol, ok := s.vols[Vol]
+		if !ok {
+			err := fmt.Errorf("no such partition group: %s", Vol)
+			return err
 		}
-	}
-	pg.Lock.Obj.Unlock()
 
-	pg.Lock.Chk.Lock()
-	pg.ChunkMap[dest] = repository.ChunkMap{
-		PartID: chk.PartID,
-		ChunkInfo: repository.ChunkInfo{
-			Type:   chk.ChunkInfo.Type,
-			LocGid: chk.ChunkInfo.LocGid,
-		},
-	}
-	delete(pg.ChunkMap, src)
-	pg.Lock.Chk.Unlock()
 
+			vol.Lock.Chk.RLock()
+			chk, ok := vol.ChunkMap[src]
+			vol.Lock.Chk.RUnlock()
+			if !ok {
+				err := fmt.Errorf("no such chunk: %s", src)
+				return err
+			}
+
+			lgDir := vol.MntPoint + "/" + chk.PartID + "/" + LocGid
+			err := os.Rename(lgDir+"/"+src, lgDir+"/"+dest)
+			if err != nil {
+				return err
+			}
+
+			vol.Lock.Obj.Lock()
+			for key, value := range vol.ObjMap {
+				if value.Cid == src {
+					value.Cid = dest
+					vol.ObjMap[key] = value
+				}
+			}
+			vol.Lock.Obj.Unlock()
+
+			vol.Lock.Chk.Lock()
+			vol.ChunkMap[dest] = repository.ChunkMap{
+				PartID: chk.PartID,
+				ChunkInfo: repository.ChunkInfo{
+					Type:   chk.ChunkInfo.Type,
+					LocGid: chk.ChunkInfo.LocGid,
+				},
+			}
+			delete(vol.ChunkMap, src)
+			vol.Lock.Chk.Unlock()
+
+	*/
 	return nil
 }
 
@@ -1301,34 +1367,38 @@ func (s *service) CountNonCodedChunk(Vol string, LocGid string) (int, error) {
 		err := fmt.Errorf("invalid arguements: %s, %s", Vol, LocGid)
 		return -1, err
 	}
+	// refactoring
 
-	pg, ok := s.pgs[Vol]
-	if !ok {
-		err := fmt.Errorf("no such partition group: %s", Vol)
-		return -1, err
-	}
-
-	dir := pg.MntPoint
-	encPath := "/" + LocGid + "/L_"
-	count := 0
-
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			err := fmt.Errorf("prevent panic by handling failure accessing a path %q: %v", dir, err)
-			return err
+	/*
+		vol, ok := s.vols[Vol]
+		if !ok {
+			err := fmt.Errorf("no such partition group: %s", Vol)
+			return -1, err
 		}
-		ok, err := regexp.MatchString(encPath, path)
-		if ok {
-			count++
-		}
-		return nil
-	})
 
-	if err != nil {
-		return -1, err
-	}
+			dir := vol.MntPoint
+			encPath := "/" + LocGid + "/L_"
+			count := 0
 
-	return count, nil
+
+				err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+					if err != nil {
+						err := fmt.Errorf("prevent panic by handling failure accessing a path %q: %v", dir, err)
+						return err
+					}
+					ok, err := regexp.MatchString(encPath, path)
+					if ok {
+						count++
+					}
+					return nil
+				})
+
+				if err != nil {
+					return -1, err
+				}
+
+	*/
+	return 0, nil
 }
 
 func (s *service) GetNonCodedChunk(Vol string, LocGid string) (string, error) {
@@ -1336,105 +1406,113 @@ func (s *service) GetNonCodedChunk(Vol string, LocGid string) (string, error) {
 		err := fmt.Errorf("invalid arguements: %s, %s", Vol, LocGid)
 		return "", err
 	}
+	// refactoring
 
-	pg, ok := s.pgs[Vol]
-	if !ok {
-		err := fmt.Errorf("no such partition group: %s", Vol)
-		return "", err
-	}
+	/*
+		vol, ok := s.vols[Vol]
+		if !ok {
+			err := fmt.Errorf("no such partition group: %s", Vol)
+			return "", err
+		}
 
-	dir := pg.MntPoint
-	encPath := "/" + LocGid + "/L_"
-	var cid string
+		dir := vol.MntPoint
+		encPath := "/" + LocGid + "/L_"
+		var cid string
 
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if err == nil {
-			if cid != "" {
+
+
+			err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+				if err == nil {
+					if cid != "" {
+						return nil
+					}
+				}
+				if err != nil {
+					err := fmt.Errorf("prevent panic by handling failure accessing a path %q: %v", dir, err)
+					return err
+				}
+				ok, err := regexp.MatchString(encPath, path)
+				if ok {
+					cid = filepath.Base(path)
+				}
 				return nil
+			})
+
+			if err != nil {
+				return "", err
 			}
-		}
-		if err != nil {
-			err := fmt.Errorf("prevent panic by handling failure accessing a path %q: %v", dir, err)
-			return err
-		}
-		ok, err := regexp.MatchString(encPath, path)
-		if ok {
-			cid = filepath.Base(path)
-		}
-		return nil
-	})
 
-	if err != nil {
-		return "", err
-	}
-
-	return cid, nil
+	*/
+	return "", nil
 }
 
 func (s *service) BuildObjectMap(Vol string, cid string) error {
 	if Vol == "" || cid == "" {
 		return fmt.Errorf("Invalid arguments :%s, %s", Vol, cid)
 	}
+	// refactoring
 
-	pg, ok := s.pgs[Vol]
-	if !ok {
-		return fmt.Errorf("no such partition group: %s", Vol)
-	}
-
-	pg.Lock.Chk.RLock()
-	chk, ok := pg.ChunkMap[cid]
-	pg.Lock.Chk.RUnlock()
-	if !ok {
-		return fmt.Errorf("no such chunk: %s", cid)
-	}
-
-	fChunk, err := os.OpenFile(pg.MntPoint+"/"+chk.PartID+"/"+chk.ChunkInfo.LocGid+"/"+cid, os.O_RDWR, 0775)
-	if err != nil {
-		return err
-	}
-	defer fChunk.Close()
-
-	cHeader := new(repository.ChunkHeader)
-	err = binary.Read(fChunk, binary.LittleEndian, cHeader)
-	if err != nil {
-		return err
-	}
-
-	//fmt.Printf("cHeader.Magic : %s, cHeader.Type : %s", cHeader.Magic, cHeader.Type)
-
-	for {
-		oHeader := new(repository.ObjHeader)
-		err := binary.Read(fChunk, binary.LittleEndian, oHeader)
-		if err == io.EOF {
-			break
+	/*
+		vol, ok := s.vols[Vol]
+		if !ok {
+			return fmt.Errorf("no such partition group: %s", Vol)
 		}
 
-		ObjID := strings.Trim(string(oHeader.Name[:]), "\x00")
-		MD5 := strings.Trim(string(oHeader.MD5[:]), "\x00")
 
-		//fmt.Printf("Object id : %s, MD5 : %x\n", ObjID, MD5)
+			vol.Lock.Chk.RLock()
+			chk, ok := vol.ChunkMap[cid]
+			vol.Lock.Chk.RUnlock()
+			if !ok {
+				return fmt.Errorf("no such chunk: %s", cid)
+			}
 
-		pg.Lock.Obj.RLock()
-		_, ok := pg.ObjMap[ObjID]
-		pg.Lock.Obj.RUnlock()
-		if ok {
-			return fmt.Errorf("object is already existed : %s", ObjID)
-		}
-		pg.Lock.Obj.Lock()
-		pg.ObjMap[ObjID] = repository.ObjMap{
-			Cid: cid,
-			ObjInfo: repository.ObjInfo{
-				Size: oHeader.Size,
-				MD5:  MD5,
-			},
-			Offset: oHeader.Offset - s.GetObjectHeaderSize(),
-		}
+			fChunk, err := os.OpenFile(vol.MntPoint+"/"+chk.PartID+"/"+chk.ChunkInfo.LocGid+"/"+cid, os.O_RDWR, 0775)
+			if err != nil {
+				return err
+			}
+			defer fChunk.Close()
 
-		pg.Lock.Obj.Unlock()
+			cHeader := new(repository.ChunkHeader)
+			err = binary.Read(fChunk, binary.LittleEndian, cHeader)
+			if err != nil {
+				return err
+			}
 
-		fChunk.Seek(oHeader.Size, os.SEEK_CUR)
-	}
+			//fmt.Printf("cHeader.Magic : %s, cHeader.Type : %s", cHeader.Magic, cHeader.Type)
 
+			for {
+				oHeader := new(repository.ObjHeader)
+				err := binary.Read(fChunk, binary.LittleEndian, oHeader)
+				if err == io.EOF {
+					break
+				}
+
+				ObjID := strings.Trim(string(oHeader.Name[:]), "\x00")
+				MD5 := strings.Trim(string(oHeader.MD5[:]), "\x00")
+
+				//fmt.Printf("Object id : %s, MD5 : %x\n", ObjID, MD5)
+
+				vol.Lock.Obj.RLock()
+				_, ok := vol.ObjMap[ObjID]
+				vol.Lock.Obj.RUnlock()
+				if ok {
+					return fmt.Errorf("object is already existed : %s", ObjID)
+				}
+				vol.Lock.Obj.Lock()
+				vol.ObjMap[ObjID] = repository.ObjMap{
+					Cid: cid,
+					ObjInfo: repository.ObjInfo{
+						Size: oHeader.Size,
+						MD5:  MD5,
+					},
+					Offset: oHeader.Offset - s.GetObjectHeaderSize(),
+				}
+
+				vol.Lock.Obj.Unlock()
+
+				fChunk.Seek(oHeader.Size, os.SEEK_CUR)
+			}
+	*/
 	return nil
 }
 
@@ -1454,7 +1532,70 @@ type devRepository struct {
 	*service
 }
 
+// Create adds each partitions of the device to volumes.
 func (r *devRepository) Create(given *device.Device) error {
+	d := given.Name()
+	var stat syscall.Statfs_t
+	var vSpeed volume.Speed
+	var pSize uint64
+
+	// for all partitions of the device
+	for i := 1; ; i++ {
+		p := string(d) + strconv.Itoa(i)
+
+		// break if the partition not exists.
+		_, err := os.Stat(p)
+		if os.IsNotExist(err) {
+			break
+		}
+
+		// Set a volume name.
+		vName := "vol-" + strconv.Itoa(i)
+
+		// Set volume speed.
+		// Assumption: the number of partition for each device is 4.
+		switch i {
+		case 1:
+			vSpeed = volume.High
+		case 2:
+		case 3:
+			vSpeed = volume.Mid
+		case 4:
+			vSpeed = volume.Low
+		}
+
+		// If the user is not previllaged for root, pSize assigns user-defined value.
+		if os.Getuid() != 0 {
+			pSize = 10000000
+		} else {
+			// stat is used for size of the partition.
+			err = syscall.Statfs(p, &stat)
+			if err != nil {
+				return device.ErrInvalidDevice
+			}
+
+			// get partition size in bytes.
+			pSize = stat.Blocks * uint64(stat.Bsize)
+		}
+
+		// If the volume exists, just change the volume size.
+		// If not, create new volumes.
+		v, ok := r.vols[vName]
+		if ok {
+			v.SetSize(v.Size() + pSize)
+			continue
+		}
+
+		r.vols[vName] = &vol{
+			Volume: volume.New(volume.Name(vName), r.basePath+"/"+vName, vSpeed, pSize),
+		}
+
+		err = os.MkdirAll(r.vols[vName].MntPoint(), 0775)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -1468,12 +1609,24 @@ type volumeRepository struct {
 	*service
 }
 
-func (r *volumeRepository) Find(name volume.Name) (volume.Volume, error) {
-	return volume.Volume{}, nil
+// Find returns a volume.
+func (r *volumeRepository) Find(name volume.Name) (*volume.Volume, error) {
+	v, ok := r.vols[string(name)]
+	if !ok {
+		return nil, volume.ErrNotFound
+	}
+
+	return volume.New(v.Name(), v.MntPoint(), v.Speed(), v.Size()), nil
 }
 
-func (r *volumeRepository) FindAll() []volume.Volume {
-	return nil
+func (r *volumeRepository) FindAll() []*volume.Volume {
+	var allVols []*volume.Volume
+
+	for _, v := range r.vols {
+		allVols = append(allVols, volume.New(v.Name(), v.MntPoint(), v.Speed(), v.Size()))
+	}
+
+	return allVols
 }
 
 func (s *service) NewVolumeRepository() volume.Repository {
