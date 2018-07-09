@@ -1,20 +1,58 @@
 package partstore
 
 import (
-	"bufio"
-	"bytes"
-	"crypto/md5"
-	"fmt"
-	"io"
 	"os"
-	"runtime"
-	"strings"
 	"testing"
-	"time"
 
-	"github.com/chanyoung/nil/app/ds/infrastructure/repository"
+	"github.com/chanyoung/nil/app/ds/domain/model/device"
 )
 
+func TestDevice(t *testing.T) {
+	dir := "testServices"
+	os.Mkdir(dir, 0775)
+	defer os.RemoveAll(dir)
+
+	d := device.New("/dev/sda")
+	s := newService(dir)
+
+	r := s.NewDeviceRepository()
+
+	err := r.Create(d)
+	if err != nil {
+		t.Log("Creating a new device has failed\n")
+	}
+}
+
+func TestVolume(t *testing.T) {
+	dir := "testServices"
+	os.Mkdir(dir, 0775)
+	defer os.RemoveAll(dir)
+
+	d := device.New("/dev/sda")
+	s := newService(dir)
+
+	rd := s.NewDeviceRepository()
+	rv := s.NewVolumeRepository()
+
+	err := rd.Create(d)
+	if err != nil {
+		t.Log("Creating a new device has failed\n")
+	}
+
+	v, err := rv.Find("vol-1")
+	if err != nil {
+		t.Log(err)
+		return
+	}
+	t.Logf("found volume name is %s\n", v.Name())
+
+	vAll := rv.FindAll()
+	for _, v := range vAll {
+		t.Logf("found volume name is %s\n", v.Name())
+	}
+}
+
+/*
 func TestServiceAPIs(t *testing.T) {
 	dir := "testServiceAPIs"
 	os.Mkdir(dir, 0775)
@@ -161,7 +199,7 @@ func TestServiceAPIs(t *testing.T) {
 			t.Error(err)
 		}
 		t.Errorf("%+v\n", hex.Dump(b.Bytes()))
-	*/
+
 	testCases := []struct {
 		op                 repository.Operation
 		pg, lgid, oid, cid string
@@ -423,3 +461,4 @@ func TestServiceAPIs(t *testing.T) {
 	//s.MigrateData("cold_part2")
 
 }
+*/

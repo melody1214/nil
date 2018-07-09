@@ -1,12 +1,10 @@
 package partstore
 
-import (
-	"github.com/chanyoung/nil/app/ds/infrastructure/repository"
-)
+import "github.com/chanyoung/nil/app/ds/domain/model/volume"
 
-type pg struct {
+type vol struct {
 	// Embed volume.
-	*repository.Vol
+	*volume.Volume
 
 	// TODO: adds lv specific fields here.
 }
