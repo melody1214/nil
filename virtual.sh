@@ -29,6 +29,8 @@ DSBASEPORT=52000
 DISKSIZE=400
 DISKNUM=2
 
+LOOPDEVNUM=10
+
 # User per region
 TOTALUSERS=0    # (REGIONUSERS) * (number of regions)
 REGIONUSERS=5   # 5 users per region
@@ -83,11 +85,17 @@ function createsdisks() {
 
         # Creates a disk image.
         dd bs=1M count=$size if=/dev/zero of=$dev
-        mkfs.xfs $dev
+        sudo parted -s $dev mklabel gpt
+        sudo parted -s $dev mkpart primary xfs 0% 50%
+        sudo parted -s $dev mkpart primary xfs 50% 100%
+        sudo losetup -P /dev/loop$LOOPDEVNUM $dev
 
         # Add to ds.
-        echo $dev >> $MNT
-        echo $NIL ds volume add dev$i -b $HOST -p $dsport >> $PENDINGCMD
+        # echo $dev >> $MNT
+        echo /dev/loop${LOOPDEVNUM}p1 >> $MNT
+        echo /dev/loop${LOOPDEVNUM}p2 >> $MNT
+        echo $NIL ds volume add /dev/loop$LOOPDEVNUM -b $HOST -p $dsport >> $PENDINGCMD
+        LOOPDEVNUM=$((LOOPDEVNUM + 1))
     done
 }
 
@@ -128,6 +136,7 @@ function purge() {
             umount $dev || true
         done
     fi
+    sudo losetup --detach-all
 
     sleep 1
 

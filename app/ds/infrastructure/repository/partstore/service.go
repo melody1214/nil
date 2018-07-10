@@ -1541,7 +1541,11 @@ func (r *devRepository) Create(given *device.Device) error {
 
 	// for all partitions of the device
 	for i := 1; ; i++ {
-		p := string(d) + strconv.Itoa(i)
+		p := string(d)
+		if strings.Contains(d.String(), "loop") {
+			p = p + "p"
+		}
+		p = p + strconv.Itoa(i)
 
 		// break if the partition not exists.
 		_, err := os.Stat(p)
@@ -1587,7 +1591,7 @@ func (r *devRepository) Create(given *device.Device) error {
 		}
 
 		r.vols[vName] = &vol{
-			Volume: volume.New(volume.Name(vName), r.basePath+"/"+vName, vSpeed, pSize),
+			Volume: volume.New(volume.Name(vName), vName, vSpeed, pSize),
 		}
 
 		err = os.MkdirAll(r.vols[vName].MntPoint(), 0775)

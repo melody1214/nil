@@ -46,7 +46,10 @@ func (s *service) AddVolume(req *nilrpc.DCLAddVolumeRequest, res *nilrpc.DCLAddV
 	}
 
 	vols := s.volumeRepository.FindAll()
-	_ = vols
+	for _, v := range vols {
+		_ = v
+		// fmt.Printf("%+v\n", v)
+	}
 
 	// const (
 	// 	hot  = uint(5)
