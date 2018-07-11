@@ -53,13 +53,17 @@ func (f *jobFactory) create(e *Event, private interface{}) (*Job, error) {
 			return nil, fmt.Errorf("register volume information should be in private field")
 		}
 
-		v, ok := private.(*cmap.Volume)
+		v, ok := private.([]cmap.Volume)
 		if ok == false {
 			return nil, fmt.Errorf("wrong private field type")
 		}
 		j.private = v
 		j.waitChannel = make(chan error)
-		j.Log = newJobLog("DS: " + v.ID.String())
+		if len(v) > 0 {
+			j.Log = newJobLog("DS: " + v[0].Node.String())
+		} else {
+			return nil, fmt.Errorf("empty volumes")
+		}
 
 	case Rebalance:
 		j.Type = Batch

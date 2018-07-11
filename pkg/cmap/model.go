@@ -168,9 +168,15 @@ func (s VolumeStatus) String() string {
 	}
 }
 
+// VolumeName is a string for identifying node.
+type VolumeName string
+
+func (n VolumeName) String() string { return string(n) }
+
 // Volume is volumes which is attached in the ds.
 type Volume struct {
 	ID      ID           `xml:"id"`
+	Name    VolumeName   `xml:"name"`
 	Incr    Incarnation  `xml:"incarnation"`
 	Size    uint64       `xml:"size"`
 	Speed   VolumeSpeed  `xml:"speed"`

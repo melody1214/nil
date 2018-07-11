@@ -52,6 +52,7 @@ var generateSQLBase = []string{
 	`
 		CREATE TABLE IF NOT EXISTS volume (
 			vl_id int unsigned NOT NULL AUTO_INCREMENT,
+			vl_name varchar(32) CHARACTER SET ascii NOT NULL,
 			vl_status varchar(32) CHARACTER SET ascii NOT NULL,
 			vl_node int unsigned NOT NULL,
 			vl_size int unsigned NOT NULL,
@@ -59,6 +60,7 @@ var generateSQLBase = []string{
 			vl_max_encoding_group int unsigned NOT NULL,
 			vl_speed varchar(32) charset ascii NOT NULL,
 			PRIMARY KEY (vl_id),
+			UNIQUE KEY (vl_node, vl_name),
 			FOREIGN KEY (vl_node) REFERENCES node (node_id)
 		) ENGINE=InnoDB DEFAULT CHARSET=ascii
 	`,

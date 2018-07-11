@@ -23,7 +23,7 @@ func (s *service) ListJob(req *nilrpc.MCLListJobRequest, res *nilrpc.MCLListJobR
 func (s *service) RegisterVolume(req *nilrpc.MCLRegisterVolumeRequest, res *nilrpc.MCLRegisterVolumeResponse) error {
 	e := newEvent(RegisterVolume, NoAffectedEG)
 
-	j, err := s.jFact.create(e, &req.Volume)
+	j, err := s.jFact.create(e, req.Volumes)
 	if err != nil {
 		return err
 	}
@@ -38,7 +38,6 @@ func (s *service) RegisterVolume(req *nilrpc.MCLRegisterVolumeRequest, res *nilr
 	timeout := time.After(2 * time.Minute)
 	select {
 	case err = <-waitC:
-		res.ID = req.Volume.ID
 		return err
 	case <-timeout:
 		// TODO: j.stop()
@@ -81,39 +80,37 @@ func (s *service) GlobalJoin(req *nilrpc.MCLGlobalJoinRequest, res *nilrpc.MCLGl
 }
 
 func (s *service) runStateChangedObserver() {
-	go func() {
-		lastCMap := s.cmapAPI.GetLatestCMap()
+	lastCMap := s.cmapAPI.GetLatestCMap()
 
-		for {
-			notiC := s.cmapAPI.GetStateChangedNoti()
-			select {
-			case <-notiC:
-				changedCMap := s.cmapAPI.GetLatestCMap()
+	for {
+		notiC := s.cmapAPI.GetStateChangedNoti()
+		select {
+		case <-notiC:
+			changedCMap := s.cmapAPI.GetLatestCMap()
 
-				// Update volume max eg.
-				for i, v := range changedCMap.Vols {
-					changedCMap.Vols[i].MaxEG = calcMaxEG(v.Size)
-				}
-				if err := s.updateDBByCMap(&changedCMap); err != nil {
-					fmt.Printf("\n%+v\n", err)
-				}
-
-				events := extractEventsFromCMap(&lastCMap, &changedCMap)
-				for _, e := range events {
-					j, err := s.jFact.create(e, nil)
-					if err != nil {
-						// TODO: handling errors.
-						fmt.Printf("\n%+v\n", err)
-						continue
-					}
-
-					if j.Type == Iterative {
-						s.wPool.dispatchNow(j)
-					}
-				}
-
-				lastCMap = changedCMap
+			// Update volume max eg.
+			for i, v := range changedCMap.Vols {
+				changedCMap.Vols[i].MaxEG = calcMaxEG(v.Size)
 			}
+			if err := s.updateDBByCMap(&changedCMap); err != nil {
+				fmt.Printf("\n%+v\n", err)
+			}
+
+			events := extractEventsFromCMap(&lastCMap, &changedCMap)
+			for _, e := range events {
+				j, err := s.jFact.create(e, nil)
+				if err != nil {
+					// TODO: handling errors.
+					fmt.Printf("\n%+v\n", err)
+					continue
+				}
+
+				if j.Type == Iterative {
+					s.wPool.dispatchNow(j)
+				}
+			}
+
+			lastCMap = changedCMap
 		}
-	}()
+	}
 }

@@ -44,7 +44,7 @@ func NewService(cfg *config.Mds, cmapAPI cmap.MasterAPI, s Repository) Service {
 		store:   s,
 		cmapAPI: cmapAPI,
 	}
-	service.runStateChangedObserver()
+	go service.runStateChangedObserver()
 
 	// // If I am the very firstman of the land, then version up myself to prevent merged by others.
 	// if cfg.Swim.CoordinatorAddr == cfg.ServerAddr+":"+cfg.ServerPort {

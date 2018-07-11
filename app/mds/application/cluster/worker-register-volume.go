@@ -30,18 +30,20 @@ func (w *worker) rvInsertDB() fsm {
 		return w.rvFinish
 	}
 
-	v := private.(*cmap.Volume)
-	v.MaxEG = calcMaxEG(v.Size)
-
 	var txid repository.TxID
 	txid, w.job.err = w.store.Begin()
 	if w.job.err != nil {
 		return w.rvFinish
 	}
 
-	if w.job.err = w.store.RegisterVolume(txid, v); w.job.err != nil {
-		w.store.Rollback(txid)
-		return w.rvFinish
+	vols := private.([]cmap.Volume)
+	for _, v := range vols {
+		v.MaxEG = calcMaxEG(v.Size)
+
+		if w.job.err = w.store.RegisterVolume(txid, &v); w.job.err != nil {
+			w.store.Rollback(txid)
+			return w.rvFinish
+		}
 	}
 
 	if w.job.err = w.store.Commit(txid); w.job.err != nil {

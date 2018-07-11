@@ -305,7 +305,8 @@ func mergeCMap(src, dst *CMap) bool {
 	// Merge volumes.
 	for _, sv := range src.Vols {
 		for i, dv := range dst.Vols {
-			if sv.ID != dv.ID {
+			// PK(node, name).
+			if sv.Node != dv.Node || sv.Name != dv.Name {
 				continue
 			}
 
@@ -313,13 +314,10 @@ func mergeCMap(src, dst *CMap) bool {
 				break
 			}
 
-			if dv.Stat == VolPrepared && sv.Stat != VolPrepared {
+			if dv.Stat != sv.Stat {
 				dst.Vols[i].Stat = sv.Stat
 				stateChanged = true
 			}
-
-			dst.Vols[i].Size = sv.Size
-			dst.Vols[i].Speed = sv.Speed
 			dst.Vols[i].Incr = sv.Incr
 		}
 	}
@@ -349,9 +347,10 @@ func (m *manager) UpdateVolume(volume Volume) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	// Update existed volume.
 	cm := m.latestCMap()
 	for i, v := range cm.Vols {
-		if v.ID != volume.ID {
+		if v.Name != volume.Name {
 			continue
 		}
 
@@ -359,7 +358,14 @@ func (m *manager) UpdateVolume(volume Volume) {
 		cm.Vols[i].Size = volume.Size
 		cm.Vols[i].Speed = volume.Speed
 		cm.Vols[i].Incr = cm.Vols[i].Incr + 1
+		return
 	}
+
+	// Make new volume.
+	volume.Incr = 0
+	volume.MaxEG = 0
+	volume.EncGrps = nil
+	cm.Vols = append(cm.Vols, volume)
 }
 
 func (m *manager) UpdateUnencoded(egID ID, unencoded int) {

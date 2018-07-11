@@ -34,6 +34,9 @@ type Service struct {
 	// Configuration provided at service initialization.
 	cfg Config
 
+	// id represents this node's id.
+	id ID
+
 	// Managing cmap with membership server and client APIs.
 	manager *manager
 
@@ -52,6 +55,7 @@ func NewService(coordinator NodeAddress, log *logrus.Entry) (*Service, error) {
 
 	return &Service{
 		manager: cm,
+		id:      ID(-1),
 	}, nil
 }
 
@@ -73,6 +77,7 @@ type CommonAPI interface {
 	SearchCall() *SearchCall
 	GetStateChangedNoti() <-chan interface{}
 	GetUpdatedNoti(ver Version) <-chan interface{}
+	ID() (ID, error)
 }
 
 // MasterAPI is the interface for access the membership service with master mode.
@@ -97,6 +102,27 @@ func (s *Service) MasterAPI() MasterAPI {
 // SlaveAPI returns a set of APIs that can be used by nodes in slave mode.
 func (s *Service) SlaveAPI() SlaveAPI {
 	return s
+}
+
+// ErrNotInitialized is used when the cmap API is called before the service is initialized.
+var ErrNotInitialized = errors.New("cmap service is not initialized yet")
+
+// ID returns this node ID.
+func (s *Service) ID() (ID, error) {
+	if s.id.Int64() > 0 {
+		return s.id, nil
+	}
+
+	// ID is not initialized.
+	n, err := s.SearchCall().Node().Name(s.cfg.Name).Do()
+	if err != nil {
+		return s.id, ErrNotInitialized
+	}
+
+	// Save the id.
+	s.id = n.ID
+
+	return s.id, nil
 }
 
 // SearchCall returns a SearchCall object which can support convenient
@@ -130,11 +156,7 @@ func (s *Service) UpdateCMap(cmap *CMap) error {
 
 // UpdateVolume updates the volume status of the given volume ID.
 func (s *Service) UpdateVolume(volume Volume) error {
-	node, err := s.SearchCall().Node().ID(volume.Node).Do()
-	if err != nil {
-		return fmt.Errorf("no such node: %v", err)
-	}
-	if node.Name != s.cfg.Name {
+	if s.id != volume.Node {
 		return fmt.Errorf("only can update volumes which this node has")
 	}
 

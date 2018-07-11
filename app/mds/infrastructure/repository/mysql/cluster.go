@@ -89,6 +89,7 @@ func (s *clusterStore) FindAllVolumes(txid repository.TxID) (vols []cmap.Volume,
 		`
 		SELECT
 			vl_id,
+			vl_name,
 			vl_status,
 			vl_node,
 			vl_size,
@@ -110,7 +111,7 @@ func (s *clusterStore) FindAllVolumes(txid repository.TxID) (vols []cmap.Volume,
 	for rows.Next() {
 		v := cmap.Volume{}
 
-		if err = rows.Scan(&v.ID, &v.Stat, &v.Node, &v.Size, &v.MaxEG, &v.Speed); err != nil {
+		if err = rows.Scan(&v.ID, &v.Name, &v.Stat, &v.Node, &v.Size, &v.MaxEG, &v.Speed); err != nil {
 			return nil, err
 		}
 
@@ -405,9 +406,9 @@ func (s *clusterStore) ListJob() []string {
 func (s *clusterStore) RegisterVolume(txid repository.TxID, v *cmap.Volume) error {
 	q := fmt.Sprintf(
 		`
-		INSERT INTO volume (vl_node, vl_status, vl_size, vl_encoding_group, vl_max_encoding_group, vl_speed)
-		VALUES(%d, '%s', '%d', '%d', '%d', '%s')
-		`, v.Node, cmap.VolPrepared, v.Size, 0, v.MaxEG, v.Speed,
+		INSERT INTO volume (vl_node, vl_name, vl_status, vl_size, vl_encoding_group, vl_max_encoding_group, vl_speed)
+		VALUES(%d, '%s', '%s', '%d', '%d', '%d', '%s') ON DUPLICATE KEY UPDATE vl_size='%d', vl_max_encoding_group='%d'
+		`, v.Node, v.Name, cmap.VolActive, v.Size, 0, v.MaxEG, v.Speed, v.Size, v.MaxEG,
 	)
 
 	r, err := s.Execute(txid, q)
