@@ -187,7 +187,7 @@ function runregion() {
         MDSBASEPORT=$((MDSBASEPORT + 1))
     done
 
-    sleep 3
+    sleep 60
 
     # Create ds.
     for i in $(eval echo "{1..$numds}"); do

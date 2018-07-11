@@ -8,11 +8,11 @@ import (
 )
 
 func TestDevice(t *testing.T) {
-	dir := "testServices"
+	dir := "../../../virt/idckr/ds1"
 	os.Mkdir(dir, 0775)
 	defer os.RemoveAll(dir)
 
-	d := device.New("/dev/sda")
+	d := device.New("/dev/loop10")
 	s := newService(dir)
 
 	r := s.NewDeviceRepository()
@@ -24,11 +24,11 @@ func TestDevice(t *testing.T) {
 }
 
 func TestVolume(t *testing.T) {
-	dir := "testServices"
+	dir := "../../../virt/idckr/ds1"
 	os.Mkdir(dir, 0775)
 	defer os.RemoveAll(dir)
 
-	d := device.New("/dev/sda")
+	d := device.New("/dev/loop10")
 	s := newService(dir)
 
 	rd := s.NewDeviceRepository()
@@ -48,7 +48,7 @@ func TestVolume(t *testing.T) {
 
 	vAll := rv.FindAll()
 	for _, v := range vAll {
-		t.Logf("found volume name is %s\n", v.Name())
+		t.Logf("found volume name is %s, size is %d\n", v.Name(), v.Size())
 	}
 }
 
