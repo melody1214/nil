@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/chanyoung/nil/app/ds/application/gencoding"
@@ -1535,7 +1534,6 @@ type devRepository struct {
 // Create adds each partitions of the device to volumes.
 func (r *devRepository) Create(given *device.Device) error {
 	d := given.Name()
-	var stat syscall.Statfs_t
 	var vSpeed volume.Speed
 	var pSize uint64
 
@@ -1569,17 +1567,21 @@ func (r *devRepository) Create(given *device.Device) error {
 		}
 
 		// If the user is not previllaged for root, pSize assigns user-defined value.
-		if os.Getuid() != 0 {
-			pSize = 10000000
-		} else {
-			// stat is used for size of the partition.
-			err = syscall.Statfs(p, &stat)
-			if err != nil {
-				return device.ErrInvalidDevice
-			}
+		// if os.Getuid() != 0 {
+		// pSize = 10000000
+		// } else {
+		// stat is used for size of the partition.
+		pi, err := exec.Command("lsblk", "-bnp", "-o", "SIZE", "-x", "NAME", p).CombinedOutput()
+		if err != nil {
+			fmt.Println("exec lsblk")
+			return device.ErrInvalidDevice
+		}
 
-			// get partition size in bytes.
-			pSize = stat.Blocks * uint64(stat.Bsize)
+		// get partition size in bytes.
+		pSize, err = strconv.ParseUint(strings.TrimSpace(string(pi)), 10, 64)
+		if err != nil {
+			fmt.Printf("strconv failed with err : %s", err)
+			return device.ErrInvalidDevice
 		}
 
 		// If the volume exists, just change the volume size.
