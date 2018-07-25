@@ -1531,11 +1531,31 @@ type devRepository struct {
 	*service
 }
 
+// Mount mounts the device to the target directory.
+func (r *devRepository) mount(partID string, mntPoint string) (err error) {
+	if os.Getuid() != 0 {
+		_, err = os.Stat(mntPoint)
+		if os.IsExist(err) {
+			return err
+		}
+		os.MkdirAll(mntPoint, 0775)
+	} else {
+		if output, err := exec.Command("mount", partID, mntPoint).CombinedOutput(); err != nil {
+			return fmt.Errorf("%s: %v", output, err)
+		}
+	}
+
+	return nil
+}
+
 // Create adds each partitions of the device to volumes.
 func (r *devRepository) Create(given *device.Device) error {
 	d := given.Name()
 	var vSpeed volume.Speed
 	var pSize uint64
+	var partPath string
+
+	partNo := 0
 
 	// for all partitions of the device
 	for i := 1; ; i++ {
@@ -1566,22 +1586,24 @@ func (r *devRepository) Create(given *device.Device) error {
 			vSpeed = volume.Low
 		}
 
-		// If the user is not previllaged for root, pSize assigns user-defined value.
-		// if os.Getuid() != 0 {
-		// pSize = 10000000
-		// } else {
-		// stat is used for size of the partition.
-		pi, err := exec.Command("lsblk", "-bnp", "-o", "SIZE", "-x", "NAME", p).CombinedOutput()
+		pi, err := exec.Command("lsblk", "-bnp", "-o", "NAME,SIZE", "-x", "NAME", p).CombinedOutput()
 		if err != nil {
-			fmt.Println("exec lsblk")
 			return device.ErrInvalidDevice
 		}
 
-		// get partition size in bytes.
-		pSize, err = strconv.ParseUint(strings.TrimSpace(string(pi)), 10, 64)
-		if err != nil {
-			fmt.Printf("strconv failed with err : %s", err)
-			return device.ErrInvalidDevice
+		devInfoStr := string(pi)
+		devs := strings.Fields(devInfoStr)
+
+		for key, value := range devs {
+			if key%2 != 1 {
+				continue
+			}
+
+			// get partition size in bytes.
+			pSize, err = strconv.ParseUint(strings.TrimSpace(string(value)), 10, 64)
+			if err != nil {
+				return device.ErrInvalidDevice
+			}
 		}
 
 		// If the volume exists, just change the volume size.
@@ -1593,12 +1615,35 @@ func (r *devRepository) Create(given *device.Device) error {
 		}
 
 		r.vols[vName] = &vol{
-			Volume: volume.New(volume.Name(vName), vName, vSpeed, pSize),
+			Volume: volume.New(volume.Name(vName), r.basePath+"/"+vName, vSpeed, pSize),
 		}
 
-		err = os.MkdirAll(r.vols[vName].MntPoint(), 0775)
+		// Create a directory for the volume if not exist.
+		_, err = os.Stat(r.vols[vName].MntPoint())
+		if os.IsNotExist(err) {
+			os.MkdirAll(r.vols[vName].MntPoint(), 0775)
+		}
+
+		// Find a partition path that are not currently used.
+		if partNo > 0 {
+			partPath = r.vols[vName].MntPoint() + "/part" + strconv.Itoa(partNo)
+		} else {
+			for no := 1; ; no++ {
+				partPath = r.vols[vName].MntPoint() + "/part" + strconv.Itoa(no)
+				_, err = os.Stat(partPath)
+				if os.IsNotExist(err) {
+					partNo = no
+					break
+				}
+			}
+		}
+		os.MkdirAll(partPath, 0775)
+
+		// Mount the partition into path of the volume if not exist.
+		err = r.mount(p, partPath)
 		if err != nil {
-			return err
+			fmt.Printf("mount failed : %s, %s\n", p, partPath)
+			return device.ErrInvalidDevice
 		}
 	}
 

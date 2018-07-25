@@ -1,6 +1,8 @@
 package device
 
-import "errors"
+import (
+	"errors"
+)
 
 // ErrDeviceIsBusy is used when the device is busy.
 var ErrDeviceIsBusy = errors.New("device is busy")

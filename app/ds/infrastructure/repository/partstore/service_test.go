@@ -8,7 +8,7 @@ import (
 )
 
 func TestDevice(t *testing.T) {
-	dir := "../../../virt/idckr/ds1"
+	dir := "test"
 	os.Mkdir(dir, 0775)
 	defer os.RemoveAll(dir)
 
@@ -24,7 +24,7 @@ func TestDevice(t *testing.T) {
 }
 
 func TestVolume(t *testing.T) {
-	dir := "../../../virt/idckr/ds1"
+	dir := "test"
 	os.Mkdir(dir, 0775)
 	defer os.RemoveAll(dir)
 
@@ -36,7 +36,7 @@ func TestVolume(t *testing.T) {
 
 	err := rd.Create(d)
 	if err != nil {
-		t.Log("Creating a new device has failed\n")
+		t.Logf("Creating a new device has failed: %s\n", d.Name())
 	}
 
 	v, err := rv.Find("vol-1")
