@@ -1615,7 +1615,7 @@ func (r *devRepository) Create(given *device.Device) error {
 		}
 
 		r.vols[vName] = &vol{
-			Volume: volume.New(volume.Name(vName), r.basePath+"/"+vName, vSpeed, pSize),
+			Volume: volume.New(volume.Name(vName), vName, vSpeed, pSize),
 		}
 
 		// Create a directory for the volume if not exist.
