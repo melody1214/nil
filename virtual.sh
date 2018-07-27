@@ -86,9 +86,11 @@ function createsdisks() {
         # Creates a disk image.
         dd bs=1M count=$size if=/dev/zero of=$dev
         sudo parted -s $dev mklabel gpt
-        sudo parted -s $dev mkpart primary xfs 0% 50%
-        sudo parted -s $dev mkpart primary xfs 50% 100%
+        sudo parted -s $dev mkpart primary 0% 50%
+        sudo parted -s $dev mkpart primary 50% 100%
         sudo losetup -P /dev/loop$LOOPDEVNUM $dev
+        sudo mkfs.xfs /dev/loop${LOOPDEVNUM}p1
+        sudo mkfs.xfs /dev/loop${LOOPDEVNUM}p2
 
         # Add to ds.
         # echo $dev >> $MNT
