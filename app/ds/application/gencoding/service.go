@@ -1,16 +1,10 @@
 package gencoding
 
 import (
-	"fmt"
-	"io"
-	"time"
-
-	"github.com/chanyoung/nil/app/ds/infrastructure/repository"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -40,62 +34,62 @@ func NewService(cfg *config.Ds, cmapAPI cmap.SlaveAPI, store Repository) Service
 }
 
 func (s *service) run() {
-	// Get node information
-	for {
-		c := s.cmapAPI.SearchCall()
-		n, err := c.Node().Name(cmap.NodeName(s.cfg.ID)).Do()
-		if err != nil {
-			// Wait to be updated.
-			notiC := s.cmapAPI.GetUpdatedNoti(c.Version())
-			<-notiC
-			continue
-		}
+	// // Get node information
+	// for {
+	// 	c := s.cmapAPI.SearchCall()
+	// 	n, err := c.Node().Name(cmap.NodeName(s.cfg.ID)).Do()
+	// 	if err != nil {
+	// 		// Wait to be updated.
+	// 		notiC := s.cmapAPI.GetUpdatedNoti(c.Version())
+	// 		<-notiC
+	// 		continue
+	// 	}
 
-		s.nodeID = n.ID
-		break
-	}
+	// 	s.nodeID = n.ID
+	// 	break
+	// }
 
-	checkTicker := time.NewTicker(10 * time.Second)
-	for {
-		select {
-		case <-checkTicker.C:
-			s.updateUnencoded()
-		}
-	}
+	// checkTicker := time.NewTicker(10 * time.Second)
+	// for {
+	// 	select {
+	// 	case <-checkTicker.C:
+	// 		s.updateUnencoded()
+	// 	}
+	// }
 }
 
 func (s *service) updateUnencoded() {
-	c := s.cmapAPI.SearchCall()
-	myVols, err := c.Volume().Node(s.nodeID).DoAll()
-	if err != nil {
-		if err != cmap.ErrNotFound {
-			logger.Error(errors.Wrap(err, "failed to find owned volumes"))
-		}
-		return
-	}
+	// c := s.cmapAPI.SearchCall()
+	// myVols, err := c.Volume().Node(s.nodeID).DoAll()
+	// if err != nil {
+	// 	if err != cmap.ErrNotFound {
+	// 		logger.Error(errors.Wrap(err, "failed to find owned volumes"))
+	// 	}
+	// 	return
+	// }
 
-	for _, v := range myVols {
-		egs, err := c.EncGrp().LeaderVol(v.ID).DoAll()
-		if err != nil {
-			if err != cmap.ErrNotFound {
-				logger.Error(errors.Wrap(err, "failed to find owned volumes"))
-			}
-			continue
-		}
+	// for _, v := range myVols {
+	// 	egs, err := c.EncGrp().LeaderVol(v.ID).DoAll()
+	// 	if err != nil {
+	// 		if err != cmap.ErrNotFound {
+	// 			logger.Error(errors.Wrap(err, "failed to find owned volumes"))
+	// 		}
+	// 		continue
+	// 	}
 
-		for _, eg := range egs {
-			uenc, err := s.store.CountNonCodedChunk(eg.LeaderVol().String(), eg.ID.String())
-			if err != nil {
-				logger.Error(errors.Wrap(err, "failed to count unencoded chunk"))
-				continue
-			}
+	// 	for _, eg := range egs {
+	// 		uenc, err := s.store.CountNonCodedChunk(eg.LeaderVol().String(), eg.ID.String())
+	// 		if err != nil {
+	// 			logger.Error(errors.Wrap(err, "failed to count unencoded chunk"))
+	// 			continue
+	// 		}
 
-			if err := s.cmapAPI.UpdateUnencoded(eg.ID, uenc); err != nil {
-				logger.Error(errors.Wrap(err, "failed to update unencoded"))
-				continue
-			}
-		}
-	}
+	// 		if err := s.cmapAPI.UpdateUnencoded(eg.ID, uenc); err != nil {
+	// 			logger.Error(errors.Wrap(err, "failed to update unencoded"))
+	// 			continue
+	// 		}
+	// 	}
+	// }
 }
 
 func (s *service) RenameChunk(req *nilrpc.DGERenameChunkRequest, res *nilrpc.DGERenameChunkResponse) error {
@@ -103,28 +97,28 @@ func (s *service) RenameChunk(req *nilrpc.DGERenameChunkRequest, res *nilrpc.DGE
 }
 
 func (s *service) TruncateChunk(req *nilrpc.DGETruncateChunkRequest, res *nilrpc.DGETruncateChunkResponse) error {
-	if s.store.ChunkExist(req.Vol, req.Chunk) == false {
-		return fmt.Errorf("chunk is not exist")
-	}
+	// if s.store.ChunkExist(req.Vol, req.Chunk) == false {
+	// 	return fmt.Errorf("chunk is not exist")
+	// }
 
-	truncateReq := &repository.Request{
-		Op:     repository.Write,
-		Vol:    req.Vol,
-		LocGid: req.EncGrp,
-		Oid:    "fake, just for truncating",
-		Osize:  1000000000,
-		Cid:    req.Chunk,
-		In:     &io.PipeReader{},
-		Md5:    "fakemd5stringfakemd5stringfakemd",
-	}
-	if err := s.store.Push(truncateReq); err != nil {
-		return errors.Wrap(err, "failed to push truncated request")
-	}
-	if err := truncateReq.Wait(); err == nil {
-		return fmt.Errorf("truncate request returns no error")
-	} else if err.Error() != "truncated" {
-		return err
-	}
+	// truncateReq := &repository.Request{
+	// 	Op:     repository.Write,
+	// 	Vol:    req.Vol,
+	// 	LocGid: req.EncGrp,
+	// 	Oid:    "fake, just for truncating",
+	// 	Osize:  1000000000,
+	// 	Cid:    req.Chunk,
+	// 	In:     &io.PipeReader{},
+	// 	Md5:    "fakemd5stringfakemd5stringfakemd",
+	// }
+	// if err := s.store.Push(truncateReq); err != nil {
+	// 	return errors.Wrap(err, "failed to push truncated request")
+	// }
+	// if err := truncateReq.Wait(); err == nil {
+	// 	return fmt.Errorf("truncate request returns no error")
+	// } else if err.Error() != "truncated" {
+	// 	return err
+	// }
 
 	return nil
 }

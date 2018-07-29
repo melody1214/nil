@@ -1,432 +1,418 @@
 package object
 
-import (
-	"fmt"
-	"io"
-	"net/rpc"
-	"strconv"
-	"time"
+// type endec struct {
+// 	chunkPool *chunkPool
+// 	store     Repository
+// 	cmapAPI   cmap.SlaveAPI
+// }
 
-	"github.com/chanyoung/nil/app/ds/infrastructure/repository"
-	"github.com/chanyoung/nil/pkg/cmap"
-	"github.com/chanyoung/nil/pkg/nilrpc"
-	"github.com/chanyoung/nil/pkg/util/mlog"
-	"github.com/pkg/errors"
-)
+// func newEndec(cmapAPI cmap.SlaveAPI, p *chunkPool, s Repository) (*endec, error) {
+// 	if cmapAPI == nil || p == nil || s == nil {
+// 		return nil, fmt.Errorf("invalid arguments")
+// 	}
 
-type endec struct {
-	chunkPool *chunkPool
-	store     Repository
-	cmapAPI   cmap.SlaveAPI
-}
+// 	return &endec{
+// 		chunkPool: p,
+// 		store:     s,
+// 		cmapAPI:   cmapAPI,
+// 	}, nil
+// }
 
-func newEndec(cmapAPI cmap.SlaveAPI, p *chunkPool, s Repository) (*endec, error) {
-	if cmapAPI == nil || p == nil || s == nil {
-		return nil, fmt.Errorf("invalid arguments")
-	}
+// func (e *endec) Run() {
+// 	ctxLogger := mlog.GetMethodLogger(logger, "endec.Run")
 
-	return &endec{
-		chunkPool: p,
-		store:     s,
-		cmapAPI:   cmapAPI,
-	}, nil
-}
+// 	checkEncodingJobTimer := time.NewTicker(5 * time.Second)
+// 	for {
+// 		select {
+// 		case <-checkEncodingJobTimer.C:
+// 			go func() {
+// 				err := e.checkRoutine()
+// 				if err != nil {
+// 					ctxLogger.Error(err)
+// 				}
+// 			}()
+// 		}
+// 	}
+// }
 
-func (e *endec) Run() {
-	ctxLogger := mlog.GetMethodLogger(logger, "endec.Run")
+// // checkRoutine try to encode if there is some waiting chunks for encoded.
+// func (e *endec) checkRoutine() error {
+// 	ctxLogger := mlog.GetMethodLogger(logger, "endec.checkRoutine")
 
-	checkEncodingJobTimer := time.NewTicker(5 * time.Second)
-	for {
-		select {
-		case <-checkEncodingJobTimer.C:
-			go func() {
-				err := e.checkRoutine()
-				if err != nil {
-					ctxLogger.Error(err)
-				}
-			}()
-		}
-	}
-}
+// 	c, exist := e.chunkPool.GetNeedEncodingChunk()
+// 	if exist == false {
+// 		// There is no chunk that waiting for encoded.
+// 		return nil
+// 	}
 
-// checkRoutine try to encode if there is some waiting chunks for encoded.
-func (e *endec) checkRoutine() error {
-	ctxLogger := mlog.GetMethodLogger(logger, "endec.checkRoutine")
+// 	if isSystemLoadHigh() {
+// 		ctxLogger.Info("current system load is too high to encode chunks. yield cpu for other jobs")
+// 		e.chunkPool.EncodingFailed(c.id)
+// 		return nil
+// 	}
 
-	c, exist := e.chunkPool.GetNeedEncodingChunk()
-	if exist == false {
-		// There is no chunk that waiting for encoded.
-		return nil
-	}
+// 	if err := e.genLocalParity(c); err != nil {
+// 		e.chunkPool.EncodingFailed(c.id)
+// 		return errors.Wrapf(err, "failed to generate local parity for chunk: %+v", c)
+// 	}
 
-	if isSystemLoadHigh() {
-		ctxLogger.Info("current system load is too high to encode chunks. yield cpu for other jobs")
-		e.chunkPool.EncodingFailed(c.id)
-		return nil
-	}
+// 	return nil
+// }
 
-	if err := e.genLocalParity(c); err != nil {
-		e.chunkPool.EncodingFailed(c.id)
-		return errors.Wrapf(err, "failed to generate local parity for chunk: %+v", c)
-	}
+// // isSystemLoadHigh checks the current system load and returns true or false.
+// // TODO: implementation.
+// func isSystemLoadHigh() bool {
+// 	return false
+// }
 
-	return nil
-}
+// // genLocalParity manages generating local parity job.
+// func (e *endec) genLocalParity(c chunk) error {
+// 	egID, err := strconv.ParseInt(string(c.encodingGroup), 10, 64)
+// 	if err != nil {
+// 		return errors.Wrap(err, "failed to convert encoding group id to cmap id")
+// 	}
 
-// isSystemLoadHigh checks the current system load and returns true or false.
-// TODO: implementation.
-func isSystemLoadHigh() bool {
-	return false
-}
+// 	call := e.cmapAPI.SearchCall()
+// 	eg, err := call.EncGrp().ID(cmap.ID(egID)).Do()
+// 	if err != nil {
+// 		return errors.Wrap(err, "failed to find encoding group")
+// 	}
 
-// genLocalParity manages generating local parity job.
-func (e *endec) genLocalParity(c chunk) error {
-	egID, err := strconv.ParseInt(string(c.encodingGroup), 10, 64)
-	if err != nil {
-		return errors.Wrap(err, "failed to convert encoding group id to cmap id")
-	}
+// 	if eg.Stat != cmap.EGAlive {
+// 		return fmt.Errorf("give up to generate local parity because target encoding group is not alive")
+// 	}
 
-	call := e.cmapAPI.SearchCall()
-	eg, err := call.EncGrp().ID(cmap.ID(egID)).Do()
-	if err != nil {
-		return errors.Wrap(err, "failed to find encoding group")
-	}
+// 	stopC := make(chan interface{}, 1)
+// 	defer close(stopC)
 
-	if eg.Stat != cmap.EGAlive {
-		return fmt.Errorf("give up to generate local parity because target encoding group is not alive")
-	}
+// 	timeoutC := time.After(5 * time.Minute)
+// 	encodingC := e._genLocalParity(c, stopC)
+// 	cmapChangedC := e.cmapAPI.GetUpdatedNoti(call.Version())
+// 	for {
+// 		select {
+// 		case err = <-encodingC:
+// 			if err != nil {
+// 				return errors.Wrap(err, "error occured in calculating local parity")
+// 			}
+// 			return nil
+// 		case <-cmapChangedC:
+// 			call = e.cmapAPI.SearchCall()
+// 			newEg, err := call.EncGrp().ID(cmap.ID(egID)).Do()
+// 			if err != nil {
+// 				stopC <- nil
+// 				return errors.Wrap(err, "failed to find encoding group")
+// 			}
 
-	stopC := make(chan interface{}, 1)
-	defer close(stopC)
+// 			if newEg.Stat != cmap.EGAlive {
+// 				stopC <- nil
+// 				return fmt.Errorf("encoding group status has changed to not alive while in encoding")
+// 			}
 
-	timeoutC := time.After(5 * time.Minute)
-	encodingC := e._genLocalParity(c, stopC)
-	cmapChangedC := e.cmapAPI.GetUpdatedNoti(call.Version())
-	for {
-		select {
-		case err = <-encodingC:
-			if err != nil {
-				return errors.Wrap(err, "error occured in calculating local parity")
-			}
-			return nil
-		case <-cmapChangedC:
-			call = e.cmapAPI.SearchCall()
-			newEg, err := call.EncGrp().ID(cmap.ID(egID)).Do()
-			if err != nil {
-				stopC <- nil
-				return errors.Wrap(err, "failed to find encoding group")
-			}
+// 			for idx, v := range eg.Vols {
+// 				if newEg.Vols[idx] != v {
+// 					stopC <- nil
+// 					return fmt.Errorf("encoding group volume members has changed while in encoding")
+// 				}
+// 			}
 
-			if newEg.Stat != cmap.EGAlive {
-				stopC <- nil
-				return fmt.Errorf("encoding group status has changed to not alive while in encoding")
-			}
+// 			eg = newEg
+// 		case <-timeoutC:
+// 			stopC <- nil
+// 			return fmt.Errorf("timeout")
+// 		}
+// 	}
+// }
 
-			for idx, v := range eg.Vols {
-				if newEg.Vols[idx] != v {
-					stopC <- nil
-					return fmt.Errorf("encoding group volume members has changed while in encoding")
-				}
-			}
+// // _genLocalParity generates the local parity by xoring the same encoding group chunks.
+// func (e *endec) _genLocalParity(c chunk, stop <-chan interface{}) <-chan error {
+// 	notiC := make(chan error)
 
-			eg = newEg
-		case <-timeoutC:
-			stopC <- nil
-			return fmt.Errorf("timeout")
-		}
-	}
-}
+// 	go func(ret chan error, stop <-chan interface{}) {
+// 		if err := e.truncateAllChunks(c); err != nil {
+// 			notiC <- errors.Wrap(err, "failed to truncate chunk")
+// 			return
+// 		}
 
-// _genLocalParity generates the local parity by xoring the same encoding group chunks.
-func (e *endec) _genLocalParity(c chunk, stop <-chan interface{}) <-chan error {
-	notiC := make(chan error)
+// 		prArr := make([]*io.PipeReader, e.chunkPool.shardSize)
+// 		pwArr := make([]*io.PipeWriter, e.chunkPool.shardSize)
+// 		bufArr := make([][]byte, e.chunkPool.shardSize)
+// 		readReqArr := make([]*repository.Request, e.chunkPool.shardSize)
 
-	go func(ret chan error, stop <-chan interface{}) {
-		if err := e.truncateAllChunks(c); err != nil {
-			notiC <- errors.Wrap(err, "failed to truncate chunk")
-			return
-		}
+// 		const bufSize int = 1
+// 		for i := int64(0); i < e.chunkPool.shardSize; i++ {
+// 			prArr[i], pwArr[i] = io.Pipe()
+// 			defer pwArr[i].Close()
+// 			defer prArr[i].Close()
 
-		prArr := make([]*io.PipeReader, e.chunkPool.shardSize)
-		pwArr := make([]*io.PipeWriter, e.chunkPool.shardSize)
-		bufArr := make([][]byte, e.chunkPool.shardSize)
-		readReqArr := make([]*repository.Request, e.chunkPool.shardSize)
+// 			bufArr[i] = make([]byte, bufSize)
 
-		const bufSize int = 1
-		for i := int64(0); i < e.chunkPool.shardSize; i++ {
-			prArr[i], pwArr[i] = io.Pipe()
-			defer pwArr[i].Close()
-			defer prArr[i].Close()
+// 			readReqArr[i] = &repository.Request{
+// 				Op:     repository.ReadAll,
+// 				Vol:    string(c.volume),
+// 				LocGid: string(c.encodingGroup),
+// 				Cid:    c.status.String() + "_" + string(c.id) + "_" + strconv.FormatInt(i+1, 10),
+// 				Osize:  c.size,
+// 				Out:    pwArr[i],
+// 			}
+// 		}
 
-			bufArr[i] = make([]byte, bufSize)
+// 		select {
+// 		// Stop signal sent from manager.
+// 		case <-stop:
+// 			ret <- nil
+// 			return
+// 		default:
+// 			break
+// 		}
 
-			readReqArr[i] = &repository.Request{
-				Op:     repository.ReadAll,
-				Vol:    string(c.volume),
-				LocGid: string(c.encodingGroup),
-				Cid:    c.status.String() + "_" + string(c.id) + "_" + strconv.FormatInt(i+1, 10),
-				Osize:  c.size,
-				Out:    pwArr[i],
-			}
-		}
+// 		for i := int64(0); i < e.chunkPool.shardSize; i++ {
+// 			e.store.Push(readReqArr[i])
+// 			go func(readReq *repository.Request, idx int64) {
+// 				defer pwArr[idx].Close()
+// 				err := readReq.Wait()
+// 				if err != nil {
+// 					return
+// 				}
+// 			}(readReqArr[i], i)
+// 		}
 
-		select {
-		// Stop signal sent from manager.
-		case <-stop:
-			ret <- nil
-			return
-		default:
-			break
-		}
+// 		parityReader, parityWriter := io.Pipe()
+// 		defer parityWriter.Close()
+// 		defer parityReader.Close()
+// 		parityBuf := make([]byte, bufSize)
 
-		for i := int64(0); i < e.chunkPool.shardSize; i++ {
-			e.store.Push(readReqArr[i])
-			go func(readReq *repository.Request, idx int64) {
-				defer pwArr[idx].Close()
-				err := readReq.Wait()
-				if err != nil {
-					return
-				}
-			}(readReqArr[i], i)
-		}
+// 		parityWriteReq := &repository.Request{
+// 			Op:     repository.WriteAll,
+// 			Vol:    string(c.volume),
+// 			LocGid: string(c.encodingGroup),
+// 			Oid:    string(c.id),
+// 			Cid:    c.status.String() + "_" + string(c.id),
+// 			Osize:  c.size,
+// 			In:     parityReader,
+// 		}
+// 		e.store.Push(parityWriteReq)
 
-		parityReader, parityWriter := io.Pipe()
-		defer parityWriter.Close()
-		defer parityReader.Close()
-		parityBuf := make([]byte, bufSize)
+// 		for n := int64(0); n < c.size; n++ {
+// 			parityBuf[0] = 0x00
+// 			for i := int64(0); i < e.chunkPool.shardSize; i++ {
+// 				if _, err := prArr[i].Read(bufArr[i]); err != nil {
+// 					ret <- errors.Wrap(err, "failed to read chunk")
+// 					return
+// 				}
 
-		parityWriteReq := &repository.Request{
-			Op:     repository.WriteAll,
-			Vol:    string(c.volume),
-			LocGid: string(c.encodingGroup),
-			Oid:    string(c.id),
-			Cid:    c.status.String() + "_" + string(c.id),
-			Osize:  c.size,
-			In:     parityReader,
-		}
-		e.store.Push(parityWriteReq)
+// 				parityBuf[0] = parityBuf[0] ^ bufArr[i][0]
+// 			}
 
-		for n := int64(0); n < c.size; n++ {
-			parityBuf[0] = 0x00
-			for i := int64(0); i < e.chunkPool.shardSize; i++ {
-				if _, err := prArr[i].Read(bufArr[i]); err != nil {
-					ret <- errors.Wrap(err, "failed to read chunk")
-					return
-				}
+// 			_, err := parityWriter.Write(parityBuf)
+// 			if err != nil {
+// 				ret <- errors.Wrap(err, "failed to write a xored byte into parity chunk")
+// 				return
+// 			}
 
-				parityBuf[0] = parityBuf[0] ^ bufArr[i][0]
-			}
+// 			select {
+// 			// Stop signal sent from manager.
+// 			case <-stop:
+// 				for i := int64(0); i < e.chunkPool.shardSize; i++ {
+// 					pwArr[i].CloseWithError(fmt.Errorf("receive stop encoding signal from manager"))
+// 					prArr[i].CloseWithError(fmt.Errorf("receive stop encoding signal from manager"))
+// 				}
+// 				deleteParityReq := &repository.Request{
+// 					Op:     repository.DeleteReal,
+// 					Vol:    string(c.volume),
+// 					LocGid: string(c.encodingGroup),
+// 					Cid:    c.status.String() + "_" + string(c.id),
+// 					Oid:    string(c.id),
+// 				}
+// 				e.store.Push(deleteParityReq)
+// 				ret <- nil
+// 				return
+// 			default:
+// 				break
+// 			}
+// 		}
 
-			_, err := parityWriter.Write(parityBuf)
-			if err != nil {
-				ret <- errors.Wrap(err, "failed to write a xored byte into parity chunk")
-				return
-			}
+// 		err := parityWriteReq.Wait()
+// 		if err != nil {
+// 			ret <- errors.Wrap(err, "failed to write parity chunk")
+// 			return
+// 		}
 
-			select {
-			// Stop signal sent from manager.
-			case <-stop:
-				for i := int64(0); i < e.chunkPool.shardSize; i++ {
-					pwArr[i].CloseWithError(fmt.Errorf("receive stop encoding signal from manager"))
-					prArr[i].CloseWithError(fmt.Errorf("receive stop encoding signal from manager"))
-				}
-				deleteParityReq := &repository.Request{
-					Op:     repository.DeleteReal,
-					Vol:    string(c.volume),
-					LocGid: string(c.encodingGroup),
-					Cid:    c.status.String() + "_" + string(c.id),
-					Oid:    string(c.id),
-				}
-				e.store.Push(deleteParityReq)
-				ret <- nil
-				return
-			default:
-				break
-			}
-		}
+// 		// TODO: delete chunk.
+// 		deleteReqArr := make([]*repository.Request, e.chunkPool.shardSize)
+// 		for i := int64(0); i < e.chunkPool.shardSize; i++ {
+// 			deleteReqArr[i] = &repository.Request{
+// 				Op:     repository.DeleteReal,
+// 				Vol:    string(c.volume),
+// 				LocGid: string(c.encodingGroup),
+// 				Cid:    c.status.String() + "_" + string(c.id) + "_" + strconv.FormatInt(i+1, 10),
+// 				Oid:    string(c.id) + "_" + strconv.FormatInt(i+1, 10),
+// 			}
 
-		err := parityWriteReq.Wait()
-		if err != nil {
-			ret <- errors.Wrap(err, "failed to write parity chunk")
-			return
-		}
+// 			e.store.Push(deleteReqArr[i])
+// 		}
 
-		// TODO: delete chunk.
-		deleteReqArr := make([]*repository.Request, e.chunkPool.shardSize)
-		for i := int64(0); i < e.chunkPool.shardSize; i++ {
-			deleteReqArr[i] = &repository.Request{
-				Op:     repository.DeleteReal,
-				Vol:    string(c.volume),
-				LocGid: string(c.encodingGroup),
-				Cid:    c.status.String() + "_" + string(c.id) + "_" + strconv.FormatInt(i+1, 10),
-				Oid:    string(c.id) + "_" + strconv.FormatInt(i+1, 10),
-			}
+// 		if err := e.renameToL(c); err != nil {
+// 			fmt.Printf("%+v\n\n", err)
+// 		}
 
-			e.store.Push(deleteReqArr[i])
-		}
+// 		if err := e.updateToLocal(c); err != nil {
+// 			fmt.Printf("%+v\n\n", err)
+// 		}
 
-		if err := e.renameToL(c); err != nil {
-			fmt.Printf("%+v\n\n", err)
-		}
+// 		notiC <- nil
+// 	}(notiC, stop)
 
-		if err := e.updateToLocal(c); err != nil {
-			fmt.Printf("%+v\n\n", err)
-		}
+// 	return notiC
+// }
 
-		notiC <- nil
-	}(notiC, stop)
+// func (e *endec) updateToLocal(c chunk) error {
+// 	mds, err := e.cmapAPI.SearchCall().Node().Type(cmap.MDS).Status(cmap.NodeAlive).Do()
+// 	if err != nil {
+// 		return err
+// 	}
 
-	return notiC
-}
+// 	conn, err := nilrpc.Dial(mds.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
+// 	if err != nil {
+// 		return errors.Wrap(err, "failed to dial")
+// 	}
+// 	defer conn.Close()
 
-func (e *endec) updateToLocal(c chunk) error {
-	mds, err := e.cmapAPI.SearchCall().Node().Type(cmap.MDS).Status(cmap.NodeAlive).Do()
-	if err != nil {
-		return err
-	}
+// 	egID, _ := strconv.ParseInt(string(c.encodingGroup), 10, 64)
+// 	req := &nilrpc.MOBSetChunkRequest{
+// 		Chunk:         string(c.id),
+// 		EncodingGroup: cmap.ID(egID),
+// 		Status:        L.String(),
+// 	}
+// 	res := &nilrpc.MOBSetChunkResponse{}
 
-	conn, err := nilrpc.Dial(mds.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
-	if err != nil {
-		return errors.Wrap(err, "failed to dial")
-	}
-	defer conn.Close()
+// 	cli := rpc.NewClient(conn)
+// 	if err := cli.Call(nilrpc.MdsObjectSetChunk.String(), req, res); err != nil {
+// 		return errors.Wrap(err, "failed to set chunk state to local")
+// 	}
+// 	return nil
+// }
 
-	egID, _ := strconv.ParseInt(string(c.encodingGroup), 10, 64)
-	req := &nilrpc.MOBSetChunkRequest{
-		Chunk:         string(c.id),
-		EncodingGroup: cmap.ID(egID),
-		Status:        L.String(),
-	}
-	res := &nilrpc.MOBSetChunkResponse{}
+// func (e *endec) renameToL(c chunk) error {
+// 	egID, _ := strconv.ParseInt(string(c.encodingGroup), 10, 64)
 
-	cli := rpc.NewClient(conn)
-	if err := cli.Call(nilrpc.MdsObjectSetChunk.String(), req, res); err != nil {
-		return errors.Wrap(err, "failed to set chunk state to local")
-	}
-	return nil
-}
+// 	call := e.cmapAPI.SearchCall()
+// 	eg, err := call.EncGrp().ID(cmap.ID(egID)).Do()
+// 	if err != nil {
+// 		return errors.Wrap(err, "failed to find such encoding group")
+// 	}
 
-func (e *endec) renameToL(c chunk) error {
-	egID, _ := strconv.ParseInt(string(c.encodingGroup), 10, 64)
+// 	vols := make([]cmap.Volume, len(eg.Vols))
+// 	for i := 0; i < len(eg.Vols); i++ {
+// 		v, err := call.Volume().ID(eg.Vols[i].ID).Do()
+// 		if err != nil {
+// 			return errors.Wrap(err, "failed to find such volume")
+// 		}
+// 		vols[i] = v
+// 	}
 
-	call := e.cmapAPI.SearchCall()
-	eg, err := call.EncGrp().ID(cmap.ID(egID)).Do()
-	if err != nil {
-		return errors.Wrap(err, "failed to find such encoding group")
-	}
+// 	nodes := make([]cmap.Node, len(eg.Vols))
+// 	for i := 0; i < len(eg.Vols); i++ {
+// 		n, err := call.Node().ID(vols[i].Node).Do()
+// 		if err != nil {
+// 			return errors.Wrap(err, "failed to find such volume")
+// 		}
+// 		nodes[i] = n
+// 	}
 
-	vols := make([]cmap.Volume, len(eg.Vols))
-	for i := 0; i < len(eg.Vols); i++ {
-		v, err := call.Volume().ID(eg.Vols[i].ID).Do()
-		if err != nil {
-			return errors.Wrap(err, "failed to find such volume")
-		}
-		vols[i] = v
-	}
+// 	for i, n := range nodes {
+// 		conn, err := nilrpc.Dial(n.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
+// 		if err != nil {
+// 			return errors.Wrap(err, "failed to dial")
+// 		}
+// 		defer conn.Close()
 
-	nodes := make([]cmap.Node, len(eg.Vols))
-	for i := 0; i < len(eg.Vols); i++ {
-		n, err := call.Node().ID(vols[i].Node).Do()
-		if err != nil {
-			return errors.Wrap(err, "failed to find such volume")
-		}
-		nodes[i] = n
-	}
+// 		req := &nilrpc.DGERenameChunkRequest{
+// 			Vol:      vols[i].ID.String(),
+// 			EncGrp:   string(c.encodingGroup),
+// 			OldChunk: c.status.String() + "_" + string(c.id),
+// 			NewChunk: L.String() + "_" + string(c.id),
+// 		}
+// 		res := &nilrpc.DGERenameChunkResponse{}
 
-	for i, n := range nodes {
-		conn, err := nilrpc.Dial(n.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
-		if err != nil {
-			return errors.Wrap(err, "failed to dial")
-		}
-		defer conn.Close()
+// 		cli := rpc.NewClient(conn)
+// 		if err := cli.Call(nilrpc.DsGencodingRenameChunk.String(), req, res); err != nil {
+// 			return errors.Wrap(err, "failed to truncate remote chunk")
+// 		}
+// 	}
 
-		req := &nilrpc.DGERenameChunkRequest{
-			Vol:      vols[i].ID.String(),
-			EncGrp:   string(c.encodingGroup),
-			OldChunk: c.status.String() + "_" + string(c.id),
-			NewChunk: L.String() + "_" + string(c.id),
-		}
-		res := &nilrpc.DGERenameChunkResponse{}
+// 	return nil
+// }
 
-		cli := rpc.NewClient(conn)
-		if err := cli.Call(nilrpc.DsGencodingRenameChunk.String(), req, res); err != nil {
-			return errors.Wrap(err, "failed to truncate remote chunk")
-		}
-	}
+// func (e *endec) truncateAllChunks(c chunk) error {
+// 	// Truncate locals.
+// 	truncateReq := &repository.Request{
+// 		Op:     repository.Write,
+// 		Vol:    string(c.volume),
+// 		LocGid: string(c.encodingGroup),
+// 		Oid:    "fake, just for truncating",
+// 		Osize:  c.size,
+// 		In:     &io.PipeReader{},
+// 		Md5:    "fakemd5stringfakemd5stringfakemd",
+// 	}
+// 	for i := int64(0); i < e.chunkPool.shardSize; i++ {
+// 		truncateReq.Cid = string(c.status) + "_" + string(c.id) + "_" + strconv.FormatInt(i+1, 10)
+// 		if err := e.store.Push(truncateReq); err != nil {
+// 			return err
+// 		}
+// 		if err := truncateReq.Wait(); err == nil {
+// 			return fmt.Errorf("truncate request returns no error")
+// 		} else if err.Error() != "truncated" {
+// 			return err
+// 		}
+// 	}
 
-	return nil
-}
+// 	call := e.cmapAPI.SearchCall()
 
-func (e *endec) truncateAllChunks(c chunk) error {
-	// Truncate locals.
-	truncateReq := &repository.Request{
-		Op:     repository.Write,
-		Vol:    string(c.volume),
-		LocGid: string(c.encodingGroup),
-		Oid:    "fake, just for truncating",
-		Osize:  c.size,
-		In:     &io.PipeReader{},
-		Md5:    "fakemd5stringfakemd5stringfakemd",
-	}
-	for i := int64(0); i < e.chunkPool.shardSize; i++ {
-		truncateReq.Cid = string(c.status) + "_" + string(c.id) + "_" + strconv.FormatInt(i+1, 10)
-		if err := e.store.Push(truncateReq); err != nil {
-			return err
-		}
-		if err := truncateReq.Wait(); err == nil {
-			return fmt.Errorf("truncate request returns no error")
-		} else if err.Error() != "truncated" {
-			return err
-		}
-	}
+// 	// Truncate remotes.
+// 	egID, _ := strconv.ParseInt(string(c.encodingGroup), 10, 64)
+// 	eg, err := call.EncGrp().ID(cmap.ID(egID)).Do()
+// 	if err != nil {
+// 		return errors.Wrap(err, "failed to find such encoding group")
+// 	}
 
-	call := e.cmapAPI.SearchCall()
+// 	vols := make([]cmap.Volume, len(eg.Vols)-1)
+// 	for i := 1; i < len(eg.Vols); i++ {
+// 		v, err := call.Volume().ID(eg.Vols[i].ID).Do()
+// 		if err != nil {
+// 			return errors.Wrap(err, "failed to find such volume")
+// 		}
+// 		vols[i-1] = v
+// 	}
 
-	// Truncate remotes.
-	egID, _ := strconv.ParseInt(string(c.encodingGroup), 10, 64)
-	eg, err := call.EncGrp().ID(cmap.ID(egID)).Do()
-	if err != nil {
-		return errors.Wrap(err, "failed to find such encoding group")
-	}
+// 	nodes := make([]cmap.Node, len(eg.Vols)-1)
+// 	for i := 0; i < len(eg.Vols)-1; i++ {
+// 		n, err := call.Node().ID(vols[i].Node).Do()
+// 		if err != nil {
+// 			return errors.Wrap(err, "failed to find such volume")
+// 		}
+// 		nodes[i] = n
+// 	}
 
-	vols := make([]cmap.Volume, len(eg.Vols)-1)
-	for i := 1; i < len(eg.Vols); i++ {
-		v, err := call.Volume().ID(eg.Vols[i].ID).Do()
-		if err != nil {
-			return errors.Wrap(err, "failed to find such volume")
-		}
-		vols[i-1] = v
-	}
+// 	for i, n := range nodes {
+// 		conn, err := nilrpc.Dial(n.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
+// 		if err != nil {
+// 			return errors.Wrap(err, "failed to dial")
+// 		}
 
-	nodes := make([]cmap.Node, len(eg.Vols)-1)
-	for i := 0; i < len(eg.Vols)-1; i++ {
-		n, err := call.Node().ID(vols[i].Node).Do()
-		if err != nil {
-			return errors.Wrap(err, "failed to find such volume")
-		}
-		nodes[i] = n
-	}
+// 		req := &nilrpc.DGETruncateChunkRequest{
+// 			Vol:    vols[i].ID.String(),
+// 			EncGrp: string(c.encodingGroup),
+// 			Chunk:  c.status.String() + "_" + string(c.id),
+// 		}
+// 		res := &nilrpc.DGETruncateChunkResponse{}
 
-	for i, n := range nodes {
-		conn, err := nilrpc.Dial(n.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
-		if err != nil {
-			return errors.Wrap(err, "failed to dial")
-		}
+// 		cli := rpc.NewClient(conn)
+// 		if err := cli.Call(nilrpc.DsGencodingTruncateChunk.String(), req, res); err != nil {
+// 			return errors.Wrap(err, "failed to truncate remote chunk")
+// 		}
 
-		req := &nilrpc.DGETruncateChunkRequest{
-			Vol:    vols[i].ID.String(),
-			EncGrp: string(c.encodingGroup),
-			Chunk:  c.status.String() + "_" + string(c.id),
-		}
-		res := &nilrpc.DGETruncateChunkResponse{}
+// 		conn.Close()
+// 	}
 
-		cli := rpc.NewClient(conn)
-		if err := cli.Call(nilrpc.DsGencodingTruncateChunk.String(), req, res); err != nil {
-			return errors.Wrap(err, "failed to truncate remote chunk")
-		}
-
-		conn.Close()
-	}
-
-	return nil
-}
+// 	return nil
+// }
