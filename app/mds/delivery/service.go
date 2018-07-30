@@ -5,10 +5,10 @@ import (
 	"net/rpc"
 	"time"
 
+	"github.com/chanyoung/nil/app/mds/application/account"
 	"github.com/chanyoung/nil/app/mds/application/cluster"
 	"github.com/chanyoung/nil/app/mds/application/gencoding"
 	"github.com/chanyoung/nil/app/mds/application/object"
-	"github.com/chanyoung/nil/app/mds/application/user"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/nilrpc"
@@ -23,7 +23,7 @@ var logger *logrus.Entry
 type Service struct {
 	cfg *config.Mds
 
-	uss user.Service
+	acs account.Service
 	cls cluster.Service
 	cms *cmap.Service
 	obh object.Handlers
@@ -38,7 +38,7 @@ type Service struct {
 }
 
 // SetupDeliveryService bootstraps a delivery service with necessary dependencies.
-func SetupDeliveryService(cfg *config.Mds, uss user.Service, cls cluster.Service, cms *cmap.Service, obh object.Handlers, ges gencoding.Service) (*Service, error) {
+func SetupDeliveryService(cfg *config.Mds, acs account.Service, cls cluster.Service, cms *cmap.Service, obh object.Handlers, ges gencoding.Service) (*Service, error) {
 	if cfg == nil {
 		return nil, errors.New("invalid argument")
 	}
@@ -47,7 +47,7 @@ func SetupDeliveryService(cfg *config.Mds, uss user.Service, cls cluster.Service
 	s := &Service{
 		cfg: cfg,
 
-		uss: uss,
+		acs: acs,
 		cls: cls,
 		cms: cms,
 		obh: obh,
@@ -73,7 +73,7 @@ func SetupDeliveryService(cfg *config.Mds, uss user.Service, cls cluster.Service
 
 	// Create rpc server.
 	s.nilRPCSrv = rpc.NewServer()
-	if err := s.nilRPCSrv.RegisterName(nilrpc.MdsUserPrefix, s.uss); err != nil {
+	if err := s.nilRPCSrv.RegisterName(nilrpc.MdsAccountPrefix, s.acs); err != nil {
 		return nil, err
 	}
 	if err := s.nilRPCSrv.RegisterName(nilrpc.MdsClusterPrefix, s.cls.RPCHandler()); err != nil {

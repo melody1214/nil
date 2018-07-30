@@ -6,12 +6,12 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/chanyoung/nil/app/mds/application/account"
 	"github.com/chanyoung/nil/app/mds/application/cluster"
 	"github.com/chanyoung/nil/app/mds/application/gencoding"
 	"github.com/chanyoung/nil/app/mds/application/object"
-	"github.com/chanyoung/nil/app/mds/application/user"
 	"github.com/chanyoung/nil/app/mds/delivery"
-	userdomain "github.com/chanyoung/nil/app/mds/domain/model/user"
+	"github.com/chanyoung/nil/app/mds/domain/model/user"
 	"github.com/chanyoung/nil/app/mds/domain/service/raft"
 	"github.com/chanyoung/nil/app/mds/infrastructure/repository/mysql"
 	"github.com/chanyoung/nil/pkg/cmap"
@@ -40,7 +40,7 @@ func Bootstrap(cfg config.Mds) error {
 
 	// Setup repositories.
 	var (
-		userRepository    userdomain.Repository
+		userRepository    user.Repository
 		objectStore       object.Repository
 		gencodingStore    gencoding.Repository
 		raftService       raft.Service
@@ -70,7 +70,7 @@ func Bootstrap(cfg config.Mds) error {
 	}
 
 	// Setup application handlers.
-	userService := user.NewService(&cfg, raftSimpleService, userRepository)
+	accountService := account.NewService(&cfg, raftSimpleService, userRepository)
 	clusterService := cluster.NewService(&cfg, cmapService.MasterAPI(), raftService)
 	objectHandlers := object.NewHandlers(objectStore)
 	gencodingService, err := gencoding.NewService(&cfg, cmapService.SlaveAPI(), gencodingStore)
@@ -80,7 +80,7 @@ func Bootstrap(cfg config.Mds) error {
 
 	// Setup delivery service.
 	delivery, err := delivery.SetupDeliveryService(
-		&cfg, userService, clusterService, cmapService, objectHandlers, gencodingService,
+		&cfg, accountService, clusterService, cmapService, objectHandlers, gencodingService,
 	)
 	if err != nil {
 		return err

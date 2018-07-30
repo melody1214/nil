@@ -7,7 +7,7 @@ This is a list of domain handlers and method prefixes.
 | Domain         | Method prefix  | Acronym | Description                                                                 |
 | -------------- | -------------- | ------- | --------------------------------------------------------------------------- |
 | MDS cluster    | MDS_CLUSTER    | MCL     | The mds cluster handler is the collection of routines for handling cluster management related requests. |
-| MDS user       | MDS_USER       | MUE     | The mds user handler is the collection of routines for handling user related requests. |
+| MDS account    | MDS_ACCOUNT    | MAC     | The mds user handler is the collection of routines for handling user related requests. |
 | MDS object     | MDS_OBJECT     | MOB     | The mds object handler is the collection of routines for handling object related requests. |
 | MDS encoding   | MDS_ENCODING   | MEN     | The mds encoding handler is the collection of routines for handling global encoding requests. |
 | DS cluster     | DS_CLUSTER     | DCL     | The ds cluster handler is the collection of routines for handling cluster management related requests. |

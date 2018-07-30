@@ -10,7 +10,7 @@ import (
 
 // Prefixes for domains.
 const (
-	MdsUserPrefix      = "MDS_USER"
+	MdsAccountPrefix   = "MDS_ACCOUNT"
 	MdsClusterPrefix   = "MDS_CLUSTER"
 	MdsObjectPrefix    = "MDS_OBJECT"
 	MdsGencodingPrefix = "MDS_GENCODING"
@@ -25,9 +25,9 @@ type MethodName int
 
 const (
 	// MDS user domain methods.
-	MdsUserAddUser MethodName = iota
-	MdsUserMakeBucket
-	MdsUserGetCredential
+	MdsAccountAddUser MethodName = iota
+	MdsAccountMakeBucket
+	MdsAccountGetCredential
 
 	// MDS cluster domain methods.
 	MdsClusterGetClusterMap
@@ -68,12 +68,12 @@ const (
 
 func (m MethodName) String() string {
 	switch m {
-	case MdsUserAddUser:
-		return MdsUserPrefix + "." + "AddUser"
-	case MdsUserMakeBucket:
-		return MdsUserPrefix + "." + "MakeBucket"
-	case MdsUserGetCredential:
-		return MdsUserPrefix + "." + "GetCredential"
+	case MdsAccountAddUser:
+		return MdsAccountPrefix + "." + "AddUser"
+	case MdsAccountMakeBucket:
+		return MdsAccountPrefix + "." + "MakeBucket"
+	case MdsAccountGetCredential:
+		return MdsAccountPrefix + "." + "GetCredential"
 
 	case MdsClusterGetClusterMap:
 		return MdsClusterPrefix + "." + "GetClusterMap"

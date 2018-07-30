@@ -1,4 +1,4 @@
-package user
+package account
 
 import (
 	"github.com/chanyoung/nil/app/mds/domain/model/user"
@@ -31,7 +31,7 @@ func NewService(cfg *config.Mds, rss raft.SimpleService, ur user.Repository) Ser
 }
 
 // AddUser adds a new user with the given name.
-func (s *service) AddUser(req *nilrpc.MUSAddUserRequest, res *nilrpc.MUSAddUserResponse) error {
+func (s *service) AddUser(req *nilrpc.MACAddUserRequest, res *nilrpc.MACAddUserResponse) error {
 	// User is the globally shared metadata.
 	// If this node is not a leader but has received a request, it forwards
 	// the request to the leader node instead.
@@ -71,7 +71,7 @@ func (s *service) AddUser(req *nilrpc.MUSAddUserRequest, res *nilrpc.MUSAddUserR
 }
 
 // MakeBucket creates a bucket with the given name.
-func (s *service) MakeBucket(req *nilrpc.MUSMakeBucketRequest, res *nilrpc.MUSMakeBucketResponse) error {
+func (s *service) MakeBucket(req *nilrpc.MACMakeBucketRequest, res *nilrpc.MACMakeBucketResponse) error {
 	// // Bucket is the globally shared metadata.
 	// // If this node is not a leader but has received a request, it forwards
 	// // the request to the leader node instead.
@@ -107,7 +107,7 @@ func (s *service) MakeBucket(req *nilrpc.MUSMakeBucketRequest, res *nilrpc.MUSMa
 }
 
 // GetCredential returns matching secret key with the given access key.
-func (s *service) GetCredential(req *nilrpc.MUSGetCredentialRequest, res *nilrpc.MUSGetCredentialResponse) error {
+func (s *service) GetCredential(req *nilrpc.MACGetCredentialRequest, res *nilrpc.MACGetCredentialResponse) error {
 	res.AccessKey = req.AccessKey
 
 	// Find by given access key.
@@ -125,7 +125,7 @@ func (s *service) GetCredential(req *nilrpc.MUSGetCredentialRequest, res *nilrpc
 
 // Service is the interface that provides user domain's rpc handlers.
 type Service interface {
-	AddUser(req *nilrpc.MUSAddUserRequest, res *nilrpc.MUSAddUserResponse) error
-	MakeBucket(req *nilrpc.MUSMakeBucketRequest, res *nilrpc.MUSMakeBucketResponse) error
-	GetCredential(req *nilrpc.MUSGetCredentialRequest, res *nilrpc.MUSGetCredentialResponse) error
+	AddUser(req *nilrpc.MACAddUserRequest, res *nilrpc.MACAddUserResponse) error
+	MakeBucket(req *nilrpc.MACMakeBucketRequest, res *nilrpc.MACMakeBucketResponse) error
+	GetCredential(req *nilrpc.MACGetCredentialRequest, res *nilrpc.MACGetCredentialResponse) error
 }
