@@ -1,9 +1,18 @@
 package user
 
 import (
+	"errors"
 	"math/rand"
 	"strconv"
 	"time"
+)
+
+var (
+	// ErrNotExist is used when there is no matched user with the search condition.
+	ErrNotExist = errors.New("no users match with the given condition")
+
+	// ErrInternal is used when the internal error is occured.
+	ErrInternal = errors.New("internal error")
 )
 
 // User is an entity of user information.

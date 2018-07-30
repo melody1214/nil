@@ -13,18 +13,6 @@ type MUSAddUserResponse struct {
 	SecretKey string
 }
 
-// MUSMakeBucketRequest requests to create bucket for given name and user.
-type MUSMakeBucketRequest struct {
-	BucketName string
-	AccessKey  string
-	Region     string
-}
-
-// MUSMakeBucketResponse responses the result of addBucket.
-type MUSMakeBucketResponse struct {
-	S3ErrCode s3.ErrorCode
-}
-
 // MUSGetCredentialRequest requests a credential for the given access key.
 type MUSGetCredentialRequest struct {
 	AccessKey string
@@ -35,4 +23,16 @@ type MUSGetCredentialResponse struct {
 	Exist     bool
 	AccessKey string
 	SecretKey string
+}
+
+// MUSMakeBucketRequest requests to create bucket for given name and user.
+type MUSMakeBucketRequest struct {
+	BucketName string
+	AccessKey  string
+	Region     string
+}
+
+// MUSMakeBucketResponse responses the result of addBucket.
+type MUSMakeBucketResponse struct {
+	S3ErrCode s3.ErrorCode
 }

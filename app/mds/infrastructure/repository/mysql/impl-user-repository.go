@@ -1,9 +1,13 @@
 package mysql
 
 import (
+	"database/sql"
 	"fmt"
 
 	"github.com/chanyoung/nil/app/mds/domain/model/user"
+	"github.com/chanyoung/nil/app/mds/infrastructure/repository"
+	"github.com/chanyoung/nil/pkg/util/mlog"
+	"github.com/pkg/errors"
 )
 
 type userRepository struct {
@@ -18,11 +22,55 @@ func NewUserRepository(s *Store) user.Repository {
 }
 
 func (r *userRepository) FindByID(id user.ID) (*user.User, error) {
-	return nil, nil
+	ctxLogger := mlog.GetMethodLogger(logger, "userRepository.FindByID")
+
+	q := fmt.Sprintf(
+		`
+		SELECT
+			*
+		FROM
+			user
+		WHERE
+			user_id='%s'
+		`, id.String(),
+	)
+
+	u := &user.User{}
+	err := r.s.QueryRow(repository.NotTx, q).Scan(u)
+	if err == sql.ErrNoRows {
+		err = user.ErrNotExist
+	} else if err != nil {
+		ctxLogger.Error(errors.Wrapf(err, "failed to find user by ID: %s", id.String()))
+		err = user.ErrInternal
+	}
+
+	return u, err
 }
 
 func (r *userRepository) FindByAk(access user.Key) (*user.User, error) {
-	return nil, nil
+	ctxLogger := mlog.GetMethodLogger(logger, "userRepository.FindByAk")
+
+	q := fmt.Sprintf(
+		`
+		SELECT
+			*
+		FROM
+			user
+		WHERE
+			user_access_key='%s'
+		`, access.String(),
+	)
+
+	u := &user.User{}
+	err := r.s.QueryRow(repository.NotTx, q).Scan(u)
+	if err == sql.ErrNoRows {
+		err = user.ErrNotExist
+	} else if err != nil {
+		ctxLogger.Error(errors.Wrapf(err, "failed to find user by access key: %s", access.String()))
+		err = user.ErrInternal
+	}
+
+	return u, err
 }
 
 func (r *userRepository) Save(user *user.User) error {
@@ -87,23 +135,4 @@ func (r *userRepository) create(user *user.User) error {
 // 	default:
 // 		return err
 // 	}
-// }
-
-// func (s *userStore) FindSecretKey(accessKey string) (secretKey string, err error) {
-// 	q := fmt.Sprintf(
-// 		`
-// 		SELECT
-// 			user_secret_key
-// 		FROM
-// 			user
-// 		WHERE
-// 			user_access_key = '%s'
-// 		`, accessKey,
-// 	)
-
-// 	err = s.QueryRow(repository.NotTx, q).Scan(&secretKey)
-// 	if err == sql.ErrNoRows {
-// 		err = repository.ErrNotExist
-// 	}
-// 	return
 // }

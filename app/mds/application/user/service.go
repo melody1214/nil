@@ -108,19 +108,19 @@ func (s *service) MakeBucket(req *nilrpc.MUSMakeBucketRequest, res *nilrpc.MUSMa
 
 // GetCredential returns matching secret key with the given access key.
 func (s *service) GetCredential(req *nilrpc.MUSGetCredentialRequest, res *nilrpc.MUSGetCredentialResponse) error {
-	// res.AccessKey = req.AccessKey
+	res.AccessKey = req.AccessKey
 
-	// sk, err := s.store.FindSecretKey(req.AccessKey)
-	// if err == nil {
-	// 	res.Exist = true
-	// 	res.SecretKey = sk
-	// } else if err == repository.ErrNotExist {
-	// 	res.Exist = false
-	// } else {
-	// 	return err
-	// }
+	// Find by given access key.
+	u, err := s.ur.FindByAk(user.Key(req.AccessKey))
+	if err == nil {
+		res.Exist = true
+		res.SecretKey = u.Secret.String()
+	} else if err == user.ErrNotExist {
+		res.Exist = false
+		err = nil
+	}
 
-	return nil
+	return err
 }
 
 // Service is the interface that provides user domain's rpc handlers.
