@@ -19,15 +19,6 @@ func (s *service) LocalJoin(req *nilrpc.MCLLocalJoinRequest, res *nilrpc.MCLLoca
 	return nil
 }
 
-// GlobalJoin handles the join request from the other raft nodes.
-func (s *service) GlobalJoin(req *nilrpc.MCLGlobalJoinRequest, res *nilrpc.MCLGlobalJoinResponse) error {
-	// if req.RaftAddr == "" || req.NodeID == "" {
-	// 	return fmt.Errorf("not enough arguments: %+v", req)
-	// }
-	// return s.store.GlobalJoin(req.RaftAddr, req.NodeID)
-	return nil
-}
-
 // GetUpdateNoti returns when the cmap is updated or timeout.
 func (s *service) GetUpdateNoti(req *nilrpc.MCLGetUpdateNotiRequest, res *nilrpc.MCLGetUpdateNotiResponse) error {
 	notiC := s.cmapAPI.GetUpdatedNoti(cmap.Version(req.Version))

@@ -8,7 +8,6 @@ import (
 
 	"github.com/chanyoung/nil/app/mds/infrastructure/repository"
 	"github.com/hashicorp/raft"
-	"github.com/pkg/errors"
 )
 
 type command struct {
@@ -18,8 +17,11 @@ type command struct {
 
 // PublishCommand publish a command across the cluster.
 func (s *Store) PublishCommand(op, query string) (result sql.Result, err error) {
-	if s.raft.State() != raft.Leader {
-		return nil, errors.New("not leader")
+	if !s.rs.opened {
+		return nil, ErrRaftNotOpened
+	}
+	if s.rs.raft.State() != raft.Leader {
+		return nil, ErrRaftNotLeader
 	}
 
 	b, err := json.Marshal(&command{
@@ -30,7 +32,7 @@ func (s *Store) PublishCommand(op, query string) (result sql.Result, err error) 
 		return nil, err
 	}
 
-	f := s.raft.Apply(b, 3*time.Second)
+	f := s.rs.raft.Apply(b, 3*time.Second)
 	if f.Error() != nil {
 		return nil, f.Error()
 	}

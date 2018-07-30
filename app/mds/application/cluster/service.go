@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"github.com/chanyoung/nil/app/mds/domain/service/raft"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/nilrpc"
@@ -11,22 +12,19 @@ import (
 
 var logger *logrus.Entry
 
-var region string
-
 type service struct {
 	cfg     *config.Mds
-	store   Repository
+	rs      raft.Service
 	cmapAPI cmap.MasterAPI
 }
 
 // NewService creates a client service with necessary dependencies.
-func NewService(cfg *config.Mds, cmapAPI cmap.MasterAPI, s Repository) Service {
+func NewService(cfg *config.Mds, cmapAPI cmap.MasterAPI, rs raft.Service) Service {
 	logger = mlog.GetPackageLogger("app/mds/usecase/cluster")
 
-	region = cfg.Raft.LocalClusterRegion
 	service := &service{
 		cfg:     cfg,
-		store:   s,
+		rs:      rs,
 		cmapAPI: cmapAPI,
 	}
 
@@ -38,27 +36,6 @@ type Service interface {
 	Join(raftL *nilmux.Layer) error
 	Leave() error
 	RPCHandler() RPCHandler
-}
-
-// Join joins the node to the global cluster.
-func (s *service) Join(raftL *nilmux.Layer) error {
-	// if err := s.store.Open(raftL); err != nil {
-	// 	return err
-	// }
-
-	// // I'm the first node of this cluster, no need to join.
-	// if s.cfg.Raft.LocalClusterAddr == s.cfg.Raft.GlobalClusterAddr {
-	// 	return nil
-	// }
-
-	// return raftJoin(s.cfg.Raft.GlobalClusterAddr, s.cfg.Raft.LocalClusterAddr, s.cfg.Raft.LocalClusterRegion)
-	return nil
-}
-
-// Leave leaves the node from the global cluster.
-func (s *service) Leave() error {
-	// return s.store.Close()
-	return nil
 }
 
 // RPCHandler returns the RPC handler which will handle

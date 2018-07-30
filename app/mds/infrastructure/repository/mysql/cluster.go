@@ -1,19 +1,15 @@
 package mysql
 
-import (
-	"github.com/chanyoung/nil/app/mds/application/cluster"
-)
+// type clusterStore struct {
+// 	*Store
+// }
 
-type clusterStore struct {
-	*Store
-}
-
-// NewClusterRepository returns a new instance of a mysql cluster map repository.
-func NewClusterRepository(s *Store) cluster.Repository {
-	return &clusterStore{
-		Store: s,
-	}
-}
+// // NewClusterRepository returns a new instance of a mysql cluster map repository.
+// func NewClusterRepository(s *Store) cluster.Repository {
+// 	return &clusterStore{
+// 		Store: s,
+// 	}
+// }
 
 // func (s *clusterStore) FindAllNodes(txid repository.TxID) (nodes []cmap.Node, err error) {
 // 	q := fmt.Sprintf(
