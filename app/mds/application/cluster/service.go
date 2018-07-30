@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"github.com/chanyoung/nil/app/mds/domain/model/region"
 	"github.com/chanyoung/nil/app/mds/domain/service/raft"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilmux"
@@ -15,16 +16,18 @@ var logger *logrus.Entry
 type service struct {
 	cfg     *config.Mds
 	rs      raft.Service
+	rr      region.Repository
 	cmapAPI cmap.MasterAPI
 }
 
 // NewService creates a client service with necessary dependencies.
-func NewService(cfg *config.Mds, cmapAPI cmap.MasterAPI, rs raft.Service) Service {
+func NewService(cfg *config.Mds, cmapAPI cmap.MasterAPI, rs raft.Service, rr region.Repository) Service {
 	logger = mlog.GetPackageLogger("app/mds/usecase/cluster")
 
 	service := &service{
 		cfg:     cfg,
 		rs:      rs,
+		rr:      rr,
 		cmapAPI: cmapAPI,
 	}
 

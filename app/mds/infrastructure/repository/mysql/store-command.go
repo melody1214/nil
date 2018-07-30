@@ -64,30 +64,3 @@ func (s *Store) Execute(txid repository.TxID, query string) (sql.Result, error) 
 	}
 	return s.db.execute(txid, query)
 }
-
-func (s *Store) addRegion(region, addr string) error {
-	q := fmt.Sprintf(
-		`
-		INSERT INTO region (rg_name, rg_end_point)
-		SELECT * FROM (SELECT '%s' AS rn, '%s' AS ep) AS tmp
-		WHERE NOT EXISTS (
-			SELECT rg_name FROM region WHERE rg_name = '%s'
-		) LIMIT 1;
-		`, region, addr, region,
-	)
-	_, err := s.PublishCommand("execute", q)
-
-	return err
-}
-
-func (s *Store) setGlobalClusterConf() error {
-	q := fmt.Sprintf(
-		`
-		INSERT INTO cluster (cl_local_parity_shards)
-		VALUES ('%s')
-		`, s.cfg.LocalParityShards,
-	)
-	_, err := s.PublishCommand("execute", q)
-
-	return err
-}

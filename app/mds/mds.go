@@ -11,6 +11,7 @@ import (
 	"github.com/chanyoung/nil/app/mds/application/gencoding"
 	"github.com/chanyoung/nil/app/mds/application/object"
 	"github.com/chanyoung/nil/app/mds/delivery"
+	"github.com/chanyoung/nil/app/mds/domain/model/region"
 	"github.com/chanyoung/nil/app/mds/domain/model/user"
 	"github.com/chanyoung/nil/app/mds/domain/service/raft"
 	"github.com/chanyoung/nil/app/mds/infrastructure/repository/mysql"
@@ -40,6 +41,7 @@ func Bootstrap(cfg config.Mds) error {
 
 	// Setup repositories.
 	var (
+		regionRepository  region.Repository
 		userRepository    user.Repository
 		objectStore       object.Repository
 		gencodingStore    gencoding.Repository
@@ -48,6 +50,7 @@ func Bootstrap(cfg config.Mds) error {
 	)
 	if useMySQL := true; useMySQL {
 		store := mysql.New(&cfg)
+		regionRepository = mysql.NewRegionRepository(store)
 		userRepository = mysql.NewUserRepository(store)
 		objectStore = mysql.NewObjectRepository(store)
 		gencodingStore = mysql.NewGencodingRepository(store)
@@ -71,7 +74,7 @@ func Bootstrap(cfg config.Mds) error {
 
 	// Setup application handlers.
 	accountService := account.NewService(&cfg, raftSimpleService, userRepository)
-	clusterService := cluster.NewService(&cfg, cmapService.MasterAPI(), raftService)
+	clusterService := cluster.NewService(&cfg, cmapService.MasterAPI(), raftService, regionRepository)
 	objectHandlers := object.NewHandlers(objectStore)
 	gencodingService, err := gencoding.NewService(&cfg, cmapService.SlaveAPI(), gencodingStore)
 	if err != nil {

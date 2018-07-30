@@ -5,6 +5,7 @@ import (
 	"net/rpc"
 	"time"
 
+	"github.com/chanyoung/nil/app/mds/domain/model/region"
 	"github.com/chanyoung/nil/pkg/nilmux"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 )
@@ -33,12 +34,21 @@ func (s *service) Join(raftL *nilmux.Layer) error {
 		return err
 	}
 
-	// I'm the first node of this cluster, no need to join.
-	if s.cfg.Raft.LocalClusterAddr == s.cfg.Raft.GlobalClusterAddr {
-		return nil
+	// Need to join into the existing raft cluster.
+	if s.cfg.Raft.LocalClusterAddr != s.cfg.Raft.GlobalClusterAddr {
+		return raftJoin(
+			s.cfg.Raft.GlobalClusterAddr,
+			s.cfg.Raft.LocalClusterAddr,
+			s.cfg.Raft.LocalClusterRegion,
+		)
 	}
 
-	return raftJoin(s.cfg.Raft.GlobalClusterAddr, s.cfg.Raft.LocalClusterAddr, s.cfg.Raft.LocalClusterRegion)
+	// I'm the first node of this cluster, no need to join.
+	// Add my region into the region table.
+	return s.rr.Create(&region.Region{
+		Name:     region.Name(s.cfg.Raft.LocalClusterRegion),
+		EndPoint: region.EndPoint(s.cfg.Raft.LocalClusterAddr),
+	})
 }
 
 // Leave leaves the node from the global cluster.
@@ -52,5 +62,12 @@ func (s *service) GlobalJoin(req *nilrpc.MCLGlobalJoinRequest, res *nilrpc.MCLGl
 		return fmt.Errorf("not enough arguments: %+v", req)
 	}
 
-	return s.rs.Join(req.RaftAddr, req.NodeID)
+	if err := s.rs.Join(req.RaftAddr, req.NodeID); err != nil {
+		return err
+	}
+
+	return s.rr.Create(&region.Region{
+		Name:     region.Name(req.NodeID),
+		EndPoint: region.EndPoint(req.RaftAddr),
+	})
 }

@@ -137,15 +137,6 @@ func (s *raftService) Open(raftL *nilmux.Layer) error {
 		for s.raft.State() != raft.Leader {
 			time.Sleep(10 * time.Millisecond)
 		}
-		// Add my region.
-		if err := s.store.addRegion(
-			s.store.cfg.Raft.LocalClusterRegion,
-			s.store.cfg.Raft.LocalClusterAddr,
-		); err != nil {
-			return err
-		}
-
-		return s.store.setGlobalClusterConf()
 	}
 
 	return nil
@@ -180,10 +171,6 @@ func (s *raftService) Join(nodeID, addr string) error {
 	f := s.raft.AddVoter(raft.ServerID(nodeID), raft.ServerAddress(addr), 0, 0)
 	if f.Error() != nil {
 		return f.Error()
-	}
-
-	if err := s.store.addRegion(nodeID, addr); err != nil {
-		return err
 	}
 
 	ctxLogger.Infof("node %s at %s joined successfully", nodeID, addr)
