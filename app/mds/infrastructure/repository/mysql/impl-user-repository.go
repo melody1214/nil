@@ -1,45 +1,62 @@
 package mysql
 
 import (
-	"github.com/chanyoung/nil/app/mds/application/user"
+	"fmt"
+
+	"github.com/chanyoung/nil/app/mds/domain/model/user"
 )
 
-type userStore struct {
-	*Store
+type userRepository struct {
+	s *Store
 }
 
 // NewUserRepository returns a new instance of a mysql user repository.
 func NewUserRepository(s *Store) user.Repository {
-	return &userStore{
-		Store: s,
+	return &userRepository{
+		s: s,
 	}
 }
 
-// // AmILeader returns true if I am the global cluster leader mds.
-// func (s *userStore) AmILeader() (bool, error) {
-// 	if s.raft == nil {
-// 		return false, fmt.Errorf("raft is not initialized yet")
-// 	}
-// 	return s.raft.State() == raft.Leader, nil
-// }
+func (r *userRepository) FindByID(id user.ID) (*user.User, error) {
+	return nil, nil
+}
 
-// func (s *userStore) LeaderEndpoint() (endpoint string) {
-// 	return s.leaderEndPoint()
-// }
+func (r *userRepository) FindByAk(access user.Key) (*user.User, error) {
+	return nil, nil
+}
 
-// func (s *userStore) AddUser(name string, ak security.APIKey) error {
-// 	q := fmt.Sprintf(
-// 		`
-// 		INSERT INTO user (user_name, user_access_key, user_secret_key)
-// 		SELECT * FROM (SELECT '%s' AS un, '%s' AS ak, '%s' AS sk) AS tmp
-// 		WHERE NOT EXISTS (
-// 			SELECT user_name FROM user WHERE user_name = '%s'
-// 		) LIMIT 1;
-// 		`, name, ak.AccessKey(), ak.SecretKey(), name,
-// 	)
-// 	_, err := s.PublishCommand("execute", q)
-// 	return err
-// }
+func (r *userRepository) Save(user *user.User) error {
+	if user.ID.String() == "" {
+		return r.update(user)
+	}
+	return r.create(user)
+}
+
+func (r *userRepository) update(user *user.User) error {
+	q := fmt.Sprintf(
+		`
+		UPDATE user
+		SET user_name='%s', user_secret_key='%s'
+		WHERE user_id='%s',
+		`, user.Name.String(), user.Secret.String(), user.ID.String(),
+	)
+	_, err := r.s.PublishCommand("execute", q)
+	return err
+}
+
+func (r *userRepository) create(user *user.User) error {
+	q := fmt.Sprintf(
+		`
+		INSERT INTO user (user_name, user_access_key, user_secret_key)
+		SELECT * FROM (SELECT '%s' AS un, '%s' AS ak, '%s' AS sk) AS tmp
+		WHERE NOT EXISTS (
+			SELECT user_access_key FROM user WHERE user_access_key = '%s'
+		) LIMIT 1;
+		`, user.Name.String(), user.Access.String(), user.Secret.String(), user.Access.String(),
+	)
+	_, err := r.s.PublishCommand("execute", q)
+	return err
+}
 
 // func (s *userStore) MakeBucket(bucketName, accessKey, region string) (err error) {
 // 	q := fmt.Sprintf(

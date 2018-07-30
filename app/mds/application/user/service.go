@@ -1,6 +1,8 @@
 package user
 
 import (
+	"github.com/chanyoung/nil/app/mds/domain/model/user"
+	"github.com/chanyoung/nil/app/mds/domain/service/raft"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
@@ -10,17 +12,19 @@ import (
 var logger *logrus.Entry
 
 type service struct {
-	cfg   *config.Mds
-	store Repository
+	cfg *config.Mds
+	rss raft.SimpleService
+	ur  user.Repository
 }
 
 // NewService creates a user service with necessary dependencies.
-func NewService(cfg *config.Mds, s Repository) Service {
+func NewService(cfg *config.Mds, rss raft.SimpleService, ur user.Repository) Service {
 	logger = mlog.GetPackageLogger("app/mds/usecase/admin")
 
 	sv := &service{
-		cfg:   cfg,
-		store: s,
+		cfg: cfg,
+		rss: rss,
+		ur:  ur,
 	}
 
 	return sv
@@ -28,37 +32,42 @@ func NewService(cfg *config.Mds, s Repository) Service {
 
 // AddUser adds a new user with the given name.
 func (s *service) AddUser(req *nilrpc.MUSAddUserRequest, res *nilrpc.MUSAddUserResponse) error {
-	// // User is the globally shared metadata.
-	// // If this node is not a leader but has received a request, it forwards
-	// // the request to the leader node instead.
-	// leader, err := s.store.AmILeader()
-	// if err != nil {
-	// 	return err
-	// }
-	// if !leader {
-	// 	leaderEndpoint := s.store.LeaderEndpoint()
-	// 	if leaderEndpoint == "" {
-	// 		return fmt.Errorf("This node is not leader, and the leader is not exist in global cluster")
-	// 	}
+	// User is the globally shared metadata.
+	// If this node is not a leader but has received a request, it forwards
+	// the request to the leader node instead.
+	leader, err := s.rss.Leader()
+	if err != nil {
+		return err
+	}
+	if !leader {
+		leaderEndpoint, err := s.rss.LeaderEndPoint()
+		if err != nil {
+			return err
+		}
 
-	// 	conn, err := nilrpc.Dial(leaderEndpoint, nilrpc.RPCNil, time.Duration(2*time.Second))
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	defer conn.Close()
+		_ = leaderEndpoint
+		// 	conn, err := nilrpc.Dial(leaderEndpoint, nilrpc.RPCNil, time.Duration(2*time.Second))
+		// 	if err != nil {
+		// 		return err
+		// 	}
+		// 	defer conn.Close()
 
-	// 	cli := rpc.NewClient(conn)
-	// 	defer cli.Close()
+		// 	cli := rpc.NewClient(conn)
+		// 	defer cli.Close()
 
-	// 	return cli.Call(nilrpc.MdsUserAddUser.String(), req, res)
-	// }
+		// 	return cli.Call(nilrpc.MdsUserAddUser.String(), req, res)
+	}
 
-	// ak := security.NewAPIKey()
-	// s.store.AddUser(req.Name, ak)
+	u := &user.User{
+		Name:   user.Name(req.Name),
+		Access: user.GenKey(),
+		Secret: user.GenKey(),
+	}
 
-	// res.AccessKey = ak.AccessKey()
-	// res.SecretKey = ak.SecretKey()
-	return nil
+	res.AccessKey = u.Access.String()
+	res.SecretKey = u.Secret.String()
+
+	return s.ur.Save(u)
 }
 
 // MakeBucket creates a bucket with the given name.

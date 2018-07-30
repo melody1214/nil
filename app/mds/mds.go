@@ -11,6 +11,7 @@ import (
 	"github.com/chanyoung/nil/app/mds/application/object"
 	"github.com/chanyoung/nil/app/mds/application/user"
 	"github.com/chanyoung/nil/app/mds/delivery"
+	userdomain "github.com/chanyoung/nil/app/mds/domain/model/user"
 	"github.com/chanyoung/nil/app/mds/domain/service/raft"
 	"github.com/chanyoung/nil/app/mds/infrastructure/repository/mysql"
 	"github.com/chanyoung/nil/pkg/cmap"
@@ -39,17 +40,19 @@ func Bootstrap(cfg config.Mds) error {
 
 	// Setup repositories.
 	var (
-		userStore      user.Repository
-		objectStore    object.Repository
-		gencodingStore gencoding.Repository
-		raftService    raft.Service
+		userRepository    userdomain.Repository
+		objectStore       object.Repository
+		gencodingStore    gencoding.Repository
+		raftService       raft.Service
+		raftSimpleService raft.SimpleService
 	)
 	if useMySQL := true; useMySQL {
 		store := mysql.New(&cfg)
-		userStore = mysql.NewUserRepository(store)
+		userRepository = mysql.NewUserRepository(store)
 		objectStore = mysql.NewObjectRepository(store)
 		gencodingStore = mysql.NewGencodingRepository(store)
 		raftService = store.NewRaftService()
+		raftSimpleService = raftService.NewRaftSimpleService()
 	} else {
 		return fmt.Errorf("not supported store type")
 	}
@@ -67,7 +70,7 @@ func Bootstrap(cfg config.Mds) error {
 	}
 
 	// Setup application handlers.
-	userService := user.NewService(&cfg, userStore)
+	userService := user.NewService(&cfg, raftSimpleService, userRepository)
 	clusterService := cluster.NewService(&cfg, cmapService.MasterAPI(), raftService)
 	objectHandlers := object.NewHandlers(objectStore)
 	gencodingService, err := gencoding.NewService(&cfg, cmapService.SlaveAPI(), gencodingStore)

@@ -15,7 +15,8 @@ var generateSQLBase = []string{
 			user_name varchar(128) CHARACTER SET ascii NOT NULL,
 			user_access_key varchar(32) charset ascii NOT NULL,
 			user_secret_key varchar(32) charset ascii NOT NULL,
-			PRIMARY KEY (user_id)
+			PRIMARY KEY (user_id),
+			UNIQUE KEY (user_access_key)
 		) ENGINE=InnoDB DEFAULT CHARSET=ascii
 	`,
 	`

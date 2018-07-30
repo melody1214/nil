@@ -523,9 +523,9 @@ function main() {
         done < $PENDINGCMD
     fi
 
-    # # Create users.
-    # sleep 3
-    # createusers
+    # Create users.
+    sleep 3
+    createusers
 
     # # Create buckets.
     # sleep 5
