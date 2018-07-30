@@ -82,12 +82,7 @@ func SetupDeliveryService(cfg *config.Mds, uss user.Service, cls cluster.Service
 	if err := s.nilRPCSrv.RegisterName(nilrpc.MdsObjectPrefix, s.obh); err != nil {
 		return nil, err
 	}
-	if err := s.nilRPCSrv.RegisterName(nilrpc.MdsGencodingPrefix, s.ges); err != nil {
-		return nil, err
-	}
-
-	// // Run the delivery server.
-	// if err := s.run(); err != nil {
+	// if err := s.nilRPCSrv.RegisterName(nilrpc.MdsGencodingPrefix, s.ges); err != nil {
 	// 	return nil, err
 	// }
 

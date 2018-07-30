@@ -42,38 +42,13 @@ func (i ID) Int64() int64 {
 
 // CMap is the cluster map entity.
 type CMap struct {
-	Version Version         `xml:"version"`
-	Time    Time            `xml:"time"`
-	Nodes   []Node          `xml:"node"`
-	Vols    []Volume        `xml:"volume"`
-	EncGrps []EncodingGroup `xml:"encgrp"`
+	Version Version `xml:"version"`
+	Time    Time    `xml:"time"`
+	Nodes   []Node  `xml:"node"`
 }
 
 // HumanReadable returns a human readable map of the cluster.
 func (m *CMap) HumanReadable() string {
-	ids2str := func(ids []ID) string {
-		r := "{"
-		for i, id := range ids {
-			r += id.String()
-			if i < len(ids)-1 {
-				r += ", "
-			}
-		}
-		r += "}"
-		return r
-	}
-	egvs2str := func(egvs []EGVol) string {
-		r := "{"
-		for i, eg := range egvs {
-			r += eg.Print()
-			if i < len(egvs)-1 {
-				r += ", "
-			}
-		}
-		r += "}"
-		return r
-	}
-
 	// Write cmap header.
 	out := "+-------------------------+-----------------------------------------------------+\n"
 	header := fmt.Sprintf(
@@ -88,65 +63,21 @@ func (m *CMap) HumanReadable() string {
 	out += "\n"
 	out += "+-------------------+\n"
 	out += "| Nodes information |\n"
-	out += "+------+------+-----+----------------+---------+-------------------+------------------------------+\n"
-	out += "| ID   | Type | Address              | Status  | UUID              | Volumes                      |\n"
-	out += "+------+------+----------------------+---------+-------------------+------------------------------+\n"
+	out += "+------+------+-----+----------------+---------+-------------------+\n"
+	out += "| ID   | Type | Address              | Status  | UUID              |\n"
+	out += "+------+------+----------------------+---------+-------------------+\n"
 	for _, n := range m.Nodes {
 		row := fmt.Sprintf(
-			"| %-4s | %-4s | %-20s | %-7s | %-17s | %-28s |\n",
+			"| %-4s | %-4s | %-20s | %-7s | %-17s |\n",
 			n.ID.String(),
 			n.Type.String(),
 			n.Addr,
 			n.Stat.String(),
 			n.Name,
-			ids2str(n.Vols),
 		)
 		out += row
 	}
-	out += "+------+------+----------------------+---------+-------------------+------------------------------+\n"
-
-	// Make human readable information for each volumes.
-	out += "\n"
-	out += "+---------------------+\n"
-	out += "| Volumes information |\n"
-	out += "+------+-----------+----------+----+----+-----------+---------------------------------------------+\n"
-	out += "| Node | Name      | Size(MB) | Speed   | Status    | EncGrps                                     |\n"
-	out += "+------+-----------+----------+---------+-----------+---------------------------------------------+\n"
-	for _, v := range m.Vols {
-		row := fmt.Sprintf(
-			"| %-4s | %-9s | %-8d | %-7s | %-9s | %-44s |\n",
-			v.Node.String(),
-			v.Name.String(),
-			v.Size,
-			v.Speed.String(),
-			v.Stat.String(),
-			ids2str(v.EncGrps),
-		)
-		out += row
-	}
-	out += "+------+---------+---------+-----------+------+---------------------------------------------------+\n"
-
-	// Make human readable information for each encoding groups.
-	out += "\n"
-	out += "+-----------------------------+\n"
-	out += "| Encoding groups information |\n"
-	out += "+------+---------+---------+--+------+---------+--------------------------------------+-----------+\n"
-	out += "| ID   | Size    | Free    | Used    | Status  | Volumes                              | Unencoded |\n"
-	out += "+------+---------+---------+---------+---------+--------------------------------------+-----------+\n"
-	for _, eg := range m.EncGrps {
-		row := fmt.Sprintf(
-			"| %-4s | %-7d | %-7d | %-7d | %-7s | %-36s | %9d |\n",
-			eg.ID.String(),
-			eg.Size,
-			eg.Free,
-			eg.Used,
-			eg.Stat.String(),
-			egvs2str(eg.Vols),
-			eg.Uenc,
-		)
-		out += row
-	}
-	out += "+------+---------+---------+---------+---------+--------------------------------------+-----------+\n"
+	out += "+------+------+----------------------+---------+-------------------+\n"
 
 	return out
 }

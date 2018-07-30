@@ -32,38 +32,42 @@ type ObjInfo struct {
 }
 
 func (h *handlers) Put(req *nilrpc.MOBObjectPutRequest, res *nilrpc.MOBObjectPutResponse) error {
-	return h.store.Put(&ObjInfo{
-		Name:   req.Name,
-		Bucket: req.Bucket,
-		EncGrp: req.EncodingGroup,
-		Vol:    req.Volume,
-	})
+	// return h.store.Put(&ObjInfo{
+	// 	Name:   req.Name,
+	// 	Bucket: req.Bucket,
+	// 	EncGrp: req.EncodingGroup,
+	// 	Vol:    req.Volume,
+	// })
+	return nil
 }
 
 func (h *handlers) Get(req *nilrpc.MOBObjectGetRequest, res *nilrpc.MOBObjectGetResponse) error {
-	o, err := h.store.Get(req.Name)
-	if err != nil {
-		return nil
-	}
+	// o, err := h.store.Get(req.Name)
+	// if err != nil {
+	// 	return nil
+	// }
 
-	res.EncodingGroupID = o.EncGrp
-	res.VolumeID = o.Vol
-	res.DsID = o.Node
+	// res.EncodingGroupID = o.EncGrp
+	// res.VolumeID = o.Vol
+	// res.DsID = o.Node
 
+	// return nil
 	return nil
 }
 
 func (h *handlers) GetChunk(req *nilrpc.MOBGetChunkRequest, res *nilrpc.MOBGetChunkResponse) error {
-	cid, err := h.store.GetChunk(req.EncodingGroup)
-	if err != nil {
-		return err
-	}
-	res.ID = cid
+	// cid, err := h.store.GetChunk(req.EncodingGroup)
+	// if err != nil {
+	// 	return err
+	// }
+	// res.ID = cid
+	// return nil
 	return nil
 }
 
 func (h *handlers) SetChunk(req *nilrpc.MOBSetChunkRequest, res *nilrpc.MOBSetChunkResponse) error {
-	return h.store.SetChunk(req.Chunk, req.EncodingGroup, req.Status)
+	// return h.store.SetChunk(req.Chunk, req.EncodingGroup, req.Status)
+	return nil
 }
 
 // Handlers is the interface that provides object domain's rpc handlers.

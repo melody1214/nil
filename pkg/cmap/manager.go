@@ -22,8 +22,6 @@ func newManager(coordinator NodeAddress) (*manager, error) {
 		Version: Version(0),
 		Time:    Now(),
 		Nodes:   make([]Node, 1),
-		Vols:    make([]Volume, 0),
-		EncGrps: make([]EncodingGroup, 0),
 	}
 
 	// Set the mds.
@@ -82,26 +80,6 @@ func copyCMap(cm *CMap) *CMap {
 	// Copy nodes.
 	copiedMap.Nodes = make([]Node, len(cm.Nodes))
 	copy(copiedMap.Nodes, cm.Nodes)
-	for i, n := range cm.Nodes {
-		copiedMap.Nodes[i].Vols = make([]ID, len(n.Vols))
-		copy(copiedMap.Nodes[i].Vols, n.Vols)
-	}
-
-	// Copy volumes.
-	copiedMap.Vols = make([]Volume, len(cm.Vols))
-	copy(copiedMap.Vols, cm.Vols)
-	for i, v := range cm.Vols {
-		copiedMap.Vols[i].EncGrps = make([]ID, len(v.EncGrps))
-		copy(copiedMap.Vols[i].EncGrps, v.EncGrps)
-	}
-
-	// Copy encoding groups.
-	copiedMap.EncGrps = make([]EncodingGroup, len(cm.EncGrps))
-	copy(copiedMap.EncGrps, cm.EncGrps)
-	for i, eg := range cm.EncGrps {
-		copiedMap.EncGrps[i].Vols = make([]EGVol, len(eg.Vols))
-		copy(copiedMap.EncGrps[i].Vols, eg.Vols)
-	}
 
 	return copiedMap
 }
@@ -302,83 +280,5 @@ func mergeCMap(src, dst *CMap) bool {
 		}
 	}
 
-	// Merge volumes.
-	for _, sv := range src.Vols {
-		for i, dv := range dst.Vols {
-			// PK(node, name).
-			if sv.Node != dv.Node || sv.Name != dv.Name {
-				continue
-			}
-
-			if sv.Incr < dv.Incr {
-				break
-			}
-
-			if dv.Stat != sv.Stat {
-				dst.Vols[i].Stat = sv.Stat
-				stateChanged = true
-			}
-			dst.Vols[i].Incr = sv.Incr
-		}
-	}
-
-	// Merge encoding groups.
-	for _, se := range src.EncGrps {
-		for i, de := range dst.EncGrps {
-			if se.ID != de.ID {
-				continue
-			}
-
-			if se.Incr < de.Incr {
-				break
-			}
-			dst.EncGrps[i].Size = se.Size
-			dst.EncGrps[i].Used = se.Used
-			dst.EncGrps[i].Free = se.Free
-			dst.EncGrps[i].Incr = se.Incr
-			dst.EncGrps[i].Uenc = se.Uenc
-		}
-	}
-
 	return stateChanged
-}
-
-func (m *manager) UpdateVolume(volume Volume) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	// Update existed volume.
-	cm := m.latestCMap()
-	for i, v := range cm.Vols {
-		if v.Name != volume.Name {
-			continue
-		}
-
-		cm.Vols[i].Stat = volume.Stat
-		cm.Vols[i].Size = volume.Size
-		cm.Vols[i].Speed = volume.Speed
-		cm.Vols[i].Incr = cm.Vols[i].Incr + 1
-		return
-	}
-
-	// Make new volume.
-	volume.Incr = 0
-	volume.MaxEG = 0
-	volume.EncGrps = nil
-	cm.Vols = append(cm.Vols, volume)
-}
-
-func (m *manager) UpdateUnencoded(egID ID, unencoded int) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	cm := m.latestCMap()
-	for i, found := range cm.EncGrps {
-		if found.ID != egID {
-			continue
-		}
-
-		cm.EncGrps[i].Uenc = unencoded
-		cm.EncGrps[i].Incr = cm.EncGrps[i].Incr + 1
-	}
 }

@@ -1,14 +1,7 @@
 package user
 
 import (
-	"fmt"
-	"net/rpc"
-	"time"
-
-	"github.com/chanyoung/nil/app/mds/infrastructure/repository"
 	"github.com/chanyoung/nil/pkg/nilrpc"
-	"github.com/chanyoung/nil/pkg/s3"
-	"github.com/chanyoung/nil/pkg/security"
 	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/sirupsen/logrus"
@@ -30,118 +23,93 @@ func NewService(cfg *config.Mds, s Repository) Service {
 		store: s,
 	}
 
-	go func() {
-		time.Sleep(10 * time.Second)
-		leader, err := s.AmILeader()
-		if err != nil {
-			return
-		}
-		if !leader {
-			return
-		}
-
-		// Generate sample users.
-		regions := []string{
-			"idckr",
-			"idcsg",
-			"idcjp",
-			"idcde",
-			"idcus",
-			"idchk",
-		}
-
-		for _, r := range regions {
-			sv.store.AddUser(r, security.DummyKey(r))
-		}
-	}()
-
 	return sv
 }
 
 // AddUser adds a new user with the given name.
 func (s *service) AddUser(req *nilrpc.MUSAddUserRequest, res *nilrpc.MUSAddUserResponse) error {
-	// User is the globally shared metadata.
-	// If this node is not a leader but has received a request, it forwards
-	// the request to the leader node instead.
-	leader, err := s.store.AmILeader()
-	if err != nil {
-		return err
-	}
-	if !leader {
-		leaderEndpoint := s.store.LeaderEndpoint()
-		if leaderEndpoint == "" {
-			return fmt.Errorf("This node is not leader, and the leader is not exist in global cluster")
-		}
+	// // User is the globally shared metadata.
+	// // If this node is not a leader but has received a request, it forwards
+	// // the request to the leader node instead.
+	// leader, err := s.store.AmILeader()
+	// if err != nil {
+	// 	return err
+	// }
+	// if !leader {
+	// 	leaderEndpoint := s.store.LeaderEndpoint()
+	// 	if leaderEndpoint == "" {
+	// 		return fmt.Errorf("This node is not leader, and the leader is not exist in global cluster")
+	// 	}
 
-		conn, err := nilrpc.Dial(leaderEndpoint, nilrpc.RPCNil, time.Duration(2*time.Second))
-		if err != nil {
-			return err
-		}
-		defer conn.Close()
+	// 	conn, err := nilrpc.Dial(leaderEndpoint, nilrpc.RPCNil, time.Duration(2*time.Second))
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	defer conn.Close()
 
-		cli := rpc.NewClient(conn)
-		defer cli.Close()
+	// 	cli := rpc.NewClient(conn)
+	// 	defer cli.Close()
 
-		return cli.Call(nilrpc.MdsUserAddUser.String(), req, res)
-	}
+	// 	return cli.Call(nilrpc.MdsUserAddUser.String(), req, res)
+	// }
 
-	ak := security.NewAPIKey()
-	s.store.AddUser(req.Name, ak)
+	// ak := security.NewAPIKey()
+	// s.store.AddUser(req.Name, ak)
 
-	res.AccessKey = ak.AccessKey()
-	res.SecretKey = ak.SecretKey()
+	// res.AccessKey = ak.AccessKey()
+	// res.SecretKey = ak.SecretKey()
 	return nil
 }
 
 // MakeBucket creates a bucket with the given name.
 func (s *service) MakeBucket(req *nilrpc.MUSMakeBucketRequest, res *nilrpc.MUSMakeBucketResponse) error {
-	// Bucket is the globally shared metadata.
-	// If this node is not a leader but has received a request, it forwards
-	// the request to the leader node instead.
-	leader, err := s.store.AmILeader()
-	if err != nil {
-		return err
-	}
-	if !leader {
-		leaderEndpoint := s.store.LeaderEndpoint()
-		if leaderEndpoint == "" {
-			return fmt.Errorf("This node is not leader, and the leader is not exist in global cluster")
-		}
+	// // Bucket is the globally shared metadata.
+	// // If this node is not a leader but has received a request, it forwards
+	// // the request to the leader node instead.
+	// leader, err := s.store.AmILeader()
+	// if err != nil {
+	// 	return err
+	// }
+	// if !leader {
+	// 	leaderEndpoint := s.store.LeaderEndpoint()
+	// 	if leaderEndpoint == "" {
+	// 		return fmt.Errorf("This node is not leader, and the leader is not exist in global cluster")
+	// 	}
 
-		conn, err := nilrpc.Dial(leaderEndpoint, nilrpc.RPCNil, time.Duration(2*time.Second))
-		if err != nil {
-			return err
-		}
-		defer conn.Close()
+	// 	conn, err := nilrpc.Dial(leaderEndpoint, nilrpc.RPCNil, time.Duration(2*time.Second))
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	defer conn.Close()
 
-		cli := rpc.NewClient(conn)
-		defer cli.Close()
+	// 	cli := rpc.NewClient(conn)
+	// 	defer cli.Close()
 
-		return cli.Call(nilrpc.MdsUserMakeBucket.String(), req, res)
-	}
+	// 	return cli.Call(nilrpc.MdsUserMakeBucket.String(), req, res)
+	// }
 
-	err = s.store.MakeBucket(req.BucketName, req.AccessKey, req.Region)
-	if err == repository.ErrDuplicateEntry {
-		res.S3ErrCode = s3.ErrBucketAlreadyExists
-	} else if err != nil {
-		res.S3ErrCode = s3.ErrInternalError
-	}
+	// err = s.store.MakeBucket(req.BucketName, req.AccessKey, req.Region)
+	// if err == repository.ErrDuplicateEntry {
+	// 	res.S3ErrCode = s3.ErrBucketAlreadyExists
+	// } else if err != nil {
+	// 	res.S3ErrCode = s3.ErrInternalError
+	// }
 	return nil
 }
 
 // GetCredential returns matching secret key with the given access key.
 func (s *service) GetCredential(req *nilrpc.MUSGetCredentialRequest, res *nilrpc.MUSGetCredentialResponse) error {
-	res.AccessKey = req.AccessKey
+	// res.AccessKey = req.AccessKey
 
-	sk, err := s.store.FindSecretKey(req.AccessKey)
-	if err == nil {
-		res.Exist = true
-		res.SecretKey = sk
-	} else if err == repository.ErrNotExist {
-		res.Exist = false
-	} else {
-		return err
-	}
+	// sk, err := s.store.FindSecretKey(req.AccessKey)
+	// if err == nil {
+	// 	res.Exist = true
+	// 	res.SecretKey = sk
+	// } else if err == repository.ErrNotExist {
+	// 	res.Exist = false
+	// } else {
+	// 	return err
+	// }
 
 	return nil
 }

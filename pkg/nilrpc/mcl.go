@@ -46,16 +46,6 @@ type MCLGlobalJoinRequest struct {
 // MCLGlobalJoinResponse is a NilRPC response message to join an existing cluster.
 type MCLGlobalJoinResponse struct{}
 
-// MCLRegisterVolumeRequest contains a new volume information.
-type MCLRegisterVolumeRequest struct {
-	Volumes []cmap.Volume
-}
-
-// MCLRegisterVolumeResponse contains a registered volume id and the results.
-type MCLRegisterVolumeResponse struct {
-	ID cmap.ID
-}
-
 // MCLListJobRequest requests to show the job history.
 type MCLListJobRequest struct{}
 

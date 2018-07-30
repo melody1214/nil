@@ -1,8 +1,6 @@
 package cmap
 
 import (
-	"fmt"
-
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -90,8 +88,6 @@ type MasterAPI interface {
 // SlaveAPI is the interface for access the membership service with slave mode.
 type SlaveAPI interface {
 	CommonAPI
-	UpdateVolume(volume Volume) error
-	UpdateUnencoded(egID ID, unencoded int) error
 }
 
 // MasterAPI returns a set of APIs that can be used by nodes in master mode.
@@ -151,37 +147,5 @@ func (s *Service) GetLatestCMap() CMap {
 // UpdateCMap updates the new cmap manager with the given cmap.
 func (s *Service) UpdateCMap(cmap *CMap) error {
 	s.manager.mergeCMap(cmap)
-	return nil
-}
-
-// UpdateVolume updates the volume status of the given volume ID.
-func (s *Service) UpdateVolume(volume Volume) error {
-	if s.id != volume.Node {
-		return fmt.Errorf("only can update volumes which this node has")
-	}
-
-	s.manager.UpdateVolume(volume)
-	return nil
-}
-
-// UpdateUnencoded updates the unencoded field of encoding group.
-func (s *Service) UpdateUnencoded(egID ID, unencoded int) error {
-	// c := s.SearchCall()
-	// eg, err := c.EncGrp().ID(egID).Do()
-	// if err != nil {
-	// 	return errors.Wrap(err, "failed to find encoding group with the given id")
-	// }
-	// vol, err := c.Volume().ID(eg.LeaderVol()).Do()
-	// if err != nil {
-	// 	return errors.Wrap(err, "failed to find leader volume with the given encoding group")
-	// }
-	// node, err := c.Node().ID(vol.Node).Do()
-	// if err != nil {
-	// 	return errors.Wrap(err, "failed to find leader node with the given encoding group")
-	// }
-	// if node.Name != s.cfg.Name {
-	// 	return fmt.Errorf("only can update eg which this the leader volume")
-	// }
-	s.manager.UpdateUnencoded(egID, unencoded)
 	return nil
 }
