@@ -527,9 +527,9 @@ function main() {
     sleep 3
     createusers
 
-    # # Create buckets.
-    # sleep 5
-    # createbuckets
+    # Create buckets.
+    sleep 5
+    createbuckets
 
     # # Put objects.
     # sleep 15

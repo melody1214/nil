@@ -36,7 +36,7 @@ func (r *regionRepository) FindByID(id region.ID) (*region.Region, error) {
 	)
 
 	rg := &region.Region{}
-	err := r.s.QueryRow(repository.NotTx, q).Scan(rg)
+	err := r.s.QueryRow(repository.NotTx, q).Scan(&rg.ID, &rg.Name, &rg.EndPoint)
 	if err == sql.ErrNoRows {
 		err = region.ErrNotExist
 	} else if err != nil {
@@ -62,7 +62,7 @@ func (r *regionRepository) FindByName(name region.Name) (*region.Region, error) 
 	)
 
 	rg := &region.Region{}
-	err := r.s.QueryRow(repository.NotTx, q).Scan(rg)
+	err := r.s.QueryRow(repository.NotTx, q).Scan(&rg.ID, &rg.Name, &rg.EndPoint)
 	if err == sql.ErrNoRows {
 		err = region.ErrNotExist
 	} else if err != nil {

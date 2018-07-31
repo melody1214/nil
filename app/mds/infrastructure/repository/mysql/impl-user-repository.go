@@ -27,7 +27,7 @@ func (r *userRepository) FindByID(id user.ID) (*user.User, error) {
 	q := fmt.Sprintf(
 		`
 		SELECT
-			*
+			user_id, user_name, user_access_key, user_secret_key
 		FROM
 			user
 		WHERE
@@ -36,7 +36,7 @@ func (r *userRepository) FindByID(id user.ID) (*user.User, error) {
 	)
 
 	u := &user.User{}
-	err := r.s.QueryRow(repository.NotTx, q).Scan(u)
+	err := r.s.QueryRow(repository.NotTx, q).Scan(&u.ID, &u.Name, &u.Access, &u.Secret)
 	if err == sql.ErrNoRows {
 		err = user.ErrNotExist
 	} else if err != nil {
@@ -53,7 +53,7 @@ func (r *userRepository) FindByAk(access user.Key) (*user.User, error) {
 	q := fmt.Sprintf(
 		`
 		SELECT
-			*
+			user_id, user_name, user_access_key, user_secret_key
 		FROM
 			user
 		WHERE
@@ -62,7 +62,7 @@ func (r *userRepository) FindByAk(access user.Key) (*user.User, error) {
 	)
 
 	u := &user.User{}
-	err := r.s.QueryRow(repository.NotTx, q).Scan(u)
+	err := r.s.QueryRow(repository.NotTx, q).Scan(&u.ID, &u.Name, &u.Access, &u.Secret)
 	if err == sql.ErrNoRows {
 		err = user.ErrNotExist
 	} else if err != nil {
