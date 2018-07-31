@@ -63,24 +63,6 @@ func TestEncodeDecode(t *testing.T) {
 				Stat: NodeAlive,
 			},
 		},
-		Vols: []Volume{
-			{
-				ID:   ID(1),
-				Size: 100000,
-			},
-			{
-				ID:   ID(2),
-				Size: 100000,
-			},
-		},
-		EncGrps: []EncodingGroup{
-			{
-				ID: ID(1),
-			},
-			{
-				ID: ID(2),
-			},
-		},
 	}
 
 	testFile := "test.xml"
