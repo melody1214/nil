@@ -65,9 +65,8 @@ func init() {
 	mdsCmd.Flags().StringVarP(&mdscfg.Security.ServerKey, "secure-server-key", "", config.Get("security.server_key"), "file name of server key")
 	mdsCmd.Flags().StringVarP(&mdscfg.Security.ServerCrt, "secure-server-crt", "", config.Get("security.server_crt"), "file name of server crt")
 
-	mdsCmd.Flags().StringVarP(&mdscfg.LocalParityShards, "local-parity-shards", "", config.Get("mds.local_parity_shards"), "number of shards for generating local parity")
-	mdsCmd.Flags().StringVarP(&mdscfg.GlobalParityShards, "global-parity-shards", "", config.Get("mds.global_parity_shards"), "number of shards for generating global parity")
-	mdsCmd.Flags().StringVarP(&mdscfg.GlobalParityRegions, "global-parity-regions", "", config.Get("mds.global_parity_regions"), "number of regions for generating global parity")
+	mdsCmd.Flags().StringVarP(&mdscfg.LocalEncodingMatrices, "local-encoding-matrices", "", config.Get("mds.local_encoding_matrices"), "number of matrices for local encoding")
+	mdsCmd.Flags().StringVarP(&mdscfg.GlobalEncodingMatrices, "global-encoding-matrices", "", config.Get("mds.global_encoding_matrices"), "number of matrices for global encoding")
 
 	mdsCmd.Flags().StringVarP(&mdscfg.LogLocation, "log", "l", config.Get("mds.log_location"), "log location of the mds will print out")
 }

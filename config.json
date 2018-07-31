@@ -22,9 +22,8 @@
 
         "rebalance": "5s",
 
-        "local_parity_shards": "5",
-        "global_parity_shards": "15",
-        "global_parity_regions": "3",
+        "local_encoding_matrices": "4",
+        "global_encoding_matrices": "4",
 
         "log_location": "stderr"
     },

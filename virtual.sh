@@ -18,7 +18,7 @@ REGIONS=("idckr")
 GW=1
 MDS=1
 # DS=12
-DS=10
+DS=3
 GWBASEPORT=50000
 MDSBASEPORT=51000
 DSBASEPORT=52000
@@ -189,7 +189,7 @@ function runregion() {
         MDSBASEPORT=$((MDSBASEPORT + 1))
     done
 
-    sleep 60
+    sleep 5
 
     # Create ds.
     for i in $(eval echo "{1..$numds}"); do

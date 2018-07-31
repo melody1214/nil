@@ -35,12 +35,10 @@ type Mds struct {
 	Security Security
 
 	// Encoding
-	// LocalParityShards is the number of shards that used to generate local parity.
-	LocalParityShards string
-	// GlobalParityShards is the number of shards that used to generate global parity.
-	GlobalParityShards string
-	// GlobalParityRegions is the number of regions that used to generate global parity.
-	GlobalParityRegions string
+	// LocalEncodingMatrices is the number of matrices for local encoding.
+	LocalEncodingMatrices string
+	// GlobalEncodingMatrices is the number of matrices for global encoding.
+	GlobalEncodingMatrices string
 
 	// LogLocation is the file path of mds logging.
 	// Default output path is stderr.
