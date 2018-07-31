@@ -44,5 +44,6 @@ func (p EndPoint) String() string {
 // Repository provides to access region database.
 type Repository interface {
 	FindByID(ID) (*Region, error)
+	FindByName(Name) (*Region, error)
 	Create(*Region) error
 }

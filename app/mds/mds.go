@@ -11,6 +11,7 @@ import (
 	"github.com/chanyoung/nil/app/mds/application/gencoding"
 	"github.com/chanyoung/nil/app/mds/application/object"
 	"github.com/chanyoung/nil/app/mds/delivery"
+	"github.com/chanyoung/nil/app/mds/domain/model/bucket"
 	"github.com/chanyoung/nil/app/mds/domain/model/region"
 	"github.com/chanyoung/nil/app/mds/domain/model/user"
 	"github.com/chanyoung/nil/app/mds/domain/service/raft"
@@ -43,6 +44,7 @@ func Bootstrap(cfg config.Mds) error {
 	var (
 		regionRepository  region.Repository
 		userRepository    user.Repository
+		bucketRepository  bucket.Repository
 		objectStore       object.Repository
 		gencodingStore    gencoding.Repository
 		raftService       raft.Service
@@ -52,6 +54,7 @@ func Bootstrap(cfg config.Mds) error {
 		store := mysql.New(&cfg)
 		regionRepository = mysql.NewRegionRepository(store)
 		userRepository = mysql.NewUserRepository(store)
+		bucketRepository = mysql.NewBucketRepository(store)
 		objectStore = mysql.NewObjectRepository(store)
 		gencodingStore = mysql.NewGencodingRepository(store)
 		raftService = store.NewRaftService()
@@ -73,7 +76,7 @@ func Bootstrap(cfg config.Mds) error {
 	}
 
 	// Setup application handlers.
-	accountService := account.NewService(&cfg, raftSimpleService, userRepository)
+	accountService := account.NewService(&cfg, raftSimpleService, regionRepository, userRepository, bucketRepository)
 	clusterService := cluster.NewService(&cfg, cmapService.MasterAPI(), raftService, regionRepository)
 	objectHandlers := object.NewHandlers(objectStore)
 	gencodingService, err := gencoding.NewService(&cfg, cmapService.SlaveAPI(), gencodingStore)

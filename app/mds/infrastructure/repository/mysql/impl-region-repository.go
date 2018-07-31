@@ -47,6 +47,32 @@ func (r *regionRepository) FindByID(id region.ID) (*region.Region, error) {
 	return rg, err
 }
 
+func (r *regionRepository) FindByName(name region.Name) (*region.Region, error) {
+	ctxLogger := mlog.GetMethodLogger(logger, "regionRepository.FindByID")
+
+	q := fmt.Sprintf(
+		`
+		SELECT
+			rg_id, rg_name, rg_end_point
+		FROM
+			region
+		WHERE
+			rg_name='%s'
+		`, name.String(),
+	)
+
+	rg := &region.Region{}
+	err := r.s.QueryRow(repository.NotTx, q).Scan(rg)
+	if err == sql.ErrNoRows {
+		err = region.ErrNotExist
+	} else if err != nil {
+		ctxLogger.Error(errors.Wrapf(err, "failed to find user by name: %s", name.String()))
+		err = region.ErrInternal
+	}
+
+	return rg, err
+}
+
 func (r *regionRepository) Create(rg *region.Region) error {
 	ctxLogger := mlog.GetMethodLogger(logger, "regionRepository.Create")
 
