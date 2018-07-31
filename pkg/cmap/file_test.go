@@ -63,6 +63,9 @@ func TestEncodeDecode(t *testing.T) {
 				Stat: NodeAlive,
 			},
 		},
+		MatrixIDs: []int{
+			1, 4, 242, 251,
+		},
 	}
 
 	testFile := "test.xml"
@@ -82,5 +85,6 @@ func TestEncodeDecode(t *testing.T) {
 
 	if !reflect.DeepEqual(m, testMap) {
 		t.Error("encoded value and decoded value are not equal")
+		t.Errorf("m1: %v\nm2: %v\n", m, testMap)
 	}
 }

@@ -59,10 +59,11 @@ func (s NodeStatus) String() string {
 
 // Node is the member of cluster.
 type Node struct {
-	ID   ID          `xml:"id"`
-	Incr Incarnation `xml:"incarnation"`
-	Name NodeName    `xml:"name"`
-	Addr NodeAddress `xml:"address"`
-	Type NodeType    `xml:"type"`
-	Stat NodeStatus  `xml:"status"`
+	ID       ID          `xml:"id"`
+	Incr     Incarnation `xml:"incarnation"`
+	Name     NodeName    `xml:"name"`
+	Addr     NodeAddress `xml:"address"`
+	Type     NodeType    `xml:"type"`
+	Stat     NodeStatus  `xml:"status"`
+	MatrixID int         `xml:"matrix"`
 }

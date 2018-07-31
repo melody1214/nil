@@ -45,6 +45,8 @@ type CMap struct {
 	Version Version `xml:"version"`
 	Time    Time    `xml:"time"`
 	Nodes   []Node  `xml:"node"`
+	// MatrixIDs is the id of encoding matrices.
+	MatrixIDs []int `xml:"matrix"`
 }
 
 // HumanReadable returns a human readable map of the cluster.
