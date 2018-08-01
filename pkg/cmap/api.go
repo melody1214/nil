@@ -43,16 +43,11 @@ type Service struct {
 }
 
 // NewService returns new membership service.
-func NewService(coordinator NodeAddress, log *logrus.Entry) (*Service, error) {
+func NewService(log *logrus.Entry) (*Service, error) {
 	logger = log
 
-	cm, err := newManager(coordinator)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create cmap manager")
-	}
-
 	return &Service{
-		manager: cm,
+		manager: newManager(),
 		id:      ID(-1),
 	}, nil
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/chanyoung/nil/app/mds/application/object"
 	"github.com/chanyoung/nil/app/mds/delivery"
 	"github.com/chanyoung/nil/app/mds/domain/model/bucket"
+	"github.com/chanyoung/nil/app/mds/domain/model/clustermap"
 	"github.com/chanyoung/nil/app/mds/domain/model/region"
 	"github.com/chanyoung/nil/app/mds/domain/model/user"
 	"github.com/chanyoung/nil/app/mds/domain/service/raft"
@@ -42,17 +43,19 @@ func Bootstrap(cfg config.Mds) error {
 
 	// Setup repositories.
 	var (
-		regionRepository  region.Repository
-		userRepository    user.Repository
-		bucketRepository  bucket.Repository
-		objectStore       object.Repository
-		gencodingStore    gencoding.Repository
-		raftService       raft.Service
-		raftSimpleService raft.SimpleService
+		regionRepository     region.Repository
+		clustermapRepository clustermap.Repository
+		userRepository       user.Repository
+		bucketRepository     bucket.Repository
+		objectStore          object.Repository
+		gencodingStore       gencoding.Repository
+		raftService          raft.Service
+		raftSimpleService    raft.SimpleService
 	)
 	if useMySQL := true; useMySQL {
 		store := mysql.New(&cfg)
 		regionRepository = mysql.NewRegionRepository(store)
+		clustermapRepository = mysql.NewClusterMapRepository(store)
 		userRepository = mysql.NewUserRepository(store)
 		bucketRepository = mysql.NewBucketRepository(store)
 		objectStore = mysql.NewObjectRepository(store)
@@ -67,17 +70,14 @@ func Bootstrap(cfg config.Mds) error {
 	// This service is maintained by cluster domain, however the all domains
 	// require this service necessarily. So create service in bootstrap code
 	// and inject the service to all domains.
-	cmapService, err := cmap.NewService(
-		cmap.NodeAddress(cfg.Swim.CoordinatorAddr),
-		mlog.GetPackageLogger("pkg/cmap"),
-	)
+	cmapService, err := cmap.NewService(mlog.GetPackageLogger("pkg/cmap"))
 	if err != nil {
 		return errors.Wrap(err, "failed to create cmap service")
 	}
 
 	// Setup application handlers.
 	accountService := account.NewService(&cfg, raftSimpleService, regionRepository, userRepository, bucketRepository)
-	membershipService := membership.NewService(&cfg, cmapService.MasterAPI(), raftService, regionRepository)
+	membershipService := membership.NewService(&cfg, cmapService.MasterAPI(), raftService, regionRepository, clustermapRepository)
 	objectHandlers := object.NewHandlers(objectStore)
 	gencodingService, err := gencoding.NewService(&cfg, cmapService.SlaveAPI(), gencodingStore)
 	if err != nil {

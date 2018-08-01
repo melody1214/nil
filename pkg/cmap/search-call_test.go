@@ -42,11 +42,8 @@ func TestSearchCallNode(t *testing.T) {
 		Nodes:   testNodes,
 	}
 
-	ct, err := newManager("")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err = ct.Update(&testMap); err != nil {
+	ct := newManager()
+	if err := ct.Update(&testMap); err != nil {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll("./cmap")

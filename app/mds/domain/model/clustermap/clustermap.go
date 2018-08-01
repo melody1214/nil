@@ -6,7 +6,7 @@ import (
 
 // Repository provides to access cluster map database.
 type Repository interface {
-	CreateInitial() *cmap.CMap
-	Update(*cmap.CMap) (*cmap.CMap, error)
-	FindLatest() *cmap.CMap
+	UpdateWhole(*cmap.CMap) (*cmap.CMap, error)
+	UpdateNode(*cmap.Node) (*cmap.CMap, error)
+	FindLatest() (*cmap.CMap, error)
 }

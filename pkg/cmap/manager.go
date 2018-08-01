@@ -14,27 +14,12 @@ type manager struct {
 	mu sync.RWMutex
 }
 
-// newManager creates the cluster map manager with an initial cluster map
-// with the given coordinator address.
-func newManager(coordinator NodeAddress) (*manager, error) {
+func newManager() *manager {
 	// Create an empty map.
 	cm := &CMap{
 		Version: Version(0),
 		Time:    Now(),
-		Nodes:   make([]Node, 1),
-	}
-
-	// Set the mds.
-	cm.Nodes[0] = Node{
-		Addr: coordinator,
-		Type: MDS,
-		Stat: NodeAlive,
-	}
-
-	// Save to file system.
-	err := cm.Save()
-	if err != nil {
-		return nil, err
+		Nodes:   make([]Node, 0),
 	}
 
 	m := &manager{
@@ -45,7 +30,7 @@ func newManager(coordinator NodeAddress) (*manager, error) {
 	m.cMaps[cm.Version] = cm
 	m.latest = cm.Version
 
-	return m, nil
+	return m
 }
 
 // LatestVersion returns the latest version number in cluster maps.

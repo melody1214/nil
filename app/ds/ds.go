@@ -65,7 +65,7 @@ func Bootstrap(cfg config.Ds) error {
 	// This service is maintained by cluster domain, however the all domains
 	// require this service necessarily. So create service in bootstrap code
 	// and inject the service to all domains.
-	cmapService, err := cmap.NewService(cmap.NodeAddress(cfg.Swim.CoordinatorAddr), mlog.GetPackageLogger("pkg/cmap"))
+	cmapService, err := cmap.NewService(mlog.GetPackageLogger("pkg/cmap"))
 	if err != nil {
 		return errors.Wrap(err, "failed to create cmap service")
 	}

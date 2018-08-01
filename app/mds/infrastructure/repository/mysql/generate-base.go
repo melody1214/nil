@@ -43,4 +43,11 @@ var generateSQLBase = []string{
 			UNIQUE KEY (node_name)
 		) ENGINE=InnoDB DEFAULT CHARSET=ascii
 	`,
+	`
+		CREATE TABLE IF NOT EXISTS cmap (
+			cmap_id int unsigned NOT NULL AUTO_INCREMENT,
+			cmap_time varchar(128) CHARACTER SET ascii,
+			PRIMARY KEY (cmap_id)
+		) ENGINE=InnoDB DEFAULT CHARSET=ascii
+	`,
 }

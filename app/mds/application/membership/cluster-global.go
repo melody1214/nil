@@ -33,6 +33,9 @@ func (s *service) Join(raftL *nilmux.Layer) error {
 	if err := s.rs.Open(raftL); err != nil {
 		return err
 	}
+	// Set the open flag true.
+	// It represents the database is now available.
+	opened = true
 
 	// Need to join into the existing raft cluster.
 	if s.cfg.Raft.LocalClusterAddr != s.cfg.Raft.GlobalClusterAddr {

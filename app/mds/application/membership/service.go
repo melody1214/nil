@@ -1,6 +1,7 @@
 package membership
 
 import (
+	"github.com/chanyoung/nil/app/mds/domain/model/clustermap"
 	"github.com/chanyoung/nil/app/mds/domain/model/region"
 	"github.com/chanyoung/nil/app/mds/domain/service/raft"
 	"github.com/chanyoung/nil/pkg/cmap"
@@ -11,27 +12,32 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var logger *logrus.Entry
+var (
+	logger *logrus.Entry
+	opened = false
+)
 
 type service struct {
 	cfg     *config.Mds
 	rs      raft.Service
 	rr      region.Repository
+	cr      clustermap.Repository
 	cmapAPI cmap.MasterAPI
 }
 
 // NewService creates a client service with necessary dependencies.
-func NewService(cfg *config.Mds, cmapAPI cmap.MasterAPI, rs raft.Service, rr region.Repository) Service {
+func NewService(cfg *config.Mds, cmapAPI cmap.MasterAPI, rs raft.Service, rr region.Repository, cr clustermap.Repository) Service {
 	logger = mlog.GetPackageLogger("app/mds/usecase/cluster")
 
-	service := &service{
+	s := &service{
 		cfg:     cfg,
 		rs:      rs,
 		rr:      rr,
+		cr:      cr,
 		cmapAPI: cmapAPI,
 	}
 
-	return service
+	return s
 }
 
 // Service is the interface that provides clustermap domain's service.
