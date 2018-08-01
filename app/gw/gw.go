@@ -55,10 +55,10 @@ func Bootstrap(cfg config.Gw) error {
 	authHandlers := auth.NewHandlers(cmapService.SlaveAPI(), authCache)
 	adminHandlers := admin.NewHandlers(cmapService.SlaveAPI())
 	clientHandlers := client.NewHandlers(cmapService.SlaveAPI(), requestEventFactory, authHandlers)
-	cmapmapService := cmapmap.NewService(cmapService)
+	clusterMapService := clustermap.NewService(cmapService)
 
 	// Starts to update cmap map.
-	cmapmapService.Run()
+	clusterMapService.Run(cmap.NodeAddress(cfg.FirstMds))
 
 	// Setup delivery service.
 	delivery, err := delivery.NewDeliveryService(&cfg, adminHandlers, clientHandlers)

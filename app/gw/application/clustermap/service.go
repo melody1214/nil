@@ -1,4 +1,4 @@
-package cmapmap
+package clustermap
 
 import (
 	"net/rpc"
@@ -20,7 +20,7 @@ type Service struct {
 
 // NewService returns a new instance of a cmap map manager.
 func NewService(cmapService *cmap.Service) *Service {
-	logger = mlog.GetPackageLogger("app/gw/usecase/cmapmap")
+	logger = mlog.GetPackageLogger("app/gw/usecase/clustermap")
 
 	return &Service{
 		cmapService: cmapService,
@@ -28,7 +28,22 @@ func NewService(cmapService *cmap.Service) *Service {
 }
 
 // Run starts to update cmap map periodically.
-func (s *Service) Run() {
+func (s *Service) Run(coordinator cmap.NodeAddress) {
+	ctxLogger := mlog.GetMethodLogger(logger, "service.Run")
+
+	// Try to get the cluster map from the coordinator at the very first time.
+	for {
+		initial, err := getLatestMapFromMDS(coordinator.String())
+		if err != nil {
+			ctxLogger.Info("retry to get initial cluster map from coordinator")
+			time.Sleep(1 * time.Second)
+			continue
+		}
+
+		s.cmapService.UpdateCMap(initial)
+		break
+	}
+
 	go periodicUpdater(s.cmapService)
 	go realtimeUpdater(s.cmapService)
 }
