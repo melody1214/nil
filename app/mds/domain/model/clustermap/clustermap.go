@@ -9,4 +9,5 @@ type Repository interface {
 	UpdateWhole(*cmap.CMap) (*cmap.CMap, error)
 	UpdateNode(*cmap.Node) (*cmap.CMap, error)
 	FindLatest() (*cmap.CMap, error)
+	InitEncodingMatricesID() error
 }

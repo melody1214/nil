@@ -2,11 +2,14 @@ package mysql
 
 import (
 	"fmt"
+	"strconv"
 	"sync"
 
 	"github.com/chanyoung/nil/app/mds/domain/model/clustermap"
 	"github.com/chanyoung/nil/app/mds/infrastructure/repository"
 	"github.com/chanyoung/nil/pkg/cmap"
+	"github.com/chanyoung/nil/pkg/matrix"
+	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/pkg/errors"
 )
 
@@ -173,4 +176,60 @@ func (r *clusterMapRepository) getVersionAndTime() (cmap.Version, cmap.Time, err
 	}
 
 	return v, t, nil
+}
+
+// InitEncodingMatricesID initializes encoding matrices id based on the region id.
+func (r *clusterMapRepository) InitEncodingMatricesID() error {
+	ctxLogger := mlog.GetMethodLogger(logger, "clusterMapRepository.InitEncodingMatricesID")
+
+	q := fmt.Sprintf(
+		`
+		SELECT rg_id
+		FROM region
+		WHERE rg_name='%s'
+		`, r.s.cfg.Raft.LocalClusterRegion,
+	)
+
+	var regionID int
+	err := r.s.QueryRow(repository.NotTx, q).Scan(&regionID)
+	if err != nil {
+		ctxLogger.Error("failed to fetch region id")
+		return err
+	}
+
+	localEncodingMatrices, _ := strconv.Atoi(r.s.cfg.LocalEncodingMatrices)
+	startEncodingMatrixIndex := regionID * localEncodingMatrices
+
+	tx, err := r.s.Begin()
+	if err != nil {
+		ctxLogger.Error("failed to start transaction")
+		return err
+	}
+
+	for i := 0; i < localEncodingMatrices; i++ {
+		m, err := matrix.FindEncodingMatrixByIndex(startEncodingMatrixIndex + i)
+		if err != nil {
+			r.s.Rollback(tx)
+			ctxLogger.Errorf("failed to find cauchy matrix with the given index: %d", startEncodingMatrixIndex+i)
+			return err
+		}
+
+		q := fmt.Sprintf(
+			`
+			INSERT INTO cmap_encoding_matrix (cem_id)
+			VALUES (%d)
+			`, m.ID.Byte(),
+		)
+
+		_, err = r.s.Execute(repository.NotTx, q)
+		if err != nil {
+			ctxLogger.Error("failed to insert encoding matrix id into the cmap_encoding_matrix")
+			r.s.Rollback(tx)
+			return err
+		}
+	}
+
+	r.s.Commit(tx)
+
+	return nil
 }

@@ -50,4 +50,10 @@ var generateSQLBase = []string{
 			PRIMARY KEY (cmap_id)
 		) ENGINE=InnoDB DEFAULT CHARSET=ascii
 	`,
+	`
+		CREATE TABLE IF NOT EXISTS cmap_encoding_matrix (
+			cem_id int unsigned NOT NULL,
+			PRIMARY KEY (cem_id)
+		) ENGINE=InnoDB DEFAULT CHARSET=ascii
+	`,
 }
