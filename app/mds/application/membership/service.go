@@ -1,4 +1,4 @@
-package cluster
+package membership
 
 import (
 	"github.com/chanyoung/nil/app/mds/domain/model/region"
@@ -52,8 +52,8 @@ func (s *service) RPCHandler() RPCHandler {
 
 // RPCHandler is the interface that provides clustermap domain's rpc handlers.
 type RPCHandler interface {
-	GetClusterMap(req *nilrpc.MCLGetClusterMapRequest, res *nilrpc.MCLGetClusterMapResponse) error
-	GetUpdateNoti(req *nilrpc.MCLGetUpdateNotiRequest, res *nilrpc.MCLGetUpdateNotiResponse) error
-	LocalJoin(req *nilrpc.MCLLocalJoinRequest, res *nilrpc.MCLLocalJoinResponse) error
-	GlobalJoin(req *nilrpc.MCLGlobalJoinRequest, res *nilrpc.MCLGlobalJoinResponse) error
+	GetClusterMap(req *nilrpc.MMEGetClusterMapRequest, res *nilrpc.MMEGetClusterMapResponse) error
+	GetUpdateNoti(req *nilrpc.MMEGetUpdateNotiRequest, res *nilrpc.MMEGetUpdateNotiResponse) error
+	LocalJoin(req *nilrpc.MMELocalJoinRequest, res *nilrpc.MMELocalJoinResponse) error
+	GlobalJoin(req *nilrpc.MMEGlobalJoinRequest, res *nilrpc.MMEGlobalJoinResponse) error
 }

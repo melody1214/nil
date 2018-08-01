@@ -31,11 +31,11 @@ func mdsMapRun(cmd *cobra.Command, args []string) {
 	}
 	defer conn.Close()
 
-	req := &nilrpc.MCLGetClusterMapRequest{Version: 0}
-	res := &nilrpc.MCLGetClusterMapResponse{}
+	req := &nilrpc.MMEGetClusterMapRequest{Version: 0}
+	res := &nilrpc.MMEGetClusterMapResponse{}
 
 	cli := rpc.NewClient(conn)
-	if err := cli.Call(nilrpc.MdsClusterGetClusterMap.String(), req, res); err != nil {
+	if err := cli.Call(nilrpc.MdsMembershipGetClusterMap.String(), req, res); err != nil {
 		log.Fatal(err)
 	}
 

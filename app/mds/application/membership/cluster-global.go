@@ -1,4 +1,4 @@
-package cluster
+package membership
 
 import (
 	"fmt"
@@ -17,15 +17,15 @@ func raftJoin(joinAddr, raftAddr, nodeID string) error {
 	}
 	defer conn.Close()
 
-	req := &nilrpc.MCLGlobalJoinRequest{
+	req := &nilrpc.MMEGlobalJoinRequest{
 		RaftAddr: raftAddr,
 		NodeID:   nodeID,
 	}
 
-	res := &nilrpc.MCLGlobalJoinResponse{}
+	res := &nilrpc.MMEGlobalJoinResponse{}
 
 	cli := rpc.NewClient(conn)
-	return cli.Call(nilrpc.MdsClusterGlobalJoin.String(), req, res)
+	return cli.Call(nilrpc.MdsMembershipGlobalJoin.String(), req, res)
 }
 
 // Join joins the node to the global cluster.
@@ -57,7 +57,7 @@ func (s *service) Leave() error {
 }
 
 // GlobalJoin handles the join request from the other raft nodes.
-func (s *service) GlobalJoin(req *nilrpc.MCLGlobalJoinRequest, res *nilrpc.MCLGlobalJoinResponse) error {
+func (s *service) GlobalJoin(req *nilrpc.MMEGlobalJoinRequest, res *nilrpc.MMEGlobalJoinResponse) error {
 	if req.RaftAddr == "" || req.NodeID == "" {
 		return fmt.Errorf("not enough arguments: %+v", req)
 	}

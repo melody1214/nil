@@ -6,7 +6,7 @@ This is a list of domain handlers and method prefixes.
 
 | Domain         | Method prefix  | Acronym | Description                                                                 |
 | -------------- | -------------- | ------- | --------------------------------------------------------------------------- |
-| MDS cluster    | MDS_CLUSTER    | MCL     | The mds cluster handler is the collection of routines for handling cluster management related requests. |
+| MDS membership | MDS_MEMBERSHIP | MME     | The mds cluster handler is the collection of routines for handling cluster management related requests. |
 | MDS account    | MDS_ACCOUNT    | MAC     | The mds user handler is the collection of routines for handling user related requests. |
 | MDS object     | MDS_OBJECT     | MOB     | The mds object handler is the collection of routines for handling object related requests. |
 | MDS encoding   | MDS_ENCODING   | MEN     | The mds encoding handler is the collection of routines for handling global encoding requests. |
@@ -21,9 +21,9 @@ Use predefined method prefixes and write clear verb and noun by camel case style
 ### Examples 
 
 * Get cluster map from the MDS
-  * MDS_CLUSTER.GetClusterMap
+  * MDS_MEMBERSHIP.GetClusterMap
 * Do rebalance from the MDS
-  * MDS_CLUSTER.DoRebalance
+  * MDS_MEMBERSHIP.DoRebalance
 
 ## Requests
 
@@ -33,7 +33,7 @@ Use predefined acronym of method prefixes and write clear verb and noun by camel
 
 ### Examples
 
-* MCLGetClusterMapRequest
-* MCLGetClusterMapResponse
+* MMEGetClusterMapRequest
+* MMEGetClusterMapResponse
 * DCLAddVolumeRequest
 * DCLAddVolumeResponse

@@ -7,8 +7,8 @@ import (
 	"syscall"
 
 	"github.com/chanyoung/nil/app/mds/application/account"
-	"github.com/chanyoung/nil/app/mds/application/cluster"
 	"github.com/chanyoung/nil/app/mds/application/gencoding"
+	"github.com/chanyoung/nil/app/mds/application/membership"
 	"github.com/chanyoung/nil/app/mds/application/object"
 	"github.com/chanyoung/nil/app/mds/delivery"
 	"github.com/chanyoung/nil/app/mds/domain/model/bucket"
@@ -77,7 +77,7 @@ func Bootstrap(cfg config.Mds) error {
 
 	// Setup application handlers.
 	accountService := account.NewService(&cfg, raftSimpleService, regionRepository, userRepository, bucketRepository)
-	clusterService := cluster.NewService(&cfg, cmapService.MasterAPI(), raftService, regionRepository)
+	membershipService := membership.NewService(&cfg, cmapService.MasterAPI(), raftService, regionRepository)
 	objectHandlers := object.NewHandlers(objectStore)
 	gencodingService, err := gencoding.NewService(&cfg, cmapService.SlaveAPI(), gencodingStore)
 	if err != nil {
@@ -86,7 +86,7 @@ func Bootstrap(cfg config.Mds) error {
 
 	// Setup delivery service.
 	delivery, err := delivery.SetupDeliveryService(
-		&cfg, accountService, clusterService, cmapService, objectHandlers, gencodingService,
+		&cfg, accountService, membershipService, cmapService, objectHandlers, gencodingService,
 	)
 	if err != nil {
 		return err

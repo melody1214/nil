@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/chanyoung/nil/app/mds/application/account"
-	"github.com/chanyoung/nil/app/mds/application/cluster"
 	"github.com/chanyoung/nil/app/mds/application/gencoding"
+	"github.com/chanyoung/nil/app/mds/application/membership"
 	"github.com/chanyoung/nil/app/mds/application/object"
 	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilmux"
@@ -24,7 +24,7 @@ type Service struct {
 	cfg *config.Mds
 
 	acs account.Service
-	cls cluster.Service
+	mes membership.Service
 	cms *cmap.Service
 	obh object.Handlers
 	ges gencoding.Service
@@ -38,7 +38,7 @@ type Service struct {
 }
 
 // SetupDeliveryService bootstraps a delivery service with necessary dependencies.
-func SetupDeliveryService(cfg *config.Mds, acs account.Service, cls cluster.Service, cms *cmap.Service, obh object.Handlers, ges gencoding.Service) (*Service, error) {
+func SetupDeliveryService(cfg *config.Mds, acs account.Service, mes membership.Service, cms *cmap.Service, obh object.Handlers, ges gencoding.Service) (*Service, error) {
 	if cfg == nil {
 		return nil, errors.New("invalid argument")
 	}
@@ -48,7 +48,7 @@ func SetupDeliveryService(cfg *config.Mds, acs account.Service, cls cluster.Serv
 		cfg: cfg,
 
 		acs: acs,
-		cls: cls,
+		mes: mes,
 		cms: cms,
 		obh: obh,
 		ges: ges,
@@ -76,7 +76,7 @@ func SetupDeliveryService(cfg *config.Mds, acs account.Service, cls cluster.Serv
 	if err := s.nilRPCSrv.RegisterName(nilrpc.MdsAccountPrefix, s.acs); err != nil {
 		return nil, err
 	}
-	if err := s.nilRPCSrv.RegisterName(nilrpc.MdsClusterPrefix, s.cls.RPCHandler()); err != nil {
+	if err := s.nilRPCSrv.RegisterName(nilrpc.MdsMembershipPrefix, s.mes.RPCHandler()); err != nil {
 		return nil, err
 	}
 	if err := s.nilRPCSrv.RegisterName(nilrpc.MdsObjectPrefix, s.obh); err != nil {
@@ -105,7 +105,7 @@ func SetupDeliveryService(cfg *config.Mds, acs account.Service, cls cluster.Serv
 	}
 
 	// Setup database and join to global.
-	if err := s.cls.Join(s.raftLayer); err != nil {
+	if err := s.mes.Join(s.raftLayer); err != nil {
 		return nil, err
 	}
 
@@ -127,7 +127,7 @@ func SetupDeliveryService(cfg *config.Mds, acs account.Service, cls cluster.Serv
 
 func (s *Service) joinToLocal(cmapConf *cmap.Config) error {
 	// Join the local cmap.
-	req := &nilrpc.MCLLocalJoinRequest{
+	req := &nilrpc.MMELocalJoinRequest{
 		Node: cmap.Node{
 			Name: cmapConf.Name,
 			Type: cmapConf.Type,
@@ -135,11 +135,11 @@ func (s *Service) joinToLocal(cmapConf *cmap.Config) error {
 			Addr: cmapConf.Address,
 		},
 	}
-	res := &nilrpc.MCLLocalJoinResponse{}
+	res := &nilrpc.MMELocalJoinResponse{}
 
 	// I am the very firstman of the land.
 	if cmapConf.Address.String() == s.cfg.ServerAddr+":"+s.cfg.ServerPort {
-		return s.cls.RPCHandler().LocalJoin(req, res)
+		return s.mes.RPCHandler().LocalJoin(req, res)
 	}
 
 	// Ask to join other node.
@@ -151,11 +151,11 @@ func (s *Service) joinToLocal(cmapConf *cmap.Config) error {
 
 	cli := rpc.NewClient(conn)
 	defer cli.Close()
-	return cli.Call(nilrpc.MdsClusterLocalJoin.String(), req, res)
+	return cli.Call(nilrpc.MdsMembershipLocalJoin.String(), req, res)
 }
 
 func (s *Service) Stop() error {
-	return s.cls.Leave()
+	return s.mes.Leave()
 }
 
 func (s *Service) serveNilRPC() {

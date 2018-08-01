@@ -10,10 +10,10 @@ import (
 
 // Prefixes for domains.
 const (
-	MdsAccountPrefix   = "MDS_ACCOUNT"
-	MdsClusterPrefix   = "MDS_CLUSTER"
-	MdsObjectPrefix    = "MDS_OBJECT"
-	MdsGencodingPrefix = "MDS_GENCODING"
+	MdsAccountPrefix    = "MDS_ACCOUNT"
+	MdsMembershipPrefix = "MDS_MEMBERSHIP"
+	MdsObjectPrefix     = "MDS_OBJECT"
+	MdsGencodingPrefix  = "MDS_GENCODING"
 
 	DsClusterPrefix   = "DS_CLUSTER"
 	DsGencodingPrefix = "DS_GENCODING"
@@ -30,12 +30,11 @@ const (
 	MdsAccountGetCredential
 
 	// MDS cluster domain methods.
-	MdsClusterGetClusterMap
-	MdsClusterGetUpdateNoti
-	MdsClusterLocalJoin
-	MdsClusterGlobalJoin
-	MdsClusterRegisterVolume
-	MdsClusterListJob
+	MdsMembershipGetClusterMap
+	MdsMembershipGetUpdateNoti
+	MdsMembershipLocalJoin
+	MdsMembershipGlobalJoin
+	MdsMembershipRegisterVolume
 
 	// MDS object domain methods.
 	MdsObjectPut
@@ -75,18 +74,16 @@ func (m MethodName) String() string {
 	case MdsAccountGetCredential:
 		return MdsAccountPrefix + "." + "GetCredential"
 
-	case MdsClusterGetClusterMap:
-		return MdsClusterPrefix + "." + "GetClusterMap"
-	case MdsClusterGetUpdateNoti:
-		return MdsClusterPrefix + "." + "GetUpdateNoti"
-	case MdsClusterLocalJoin:
-		return MdsClusterPrefix + "." + "LocalJoin"
-	case MdsClusterGlobalJoin:
-		return MdsClusterPrefix + "." + "GlobalJoin"
-	case MdsClusterRegisterVolume:
-		return MdsClusterPrefix + "." + "RegisterVolume"
-	case MdsClusterListJob:
-		return MdsClusterPrefix + "." + "ListJob"
+	case MdsMembershipGetClusterMap:
+		return MdsMembershipPrefix + "." + "GetClusterMap"
+	case MdsMembershipGetUpdateNoti:
+		return MdsMembershipPrefix + "." + "GetUpdateNoti"
+	case MdsMembershipLocalJoin:
+		return MdsMembershipPrefix + "." + "LocalJoin"
+	case MdsMembershipGlobalJoin:
+		return MdsMembershipPrefix + "." + "GlobalJoin"
+	case MdsMembershipRegisterVolume:
+		return MdsMembershipPrefix + "." + "RegisterVolume"
 
 	case MdsObjectPut:
 		return MdsObjectPrefix + "." + "Put"
