@@ -35,6 +35,15 @@ type MMELocalJoinRequest struct {
 type MMELocalJoinResponse struct {
 }
 
+// MMEUpdateNodeRequest requests to update node.
+type MMEUpdateNodeRequest struct {
+	Node cmap.Node
+}
+
+// MMEUpdateNodeResponse reponse the result of update node request.
+type MMEUpdateNodeResponse struct {
+}
+
 // MMEGlobalJoinRequest includes an information for joining a new node into the raft clsuter.
 // RaftAddr: address of the requested node.
 // NodeID: ID of the requested node.

@@ -18,21 +18,41 @@ func (s *service) GetClusterMap(req *nilrpc.MMEGetClusterMapRequest, res *nilrpc
 
 // LocalJoin handles the join request from the same local cluster nodes.
 func (s *service) LocalJoin(req *nilrpc.MMELocalJoinRequest, res *nilrpc.MMELocalJoinResponse) error {
-	if !opened {
-		return fmt.Errorf("database is not opened yet")
-	}
-
 	ctxLogger := mlog.GetMethodLogger(logger, "service.LocalJoin")
-	ctxLogger.Infof("node from %s try to join into the local cluster", req.Node.Addr.String())
 
-	updated, err := s.cr.UpdateNode(&req.Node)
-	if err != nil {
+	if err := s.updateNode(&req.Node); err != nil {
 		ctxLogger.Infof("node from %s failed to join into the local cluster by error %v", req.Node.Addr.String(), err)
 		return err
 	}
 
-	s.cmapAPI.UpdateCMap(updated)
 	ctxLogger.Infof("node from %s succeed to join into the local cluster", req.Node.Addr.String())
+	return nil
+}
+
+// UpdateNode handles the update node request from the same local cluster nodes.
+func (s *service) UpdateNode(req *nilrpc.MMEUpdateNodeRequest, res *nilrpc.MMEUpdateNodeResponse) error {
+	ctxLogger := mlog.GetMethodLogger(logger, "service.UpdateNode")
+
+	if err := s.updateNode(&req.Node); err != nil {
+		ctxLogger.Infof("node from %s failed to updated by error %v", req.Node.Addr.String(), err)
+		return err
+	}
+
+	ctxLogger.Infof("node from %s succeed to update itself", req.Node.Addr.String())
+	return nil
+}
+
+func (s *service) updateNode(node *cmap.Node) error {
+	if !opened {
+		return fmt.Errorf("database is not opened yet")
+	}
+
+	updated, err := s.cr.UpdateNode(node)
+	if err != nil {
+		return err
+	}
+
+	s.cmapAPI.UpdateCMap(updated)
 	return nil
 }
 

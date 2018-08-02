@@ -62,4 +62,5 @@ type RPCHandler interface {
 	GetUpdateNoti(req *nilrpc.MMEGetUpdateNotiRequest, res *nilrpc.MMEGetUpdateNotiResponse) error
 	LocalJoin(req *nilrpc.MMELocalJoinRequest, res *nilrpc.MMELocalJoinResponse) error
 	GlobalJoin(req *nilrpc.MMEGlobalJoinRequest, res *nilrpc.MMEGlobalJoinResponse) error
+	UpdateNode(req *nilrpc.MMEUpdateNodeRequest, res *nilrpc.MMEUpdateNodeResponse) error
 }
