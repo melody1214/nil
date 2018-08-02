@@ -13,6 +13,7 @@ import (
 
 	"github.com/chanyoung/nil/app/ds/application/gencoding"
 	"github.com/chanyoung/nil/app/ds/application/object"
+	"github.com/chanyoung/nil/app/ds/domain/model/chunk"
 	"github.com/chanyoung/nil/app/ds/domain/model/device"
 	"github.com/chanyoung/nil/app/ds/domain/model/volume"
 	"github.com/chanyoung/nil/app/ds/infrastructure/repository"
@@ -1523,6 +1524,60 @@ func NewObjectRepository(store repository.Service) object.Repository {
 // NewGencodingRepository returns a new part store inteface in a view of gencoding domain.
 func NewGencodingRepository(store repository.Service) gencoding.Repository {
 	return store
+}
+
+type ChunkReader struct{}
+
+type ChunkWriter struct{}
+
+type ChunkHandle struct {
+	base chunk.HandleBase
+}
+
+type ObjectReader struct{}
+
+type ObjectWriter struct{}
+
+type ObjectHandle struct {
+	base chunk.ObjectHandleBase
+}
+
+func (h *ChunkHandle) NewReader() chunk.Reader {
+	return &ChunkReader{}
+}
+
+func (h *ChunkHandle) NewWriter() chunk.Writer {
+	return &ChunkWriter{}
+}
+
+func (h *ChunkHandle) Object() chunk.ObjectHandle {
+	return &ObjectHandle{}
+}
+
+func (h *ObjectHandle) NewReader() chunk.ObjectReader {
+	return &ObjectReader{}
+}
+
+func (h *ObjectHandle) NewWriter() chunk.ObjectWriter {
+	return &ObjectWriter{}
+}
+
+type ChunkRepository struct {
+	r repository.Service
+}
+
+func (r *ChunkRepository) Find(chunk chunk.Name) (chunk.Handle, error) {
+	return &ChunkHandle{}, nil
+}
+
+func (r *ChunkRepository) Create(chunk chunk.Name) (chunk.Handle, error) {
+	return &ChunkHandle{}, nil
+}
+
+func NewChunkHandleRepository(store repository.Service) chunk.Repository {
+	return &ChunkRepository{
+		r: store,
+	}
 }
 
 // Refactoring //
