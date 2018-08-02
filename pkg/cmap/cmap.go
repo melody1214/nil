@@ -84,9 +84,9 @@ func (m *CMap) HumanReadable() string {
 	out += "\n"
 	out += "+-----------------------------+\n"
 	out += "| Encoding matrix information |\n"
-	out += "+------+-------+------+-------+---------+\n"
-	out += "|   ID | Speed | Node |  Size | Status  |\n"
-	out += "+------+-------+------+-------+---------+\n"
+	out += "+------+------+-------+-------+-+\n"
+	out += "|   ID | Node |  Size | Status  |\n"
+	out += "+------+------+-------+---------+\n"
 	for _, m := range m.MatrixIDs {
 		row := fmt.Sprintf(
 			"| %4d | %-5s | %-4s | %5d | %-7s |\n",
@@ -96,7 +96,7 @@ func (m *CMap) HumanReadable() string {
 
 		// TODO: Add node and status information here.
 	}
-	out += "+------+-------+------+-------+---------+\n"
+	out += "+------+------+-------+---------+\n"
 
 	return out
 }
