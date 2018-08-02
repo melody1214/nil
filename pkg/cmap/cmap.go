@@ -87,12 +87,18 @@ func (m *CMap) HumanReadable() string {
 	out += "+------+------+-------+-------+-+\n"
 	out += "|   ID | Node |  Size | Status  |\n"
 	out += "+------+------+-------+---------+\n"
-	for _, m := range m.MatrixIDs {
-		row := fmt.Sprintf(
-			"| %4d | %-5s | %-4s | %5d | %-7s |\n",
-			m, "", "", 0, "",
-		)
-		out += row
+	for _, mid := range m.MatrixIDs {
+		for _, n := range m.Nodes {
+			if n.MatrixID != mid {
+				continue
+			}
+
+			row := fmt.Sprintf(
+				"| %4d | %-4s | %5d | %-7s |\n",
+				mid, n.ID.String(), n.Size, n.Stat,
+			)
+			out += row
+		}
 
 		// TODO: Add node and status information here.
 	}

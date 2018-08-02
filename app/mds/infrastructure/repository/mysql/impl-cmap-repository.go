@@ -36,9 +36,9 @@ func (r *clusterMapRepository) UpdateWhole(m *cmap.CMap) (*cmap.CMap, error) {
 	for _, n := range m.Nodes {
 		q := fmt.Sprintf(
 			`
-            INSERT INTO node (node_id, node_name, node_type, node_status, node_address)
-            VALUES (%d, '%s', '%s', '%s', '%s') ON DUPLICATE KEY UPDATE node_status='%s'
-            `, n.ID.Int64(), n.Name.String(), n.Type.String(), n.Stat.String(), n.Addr.String(), n.Stat.String(),
+            INSERT INTO node (node_id, node_name, node_type, node_status, node_address, node_size)
+            VALUES (%d, '%s', '%s', '%s', '%s', '%d') ON DUPLICATE KEY UPDATE node_status='%s', node_size='%d'
+            `, n.ID.Int64(), n.Name.String(), n.Type.String(), n.Stat.String(), n.Addr.String(), n.Size, n.Stat.String(), n.Size,
 		)
 
 		if _, err := r.s.Execute(tx, q); err != nil {
@@ -71,9 +71,9 @@ func (r *clusterMapRepository) UpdateNode(n *cmap.Node) (*cmap.CMap, error) {
 
 	q := fmt.Sprintf(
 		`
-            INSERT INTO node (node_id, node_name, node_type, node_status, node_address)
-            VALUES (%d, '%s', '%s', '%s', '%s') ON DUPLICATE KEY UPDATE node_status='%s'
-            `, n.ID.Int64(), n.Name.String(), n.Type.String(), n.Stat.String(), n.Addr.String(), n.Stat.String(),
+            INSERT INTO node (node_id, node_name, node_type, node_status, node_address, node_size)
+            VALUES (%d, '%s', '%s', '%s', '%s', '%d') ON DUPLICATE KEY UPDATE node_status='%s', node_size='%d'
+            `, n.ID.Int64(), n.Name.String(), n.Type.String(), n.Stat.String(), n.Addr.String(), n.Size, n.Stat.String(), n.Size,
 	)
 
 	if _, err := r.s.Execute(tx, q); err != nil {
@@ -116,7 +116,7 @@ func (r *clusterMapRepository) FindLatest() (*cmap.CMap, error) {
 
 	q := fmt.Sprintf(
 		`
-        SELECT node_id, node_name, node_type, node_status, node_address
+        SELECT node_id, node_name, node_type, node_status, node_address, node_size
         FROM node
         `,
 	)
@@ -130,7 +130,7 @@ func (r *clusterMapRepository) FindLatest() (*cmap.CMap, error) {
 	for rows.Next() {
 		var n cmap.Node
 		if err = rows.Scan(
-			&n.ID, &n.Name, &n.Type, &n.Stat, &n.Addr,
+			&n.ID, &n.Name, &n.Type, &n.Stat, &n.Addr, &n.Size,
 		); err != nil {
 			return nil, err
 		}

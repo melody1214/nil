@@ -66,4 +66,5 @@ type Node struct {
 	Type     NodeType    `xml:"type"`
 	Stat     NodeStatus  `xml:"status"`
 	MatrixID int         `xml:"matrix"`
+	Size     uint64      `xml:"size"`
 }

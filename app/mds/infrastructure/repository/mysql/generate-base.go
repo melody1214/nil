@@ -39,6 +39,7 @@ var generateSQLBase = []string{
 			node_type varchar(32) CHARACTER SET ascii NOT NULL,
 			node_status varchar(32) CHARACTER SET ascii NOT NULL,
 			node_address varchar(32) CHARACTER SET ascii NOT NULL,
+			node_size int unsigned NOT NULL DEFAULT '0',
 			PRIMARY KEY (node_id),
 			UNIQUE KEY (node_name)
 		) ENGINE=InnoDB DEFAULT CHARSET=ascii
