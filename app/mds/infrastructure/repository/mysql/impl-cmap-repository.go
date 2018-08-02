@@ -71,9 +71,9 @@ func (r *clusterMapRepository) UpdateNode(n *cmap.Node) (*cmap.CMap, error) {
 
 	q := fmt.Sprintf(
 		`
-            INSERT INTO node (node_id, node_name, node_type, node_status, node_address, node_size)
-            VALUES (%d, '%s', '%s', '%s', '%s', '%d') ON DUPLICATE KEY UPDATE node_status='%s', node_size='%d'
-            `, n.ID.Int64(), n.Name.String(), n.Type.String(), n.Stat.String(), n.Addr.String(), n.Size, n.Stat.String(), n.Size,
+        INSERT INTO node (node_id, node_name, node_type, node_status, node_address, node_size)
+        VALUES (%d, '%s', '%s', '%s', '%s', '%d') ON DUPLICATE KEY UPDATE node_status='%s', node_size='%d'
+        `, n.ID.Int64(), n.Name.String(), n.Type.String(), n.Stat.String(), n.Addr.String(), n.Size, n.Stat.String(), n.Size,
 	)
 
 	if _, err := r.s.Execute(tx, q); err != nil {

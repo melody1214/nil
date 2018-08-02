@@ -23,18 +23,16 @@ func (s *service) LocalJoin(req *nilrpc.MMELocalJoinRequest, res *nilrpc.MMELoca
 	}
 
 	ctxLogger := mlog.GetMethodLogger(logger, "service.LocalJoin")
-	ctxLogger.Infof("node %v try to join into the local cluster", req.Node)
+	ctxLogger.Infof("node from %s try to join into the local cluster", req.Node.Addr.String())
 
 	updated, err := s.cr.UpdateNode(&req.Node)
 	if err != nil {
-		ctxLogger.Infof("node %v failed to join into the local cluster by error %v", req.Node, err)
+		ctxLogger.Infof("node from %s failed to join into the local cluster by error %v", req.Node.Addr.String(), err)
 		return err
 	}
 
-	ctxLogger.Infof("%+v", updated)
-
 	s.cmapAPI.UpdateCMap(updated)
-	ctxLogger.Infof("node %v succeed to join into the local cluster", req.Node)
+	ctxLogger.Infof("node from %s succeed to join into the local cluster", req.Node.Addr.String())
 	return nil
 }
 

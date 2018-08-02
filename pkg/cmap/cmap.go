@@ -70,7 +70,7 @@ func (m *CMap) HumanReadable() string {
 	out += "+------+------+----------------------+---------+-------------------+\n"
 	for _, n := range m.Nodes {
 		row := fmt.Sprintf(
-			"| %4s | %-4s | %-20s | %-7s | %-17s |\n",
+			"| %4s | %4s | %-20s | %-7s | %-17s |\n",
 			n.ID.String(),
 			n.Type.String(),
 			n.Addr,
