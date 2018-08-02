@@ -1,6 +1,9 @@
 package account
 
 import (
+	"net/rpc"
+	"time"
+
 	"github.com/chanyoung/nil/app/mds/domain/model/bucket"
 	"github.com/chanyoung/nil/app/mds/domain/model/region"
 	"github.com/chanyoung/nil/app/mds/domain/model/user"
@@ -54,17 +57,16 @@ func (s *service) AddUser(req *nilrpc.MACAddUserRequest, res *nilrpc.MACAddUserR
 			return err
 		}
 
-		_ = leaderEndPoint
-		// 	conn, err := nilrpc.Dial(leaderEndpoint, nilrpc.RPCNil, time.Duration(2*time.Second))
-		// 	if err != nil {
-		// 		return err
-		// 	}
-		// 	defer conn.Close()
+		conn, err := nilrpc.Dial(leaderEndPoint, nilrpc.RPCNil, time.Duration(2*time.Second))
+		if err != nil {
+			return err
+		}
+		defer conn.Close()
 
-		// 	cli := rpc.NewClient(conn)
-		// 	defer cli.Close()
+		cli := rpc.NewClient(conn)
+		defer cli.Close()
 
-		// 	return cli.Call(nilrpc.MdsUserAddUser.String(), req, res)
+		return cli.Call(nilrpc.MdsAccountAddUser.String(), req, res)
 	}
 
 	u := &user.User{
@@ -94,17 +96,16 @@ func (s *service) MakeBucket(req *nilrpc.MACMakeBucketRequest, res *nilrpc.MACMa
 			return err
 		}
 
-		_ = leaderEndPoint
-		// 	conn, err := nilrpc.Dial(leaderEndpoint, nilrpc.RPCNil, time.Duration(2*time.Second))
-		// 	if err != nil {
-		// 		return err
-		// 	}
-		// 	defer conn.Close()
+		conn, err := nilrpc.Dial(leaderEndPoint, nilrpc.RPCNil, time.Duration(2*time.Second))
+		if err != nil {
+			return err
+		}
+		defer conn.Close()
 
-		// 	cli := rpc.NewClient(conn)
-		// 	defer cli.Close()
+		cli := rpc.NewClient(conn)
+		defer cli.Close()
 
-		// 	return cli.Call(nilrpc.MdsUserMakeBucket.String(), req, res)
+		return cli.Call(nilrpc.MdsAccountMakeBucket.String(), req, res)
 	}
 
 	u, err := s.usr.FindByAk(user.Key(req.AccessKey))
