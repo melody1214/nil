@@ -108,6 +108,12 @@ func (r *clusterMapRepository) FindLatest() (*cmap.CMap, error) {
 	m.Version = v
 	m.Time = t
 
+	ids, err := r.getEncodingMatricesID()
+	if err != nil {
+		return nil, err
+	}
+	m.MatrixIDs = ids
+
 	q := fmt.Sprintf(
 		`
         SELECT node_id, node_name, node_type, node_status, node_address
@@ -232,4 +238,31 @@ func (r *clusterMapRepository) InitEncodingMatricesID() error {
 	r.s.Commit(tx)
 
 	return nil
+}
+
+func (r *clusterMapRepository) getEncodingMatricesID() (ids []int, err error) {
+	q := fmt.Sprintf(
+		`
+		SELECT cem_id
+        FROM cmap_encoding_matrix
+        ORDER BY cem_id ASC
+		`,
+	)
+
+	rows, err := r.s.Query(repository.NotTx, q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int
+		if err = rows.Scan(&id); err != nil {
+			return nil, err
+		}
+
+		ids = append(ids, id)
+	}
+
+	return ids, nil
 }

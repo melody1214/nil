@@ -66,6 +66,9 @@ func copyCMap(cm *CMap) *CMap {
 	copiedMap.Nodes = make([]Node, len(cm.Nodes))
 	copy(copiedMap.Nodes, cm.Nodes)
 
+	copiedMap.MatrixIDs = make([]int, len(cm.MatrixIDs))
+	copy(copiedMap.MatrixIDs, cm.MatrixIDs)
+
 	return copiedMap
 }
 
