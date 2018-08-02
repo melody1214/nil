@@ -35,7 +35,6 @@ const (
 	MdsMembershipLocalJoin
 	MdsMembershipGlobalJoin
 	MdsMembershipUpdateNode
-	MdsMembershipRegisterVolume
 
 	// MDS object domain methods.
 	MdsObjectPut
@@ -85,8 +84,6 @@ func (m MethodName) String() string {
 		return MdsMembershipPrefix + "." + "GlobalJoin"
 	case MdsMembershipUpdateNode:
 		return MdsMembershipPrefix + "." + "UpdateNode"
-	case MdsMembershipRegisterVolume:
-		return MdsMembershipPrefix + "." + "RegisterVolume"
 
 	case MdsObjectPut:
 		return MdsObjectPrefix + "." + "Put"
