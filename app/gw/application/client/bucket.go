@@ -8,6 +8,7 @@ import (
 	"github.com/chanyoung/nil/app/gw/application/auth"
 	"github.com/chanyoung/nil/app/gw/domain/model/cred"
 	"github.com/chanyoung/nil/pkg/client"
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
 	"github.com/chanyoung/nil/pkg/s3"
 	"github.com/chanyoung/nil/pkg/util/mlog"
@@ -53,16 +54,15 @@ func (h *handlers) MakeBucketHandler(w http.ResponseWriter, r *http.Request) {
 func (h *handlers) makeBucket(accessKey, region, bucket string) error {
 	ctxLogger := mlog.GetMethodLogger(logger, "handlers.makeBucket")
 
-	// // 1. Lookup mds from cmap.
-	// mds, err := h.cmapAPI.SearchCall().Node().Type(cmap.MDS).Status(cmap.NodeAlive).Do()
-	// if err != nil {
-	// 	ctxLogger.Error(err)
-	// 	return errInternal
-	// }
+	// 1. Lookup mds from cmap.
+	mds, err := h.cmapAPI.SearchCall().Node().Type(cmap.MDS).Status(cmap.NodeAlive).Do()
+	if err != nil {
+		ctxLogger.Error(err)
+		return errInternal
+	}
 
 	// Dialing to mds for making rpc connection.
-	// conn, err := nilrpc.Dial(mds.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
-	conn, err := nilrpc.Dial("localhost:51000", nilrpc.RPCNil, time.Duration(2*time.Second))
+	conn, err := nilrpc.Dial(mds.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
 	if err != nil {
 		ctxLogger.Error(err)
 		return errInternal
