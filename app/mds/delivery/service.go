@@ -26,7 +26,7 @@ type Service struct {
 	acs account.Service
 	mes membership.Service
 	cms *cmap.Service
-	obh object.Handlers
+	obs object.Service
 	ges gencoding.Service
 
 	nilLayer        *nilmux.Layer
@@ -38,7 +38,7 @@ type Service struct {
 }
 
 // SetupDeliveryService bootstraps a delivery service with necessary dependencies.
-func SetupDeliveryService(cfg *config.Mds, acs account.Service, mes membership.Service, cms *cmap.Service, obh object.Handlers, ges gencoding.Service) (*Service, error) {
+func SetupDeliveryService(cfg *config.Mds, acs account.Service, mes membership.Service, cms *cmap.Service, obs object.Service, ges gencoding.Service) (*Service, error) {
 	if cfg == nil {
 		return nil, errors.New("invalid argument")
 	}
@@ -50,7 +50,7 @@ func SetupDeliveryService(cfg *config.Mds, acs account.Service, mes membership.S
 		acs: acs,
 		mes: mes,
 		cms: cms,
-		obh: obh,
+		obs: obs,
 		ges: ges,
 	}
 
@@ -79,7 +79,7 @@ func SetupDeliveryService(cfg *config.Mds, acs account.Service, mes membership.S
 	if err := s.nilRPCSrv.RegisterName(nilrpc.MdsMembershipPrefix, s.mes.RPCHandler()); err != nil {
 		return nil, err
 	}
-	if err := s.nilRPCSrv.RegisterName(nilrpc.MdsObjectPrefix, s.obh); err != nil {
+	if err := s.nilRPCSrv.RegisterName(nilrpc.MdsObjectPrefix, s.obs); err != nil {
 		return nil, err
 	}
 	// if err := s.nilRPCSrv.RegisterName(nilrpc.MdsGencodingPrefix, s.ges); err != nil {

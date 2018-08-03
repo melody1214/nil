@@ -74,7 +74,7 @@ func Bootstrap(cfg config.Mds) error {
 	// Setup application handlers.
 	accountService := account.NewService(&cfg, raftSimpleService, regionRepository, userRepository, bucketRepository)
 	membershipService := membership.NewService(&cfg, cmapService.MasterAPI(), raftService, regionRepository, clustermapRepository)
-	objectHandlers := object.NewHandlers()
+	objectService := object.NewService()
 	gencodingService, err := gencoding.NewService(&cfg, cmapService.SlaveAPI())
 	if err != nil {
 		return errors.Wrap(err, "failed to create global encoding service")
@@ -82,7 +82,7 @@ func Bootstrap(cfg config.Mds) error {
 
 	// Setup delivery service.
 	delivery, err := delivery.SetupDeliveryService(
-		&cfg, accountService, membershipService, cmapService, objectHandlers, gencodingService,
+		&cfg, accountService, membershipService, cmapService, objectService, gencodingService,
 	)
 	if err != nil {
 		return err
