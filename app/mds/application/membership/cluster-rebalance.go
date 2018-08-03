@@ -84,6 +84,10 @@ func pickMostUrgentEncodingMatrix(m *cmap.CMap) (matrixID int, err error) {
 				continue
 			}
 
+			if n.Stat != cmap.NodeAlive {
+				continue
+			}
+
 			sizes[i] = sizes[i] + n.Size
 		}
 	}
