@@ -24,18 +24,20 @@ type service struct {
 	vols         map[string]*vol
 	devs         map[string]*dev
 	basePath     string
+	chunkSize    int64
 	requestQueue queue
 	pushCh       chan interface{}
 	devLock      sync.RWMutex
 }
 
 // NewService returns a new backend store service.
-func NewService(basePath string) repository.Service {
+func NewService(basePath string, chunkSize int64) repository.Service {
 	return &service{
-		basePath: basePath,
-		vols:     map[string]*vol{},
-		devs:     map[string]*dev{},
-		pushCh:   make(chan interface{}, 1),
+		basePath:  basePath,
+		chunkSize: chunkSize,
+		vols:      map[string]*vol{},
+		devs:      map[string]*dev{},
+		pushCh:    make(chan interface{}, 1),
 	}
 }
 
@@ -1575,6 +1577,31 @@ func (r *ChunkWriter) Write(c chunk.Name) error {
 	}
 
 	defer f.Close()
+
+	return nil
+}
+
+func (r *ChunkWriter) Truncate(c chunk.Name) error {
+	// Find a volume that has the requested chunk.
+	vol, ok := r.handle.vols["vol-1"]
+	if !ok {
+		return volume.ErrNotFound
+	}
+
+	path := string(vol.MntPoint()) + "/" + string(c)
+
+	// Open the requested chunk.
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0775)
+	if err != nil {
+		return err
+	}
+
+	defer f.Close()
+
+	err = f.Truncate(r.handle.chunkSize)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

@@ -31,6 +31,7 @@ type Reader interface {
 
 type Writer interface {
 	Write(chunk Name) error
+	Truncate(chunk Name) error
 }
 
 type Name string
