@@ -1,7 +1,10 @@
 package object
 
 import (
+	"github.com/chanyoung/nil/app/mds/domain/model/objectmap"
+	"github.com/chanyoung/nil/pkg/cmap"
 	"github.com/chanyoung/nil/pkg/nilrpc"
+	"github.com/chanyoung/nil/pkg/util/config"
 	"github.com/chanyoung/nil/pkg/util/mlog"
 	"github.com/sirupsen/logrus"
 )
@@ -9,13 +12,20 @@ import (
 var logger *logrus.Entry
 
 type service struct {
+	cfg     *config.Mds
+	cmapAPI cmap.SlaveAPI
+	or      objectmap.Repository
 }
 
 // NewService creates a object service with necessary dependencies.
-func NewService() Service {
+func NewService(cfg *config.Mds, cmapAPI cmap.SlaveAPI, or objectmap.Repository) Service {
 	logger = mlog.GetPackageLogger("app/mds/usecase/object")
 
-	return &service{}
+	return &service{
+		cfg:     cfg,
+		cmapAPI: cmapAPI,
+		or:      or,
+	}
 }
 
 func (s *service) Put(req *nilrpc.MOBObjectPutRequest, res *nilrpc.MOBObjectPutResponse) error {

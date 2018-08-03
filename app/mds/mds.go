@@ -13,6 +13,7 @@ import (
 	"github.com/chanyoung/nil/app/mds/delivery"
 	"github.com/chanyoung/nil/app/mds/domain/model/bucket"
 	"github.com/chanyoung/nil/app/mds/domain/model/clustermap"
+	"github.com/chanyoung/nil/app/mds/domain/model/objectmap"
 	"github.com/chanyoung/nil/app/mds/domain/model/region"
 	"github.com/chanyoung/nil/app/mds/domain/model/user"
 	"github.com/chanyoung/nil/app/mds/domain/service/raft"
@@ -45,6 +46,7 @@ func Bootstrap(cfg config.Mds) error {
 	var (
 		regionRepository     region.Repository
 		clustermapRepository clustermap.Repository
+		objectmapRepository  objectmap.Repository
 		userRepository       user.Repository
 		bucketRepository     bucket.Repository
 		raftService          raft.Service
@@ -54,6 +56,7 @@ func Bootstrap(cfg config.Mds) error {
 		store := mysql.New(&cfg)
 		regionRepository = mysql.NewRegionRepository(store)
 		clustermapRepository = mysql.NewClusterMapRepository(store)
+		objectmapRepository = mysql.NewObjectMapRepository(store)
 		userRepository = mysql.NewUserRepository(store)
 		bucketRepository = mysql.NewBucketRepository(store)
 		raftService = store.NewRaftService()
@@ -74,7 +77,7 @@ func Bootstrap(cfg config.Mds) error {
 	// Setup application handlers.
 	accountService := account.NewService(&cfg, raftSimpleService, regionRepository, userRepository, bucketRepository)
 	membershipService := membership.NewService(&cfg, cmapService.MasterAPI(), raftService, regionRepository, clustermapRepository)
-	objectService := object.NewService()
+	objectService := object.NewService(&cfg, cmapService.SlaveAPI(), objectmapRepository)
 	gencodingService, err := gencoding.NewService(&cfg, cmapService.SlaveAPI())
 	if err != nil {
 		return errors.Wrap(err, "failed to create global encoding service")
