@@ -1539,17 +1539,6 @@ type ChunkHandle struct {
 	*service
 }
 
-type ObjectReader struct {
-}
-
-type ObjectWriter struct {
-}
-
-type ObjectHandle struct {
-	base chunk.ObjectHandleBase
-	*service
-}
-
 func (r *ChunkReader) Read(c chunk.Name) error {
 	// Find a volume that has the requested chunk.
 	vol, ok := r.handle.vols["vol-1"]
@@ -1606,12 +1595,57 @@ func (h *ChunkHandle) Object() chunk.ObjectHandle {
 	return &ObjectHandle{}
 }
 
+type ObjectReader struct {
+	handle *ObjectHandle
+}
+
+type ObjectWriter struct {
+	handle *ObjectHandle
+}
+
+type ObjectHandle struct {
+	base chunk.ObjectHandleBase
+	*service
+}
+
 func (h *ObjectHandle) NewReader() chunk.ObjectReader {
-	return &ObjectReader{}
+	return &ObjectReader{
+		handle: h,
+	}
 }
 
 func (h *ObjectHandle) NewWriter() chunk.ObjectWriter {
-	return &ObjectWriter{}
+	return &ObjectWriter{
+		handle: h,
+	}
+}
+
+func (r *ObjectReader) Read(o chunk.Name) error {
+	// Find a volume that has the requested chunk.
+	vol, ok := r.handle.vols["vol-1"]
+	if !ok {
+		return volume.ErrNotFound
+	}
+
+	_ = vol
+	return nil
+}
+
+func (r *ObjectWriter) Write(o chunk.Name) error {
+	// Find a volume that has the requested chunk.
+	vol, ok := r.handle.vols["vol-1"]
+	if !ok {
+		return volume.ErrNotFound
+	}
+
+	_ = vol
+	return nil
+}
+
+func (s *service) NewObjectHandle() chunk.ObjectHandle {
+	return &ObjectHandle{
+		service: s,
+	}
 }
 
 type ChunkRepository struct {
