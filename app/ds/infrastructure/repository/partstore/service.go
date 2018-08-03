@@ -3,6 +3,7 @@ package partstore
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"regexp"
@@ -1541,7 +1542,7 @@ type ChunkHandle struct {
 	*service
 }
 
-func (r *ChunkReader) Read(c chunk.Name) error {
+func (r *ChunkReader) Read(c chunk.Name, out *io.PipeWriter) error {
 	// Find a volume that has the requested chunk.
 	vol, ok := r.handle.vols["vol-1"]
 	if !ok {
@@ -1558,10 +1559,15 @@ func (r *ChunkReader) Read(c chunk.Name) error {
 
 	defer f.Close()
 
+	_, err = io.Copy(out, f)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func (r *ChunkWriter) Write(c chunk.Name) error {
+func (r *ChunkWriter) Write(c chunk.Name, in *io.PipeWriter) error {
 	// Find a volume that has the requested chunk.
 	vol, ok := r.handle.vols["vol-1"]
 	if !ok {
@@ -1577,6 +1583,11 @@ func (r *ChunkWriter) Write(c chunk.Name) error {
 	}
 
 	defer f.Close()
+
+	_, err = io.Copy(in, f)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
