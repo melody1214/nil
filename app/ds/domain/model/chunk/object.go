@@ -13,9 +13,11 @@ type ObjectHeader struct {
 }
 
 type ObjectReader interface {
+	Read(object Name) error
 }
 
 type ObjectWriter interface {
+	Write(object Name) error
 }
 
 type ObjectHandle interface {

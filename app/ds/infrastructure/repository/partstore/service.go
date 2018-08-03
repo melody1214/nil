@@ -1526,28 +1526,80 @@ func NewGencodingRepository(store repository.Service) gencoding.Repository {
 	return store
 }
 
-type ChunkReader struct{}
+type ChunkReader struct {
+	handle *ChunkHandle
+}
 
-type ChunkWriter struct{}
+type ChunkWriter struct {
+	handle *ChunkHandle
+}
 
 type ChunkHandle struct {
 	base chunk.HandleBase
+	*service
 }
 
-type ObjectReader struct{}
+type ObjectReader struct {
+}
 
-type ObjectWriter struct{}
+type ObjectWriter struct {
+}
 
 type ObjectHandle struct {
 	base chunk.ObjectHandleBase
+	*service
+}
+
+func (r *ChunkReader) Read(c chunk.Name) error {
+	// Find a volume that has the requested chunk.
+	vol, ok := r.handle.vols["vol-1"]
+	if !ok {
+		return volume.ErrNotFound
+	}
+
+	path := string(vol.MntPoint()) + "/" + string(c)
+
+	// Open the requested chunk.
+	f, err := os.Open(path)
+	if err != nil {
+		return chunk.ErrChunkNotExist
+	}
+
+	defer f.Close()
+
+	return nil
+}
+
+func (r *ChunkWriter) Write(c chunk.Name) error {
+	// Find a volume that has the requested chunk.
+	vol, ok := r.handle.vols["vol-1"]
+	if !ok {
+		return volume.ErrNotFound
+	}
+
+	path := string(vol.MntPoint()) + "/" + string(c)
+
+	// Open the requested chunk.
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0775)
+	if err != nil {
+		return err
+	}
+
+	defer f.Close()
+
+	return nil
 }
 
 func (h *ChunkHandle) NewReader() chunk.Reader {
-	return &ChunkReader{}
+	return &ChunkReader{
+		handle: h,
+	}
 }
 
 func (h *ChunkHandle) NewWriter() chunk.Writer {
-	return &ChunkWriter{}
+	return &ChunkWriter{
+		handle: h,
+	}
 }
 
 func (h *ChunkHandle) Object() chunk.ObjectHandle {
@@ -1563,20 +1615,20 @@ func (h *ObjectHandle) NewWriter() chunk.ObjectWriter {
 }
 
 type ChunkRepository struct {
-	r repository.Service
+	*service
 }
 
-func (r *ChunkRepository) Find(chunk chunk.Name) (chunk.Handle, error) {
+func (r *ChunkRepository) Find(c chunk.Name) (chunk.Handle, error) {
 	return &ChunkHandle{}, nil
 }
 
-func (r *ChunkRepository) Create(chunk chunk.Name) (chunk.Handle, error) {
+func (r *ChunkRepository) Create(c chunk.Name) (chunk.Handle, error) {
 	return &ChunkHandle{}, nil
 }
 
-func NewChunkHandleRepository(store repository.Service) chunk.Repository {
+func (s *service) NewChunkHandleRepository() chunk.Repository {
 	return &ChunkRepository{
-		r: store,
+		service: s,
 	}
 }
 

@@ -1,5 +1,12 @@
 package chunk
 
+import (
+	"errors"
+)
+
+// ErrChunkNotExist is used when the chunk not exists.
+var ErrChunkNotExist = errors.New("Chunk not exists")
+
 type HandleBase struct {
 	Header Header
 }
@@ -19,9 +26,11 @@ type Handle interface {
 }
 
 type Reader interface {
+	Read(chunk Name) error
 }
 
 type Writer interface {
+	Write(chunk Name) error
 }
 
 type Name string
