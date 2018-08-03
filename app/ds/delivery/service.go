@@ -143,6 +143,11 @@ func SetupDeliveryService(cfg *config.Ds, cls cluster.Service, obh object.Handle
 		return nil, err
 	}
 
+	// Set the retrieved cluster map for initial map.
+	if err := s.cms.UpdateCMap(&res.ClusterMap); err != nil {
+		return nil, err
+	}
+
 	return s, nil
 }
 

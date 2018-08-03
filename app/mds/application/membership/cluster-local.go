@@ -26,6 +26,8 @@ func (s *service) LocalJoin(req *nilrpc.MMELocalJoinRequest, res *nilrpc.MMELoca
 	}
 
 	ctxLogger.Infof("node from %s succeed to join into the local cluster", req.Node.Addr.String())
+
+	res.ClusterMap = s.cmapAPI.GetLatestCMap()
 	return nil
 }
 

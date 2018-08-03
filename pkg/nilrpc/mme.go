@@ -33,6 +33,7 @@ type MMELocalJoinRequest struct {
 
 // MMELocalJoinResponse reponse the result of join request.
 type MMELocalJoinResponse struct {
+	ClusterMap cmap.CMap
 }
 
 // MMEUpdateNodeRequest requests to update node.
