@@ -53,6 +53,8 @@ func (s *service) updateNode(node *cmap.Node) error {
 	}
 
 	s.cmapAPI.UpdateCMap(updated)
+	go s.rebalance()
+
 	return nil
 }
 

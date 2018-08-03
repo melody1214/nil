@@ -18,7 +18,7 @@ REGIONS=("idckr")
 GW=1
 MDS=1
 # DS=12
-DS=3
+DS=40
 GWBASEPORT=50000
 MDSBASEPORT=51000
 DSBASEPORT=52000
@@ -26,8 +26,8 @@ DSBASEPORT=52000
 # # Disk configuration.
 # DISKSIZE=400 # megabytes
 # DISKNUM=5    # per ds
-DISKSIZE=400
-DISKNUM=2
+DISKSIZE=100
+DISKNUM=1
 
 LOOPDEVNUM=10
 
@@ -85,17 +85,24 @@ function createsdisks() {
 
         # Creates a disk image.
         dd bs=1M count=$size if=/dev/zero of=$dev
-        sudo parted -s $dev mklabel gpt
-        sudo parted -s $dev mkpart primary 0% 50%
-        sudo parted -s $dev mkpart primary 50% 100%
+        sudo parted -s -a optimal $dev mklabel gpt
+        sudo parted -s $dev mkpart primary 2048s 100%
         sudo losetup -P /dev/loop$LOOPDEVNUM $dev
         sudo mkfs.xfs /dev/loop${LOOPDEVNUM}p1
-        sudo mkfs.xfs /dev/loop${LOOPDEVNUM}p2
+        echo /dev/loop${LOOPDEVNUM}p1 >> $MNT
+
+        # sudo parted -s $dev mklabel gpt
+        # sudo parted -s $dev mkpart primary 0% 100%
+        # sudo parted -s $dev mkpart primary 0% 50%
+        # sudo parted -s $dev mkpart primary 50% 100%
+        # sudo losetup -P /dev/loop$LOOPDEVNUM $dev
+        # sudo mkfs.xfs /dev/loop${LOOPDEVNUM}p1
+        # sudo mkfs.xfs /dev/loop${LOOPDEVNUM}p2
 
         # Add to ds.
         # echo $dev >> $MNT
-        echo /dev/loop${LOOPDEVNUM}p1 >> $MNT
-        echo /dev/loop${LOOPDEVNUM}p2 >> $MNT
+        # echo /dev/loop${LOOPDEVNUM}p1 >> $MNT
+        # echo /dev/loop${LOOPDEVNUM}p2 >> $MNT
         echo $NIL ds volume add /dev/loop$LOOPDEVNUM -b $HOST -p $dsport >> $PENDINGCMD
         LOOPDEVNUM=$((LOOPDEVNUM + 1))
     done

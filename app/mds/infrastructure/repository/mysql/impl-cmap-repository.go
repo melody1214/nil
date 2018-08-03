@@ -36,9 +36,9 @@ func (r *clusterMapRepository) UpdateWhole(m *cmap.CMap) (*cmap.CMap, error) {
 	for _, n := range m.Nodes {
 		q := fmt.Sprintf(
 			`
-            INSERT INTO node (node_id, node_name, node_type, node_status, node_address, node_size)
-            VALUES (%d, '%s', '%s', '%s', '%s', '%d') ON DUPLICATE KEY UPDATE node_status='%s', node_size='%d'
-            `, n.ID.Int64(), n.Name.String(), n.Type.String(), n.Stat.String(), n.Addr.String(), n.Size, n.Stat.String(), n.Size,
+            INSERT INTO node (node_id, node_name, node_type, node_status, node_address, node_size, node_encoding_matrix)
+            VALUES (%d, '%s', '%s', '%s', '%s', '%d', '%d') ON DUPLICATE KEY UPDATE node_status='%s', node_size='%d', node_encoding_matrix='%d'
+            `, n.ID.Int64(), n.Name.String(), n.Type.String(), n.Stat.String(), n.Addr.String(), n.Size, n.MatrixID, n.Stat.String(), n.Size, n.MatrixID,
 		)
 
 		if _, err := r.s.Execute(tx, q); err != nil {
@@ -71,9 +71,9 @@ func (r *clusterMapRepository) UpdateNode(n *cmap.Node) (*cmap.CMap, error) {
 
 	q := fmt.Sprintf(
 		`
-        INSERT INTO node (node_id, node_name, node_type, node_status, node_address, node_size)
-        VALUES (%d, '%s', '%s', '%s', '%s', '%d') ON DUPLICATE KEY UPDATE node_status='%s', node_size='%d'
-        `, n.ID.Int64(), n.Name.String(), n.Type.String(), n.Stat.String(), n.Addr.String(), n.Size, n.Stat.String(), n.Size,
+        INSERT INTO node (node_id, node_name, node_type, node_status, node_address, node_size, node_encoding_matrix)
+        VALUES (%d, '%s', '%s', '%s', '%s', '%d', '%d') ON DUPLICATE KEY UPDATE node_status='%s', node_size='%d', node_encoding_matrix='%d'
+        `, n.ID.Int64(), n.Name.String(), n.Type.String(), n.Stat.String(), n.Addr.String(), n.Size, n.MatrixID, n.Stat.String(), n.Size, n.MatrixID,
 	)
 
 	if _, err := r.s.Execute(tx, q); err != nil {
@@ -87,8 +87,6 @@ func (r *clusterMapRepository) UpdateNode(n *cmap.Node) (*cmap.CMap, error) {
 		return nil, errors.Wrap(err, "failed to update cluster map")
 	}
 	r.s.Commit(tx)
-
-	// TODO: rebalancing here.
 
 	r.mu.Unlock()
 
@@ -116,7 +114,7 @@ func (r *clusterMapRepository) FindLatest() (*cmap.CMap, error) {
 
 	q := fmt.Sprintf(
 		`
-        SELECT node_id, node_name, node_type, node_status, node_address, node_size
+        SELECT node_id, node_name, node_type, node_status, node_address, node_size, node_encoding_matrix
         FROM node
         `,
 	)
@@ -130,7 +128,7 @@ func (r *clusterMapRepository) FindLatest() (*cmap.CMap, error) {
 	for rows.Next() {
 		var n cmap.Node
 		if err = rows.Scan(
-			&n.ID, &n.Name, &n.Type, &n.Stat, &n.Addr, &n.Size,
+			&n.ID, &n.Name, &n.Type, &n.Stat, &n.Addr, &n.Size, &n.MatrixID,
 		); err != nil {
 			return nil, err
 		}
