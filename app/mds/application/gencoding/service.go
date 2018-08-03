@@ -10,16 +10,13 @@ import (
 var logger *logrus.Entry
 
 type service struct {
-	store Repository
 }
 
 // NewService creates a global encoding service with necessary dependencies.
-func NewService(cfg *config.Mds, cmapAPI cmap.SlaveAPI, store Repository) (Service, error) {
+func NewService(cfg *config.Mds, cmapAPI cmap.SlaveAPI) (Service, error) {
 	logger = mlog.GetPackageLogger("app/mds/application/gencoding")
 
-	s := &service{
-		store: store,
-	}
+	s := &service{}
 
 	return s, nil
 }

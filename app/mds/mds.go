@@ -47,8 +47,6 @@ func Bootstrap(cfg config.Mds) error {
 		clustermapRepository clustermap.Repository
 		userRepository       user.Repository
 		bucketRepository     bucket.Repository
-		objectStore          object.Repository
-		gencodingStore       gencoding.Repository
 		raftService          raft.Service
 		raftSimpleService    raft.SimpleService
 	)
@@ -58,8 +56,6 @@ func Bootstrap(cfg config.Mds) error {
 		clustermapRepository = mysql.NewClusterMapRepository(store)
 		userRepository = mysql.NewUserRepository(store)
 		bucketRepository = mysql.NewBucketRepository(store)
-		objectStore = mysql.NewObjectRepository(store)
-		gencodingStore = mysql.NewGencodingRepository(store)
 		raftService = store.NewRaftService()
 		raftSimpleService = raftService.NewRaftSimpleService()
 	} else {
@@ -78,8 +74,8 @@ func Bootstrap(cfg config.Mds) error {
 	// Setup application handlers.
 	accountService := account.NewService(&cfg, raftSimpleService, regionRepository, userRepository, bucketRepository)
 	membershipService := membership.NewService(&cfg, cmapService.MasterAPI(), raftService, regionRepository, clustermapRepository)
-	objectHandlers := object.NewHandlers(objectStore)
-	gencodingService, err := gencoding.NewService(&cfg, cmapService.SlaveAPI(), gencodingStore)
+	objectHandlers := object.NewHandlers()
+	gencodingService, err := gencoding.NewService(&cfg, cmapService.SlaveAPI())
 	if err != nil {
 		return errors.Wrap(err, "failed to create global encoding service")
 	}

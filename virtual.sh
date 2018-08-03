@@ -384,8 +384,6 @@ function putobjects() {
         base64 /dev/urandom | head -c $dummysize > $DIR/$dummysize.txt
         dummyarray+=($DIR/$dummysize.txt)
     done
-    # base64 /dev/urandom | head -c 6400 > $DIR/6400.txt
-    # dummyarray+=($DIR/6400.txt)
 
     for i in $(seq 1 50); do
         for j in $(seq 1 $BUCKETS); do
@@ -530,9 +528,9 @@ function main() {
         done < $PENDINGCMD
     fi
 
-    # # Put objects.
-    # sleep 15
-    # putobjects
+    # Put objects.
+    sleep 3
+    putobjects
 
     # # Get objects.
     # echo -n "Do you want to download all chunks? [y/n] "

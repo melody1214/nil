@@ -3,7 +3,6 @@ package client
 import (
 	"net/http"
 	"net/rpc"
-	"strings"
 	"time"
 
 	"github.com/chanyoung/nil/app/gw/application/auth"
@@ -46,10 +45,7 @@ func (h *handlers) getObjectLocation(oid, bucket string) (*nilrpc.MOBObjectGetRe
 	}
 	defer conn.Close()
 
-	req := &nilrpc.MOBObjectGetRequest{
-		Name:   bucket + "." + strings.Replace(oid, "/", ".", -1),
-		Bucket: bucket,
-	}
+	req := &nilrpc.MOBObjectGetRequest{}
 	res := &nilrpc.MOBObjectGetResponse{}
 
 	cli := rpc.NewClient(conn)

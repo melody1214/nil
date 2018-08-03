@@ -58,14 +58,14 @@ func (h *handlers) makeBucket(accessKey, region, bucket string) error {
 	mds, err := h.cmapAPI.SearchCall().Node().Type(cmap.MDS).Status(cmap.NodeAlive).Do()
 	if err != nil {
 		ctxLogger.Error(err)
-		return errInternal
+		return err
 	}
 
 	// Dialing to mds for making rpc connection.
 	conn, err := nilrpc.Dial(mds.Addr.String(), nilrpc.RPCNil, time.Duration(2*time.Second))
 	if err != nil {
 		ctxLogger.Error(err)
-		return errInternal
+		return err
 	}
 	defer conn.Close()
 
@@ -82,12 +82,12 @@ func (h *handlers) makeBucket(accessKey, region, bucket string) error {
 	if err := cli.Call(nilrpc.MdsAccountMakeBucket.String(), req, res); err != nil {
 		// Not mysql error, unknown error.
 		ctxLogger.Error(err)
-		return errInternal
+		return err
 	} else if res.S3ErrCode != s3.ErrNone {
 		// Kind of mysql error, mds would change it to s3.ErrorCode.
 		// TODO: change to not s3 related.
 		ctxLogger.Error(res.S3ErrCode)
-		return errInternal
+		return err
 	}
 
 	return nil
