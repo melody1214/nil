@@ -58,4 +58,40 @@ var generateSQLBase = []string{
 			PRIMARY KEY (cem_id)
 		) ENGINE=InnoDB DEFAULT CHARSET=ascii
 	`,
+	`
+		CREATE TABLE IF NOT EXISTS chunk (
+			chk_id int unsigned NOT NULL AUTO_INCREMENT,
+			chk_node int unsigned NOT NULL,
+			PRIMARY KEY (chk_id),
+			FOREIGN KEY (chk_node) REFERENCES node (node_id)
+		) ENGINE=InnoDB DEFAULT CHARSET=ascii
+	`,
+	`
+		CREATE TABLE IF NOT EXISTS object (
+			obj_id int unsigned NOT NULL AUTO_INCREMENT,
+			obj_bucket int unsigned NOT NULL,
+			obj_name varchar(255) NOT NULL,
+			PRIMARY KEY (obj_id),
+			FOREIGN KEY (obj_bucket) REFERENCES bucket (bk_id),
+			UNIQUE KEY (obj_bucket, obj_name)
+		) ENGINE=InnoDB DEFAULT CHARSET=ascii
+	`,
+	`
+		CREATE TABLE IF NOT EXISTS encoded_set (
+			es_id int unsigned NOT NULL AUTO_INCREMENT,
+			es_level int unsigned NOT NULL DEFAULT '0',
+			PRIMARY KEY (es_id)
+		) ENGINE=InnoDB DEFAULT CHARSET=ascii
+	`,
+	`
+		CREATE TABLE IF NOT EXISTS encoded_chunk (
+			ec_id int unsigned NOT NULL AUTO_INCREMENT,
+			ec_encoded_set int unsigned NOT NULL,
+			ec_encoded_sequence int unsigned NOT NULL DEFAULT '0',
+			ec_chunk int unsigned NOT NULL,
+			PRIMARY KEY (ec_id),
+			FOREIGN KEY (ec_encoded_set) REFERENCES encoded_set (es_id),
+			FOREIGN KEY (ec_chunk) REFERENCES chunk (chk_id)
+		) ENGINE=InnoDB DEFAULT CHARSET=ascii
+	`,
 }

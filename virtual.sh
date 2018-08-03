@@ -153,25 +153,16 @@ function purge() {
     rm -rf $DIR
 
     for region in ${REGIONS[@]}; do
-    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS chunk;"
-    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS recovery_volume;"
-    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS recovery;"
-    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoded_chunk;"
-    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoding_chunk;"
-    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoding_job;"
-    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS global_encoding_group;"
+    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS encoded_chunk;"
+    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS encoded_set;"
 	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS object;"
+    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS chunk;"
 	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS bucket;"
-	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS region;"
 	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS user;"
-	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS encoding_group_volume;"
-	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS encoding_group;"
-	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS volume;"
+	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS region;"
 	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS node;"
 	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS cmap;"
 	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS cmap_encoding_matrix;"
-	mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS cluster;"
-    mysql -utestNil -pnil nil${region} -e "DROP TABLE IF EXISTS cluster_job;"
     done
 }
 
