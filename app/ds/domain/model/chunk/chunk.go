@@ -33,6 +33,7 @@ type Reader interface {
 type Writer interface {
 	Write(chunk Name) (*os.File, error)
 	Truncate(chunk Name) error
+	Delete(chunk Name) error
 }
 
 type Name string

@@ -1567,6 +1567,17 @@ func (r *ChunkReader) Read(c chunk.Name) (*os.File, error) {
 	return f, nil
 }
 
+func (r *ChunkWriter) Delete(c chunk.Name) error {
+	path := "vol-1/" + string(c)
+
+	err := os.Remove(path)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (r *ChunkWriter) Write(c chunk.Name) (*os.File, error) {
 	// Find a volume that has the requested chunk.
 
