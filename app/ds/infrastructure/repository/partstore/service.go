@@ -3,7 +3,6 @@ package partstore
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"regexp"
@@ -1542,64 +1541,67 @@ type ChunkHandle struct {
 	*service
 }
 
-func (r *ChunkReader) Read(c chunk.Name, out *io.PipeWriter) error {
+func (r *ChunkReader) Read(c chunk.Name) (*os.File, error) {
 	// Find a volume that has the requested chunk.
-	vol, ok := r.handle.vols["vol-1"]
-	if !ok {
-		return volume.ErrNotFound
-	}
+	/*
+		vol, ok := r.handle.vols["vol-1"]
+		if !ok {
+			return nil, volume.ErrNotFound
+		}*/
 
-	path := string(vol.MntPoint()) + "/" + string(c)
+	path := "vol-1/" + string(c)
 
 	// Open the requested chunk.
 	f, err := os.Open(path)
 	if err != nil {
-		return chunk.ErrChunkNotExist
+		return nil, chunk.ErrChunkNotExist
 	}
+	/*
+		defer f.Close()
 
-	defer f.Close()
-
-	_, err = io.Copy(out, f)
-	if err != nil {
-		return err
-	}
-
-	return nil
+		_, err = io.Copy(out, f)
+		if err != nil {
+			return nil, err
+		}
+	*/
+	return f, nil
 }
 
-func (r *ChunkWriter) Write(c chunk.Name, in *io.PipeWriter) error {
+func (r *ChunkWriter) Write(c chunk.Name) (*os.File, error) {
 	// Find a volume that has the requested chunk.
-	vol, ok := r.handle.vols["vol-1"]
-	if !ok {
-		return volume.ErrNotFound
-	}
 
-	path := string(vol.MntPoint()) + "/" + string(c)
+	/*vol, ok := r.handle.vols["vol-1"]
+	if !ok {
+		return nil, volume.ErrNotFound
+	}
+	*/
+	path := "vol-1/" + string(c)
 
 	// Open the requested chunk.
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0775)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	/*
+		defer f.Close()
 
-	defer f.Close()
-
-	_, err = io.Copy(in, f)
-	if err != nil {
-		return err
-	}
-
-	return nil
+		_, err = io.Copy(in, f)
+		if err != nil {
+			return nil, err
+		}
+	*/
+	return f, nil
 }
 
 func (r *ChunkWriter) Truncate(c chunk.Name) error {
 	// Find a volume that has the requested chunk.
-	vol, ok := r.handle.vols["vol-1"]
-	if !ok {
-		return volume.ErrNotFound
-	}
-
-	path := string(vol.MntPoint()) + "/" + string(c)
+	/*
+		vol, ok := r.handle.vols["vol-1"]
+		if !ok {
+			return volume.ErrNotFound
+		}
+	*/
+	path := "vol-1/" + string(c)
 
 	// Open the requested chunk.
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0775)
@@ -1630,7 +1632,9 @@ func (h *ChunkHandle) NewWriter() chunk.Writer {
 }
 
 func (h *ChunkHandle) Object() chunk.ObjectHandle {
-	return &ObjectHandle{}
+	return &ObjectHandle{
+		service: h.service,
+	}
 }
 
 type ObjectReader struct {
@@ -1658,26 +1662,42 @@ func (h *ObjectHandle) NewWriter() chunk.ObjectWriter {
 	}
 }
 
-func (r *ObjectReader) Read(o chunk.Name) error {
+func (r *ObjectReader) Read(o chunk.Name) (*os.File, error) {
 	// Find a volume that has the requested chunk.
-	vol, ok := r.handle.vols["vol-1"]
+	/*vol, ok := r.handle.vols["vol-1"]
 	if !ok {
 		return volume.ErrNotFound
 	}
+	*/
+	path := "vol-1/" + string(o)
 
-	_ = vol
-	return nil
+	// Open the requested chunk.
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, chunk.ErrChunkNotExist
+	}
+
+	//_ = vol
+	return f, nil
 }
 
-func (r *ObjectWriter) Write(o chunk.Name) error {
+func (r *ObjectWriter) Write(o chunk.Name) (*os.File, error) {
 	// Find a volume that has the requested chunk.
-	vol, ok := r.handle.vols["vol-1"]
+	/*vol, ok := r.handle.vols["vol-1"]
 	if !ok {
-		return volume.ErrNotFound
+		return nil, volume.ErrNotFound
+	}
+	*/
+	path := "vol-1/" + string(o)
+
+	// Open the requested chunk.
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0775)
+	if err != nil {
+		return nil, err
 	}
 
-	_ = vol
-	return nil
+	//_ = vol
+	return f, nil
 }
 
 func (s *service) NewObjectHandle() chunk.ObjectHandle {

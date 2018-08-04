@@ -2,7 +2,7 @@ package chunk
 
 import (
 	"errors"
-	"io"
+	"os"
 )
 
 // ErrChunkNotExist is used when the chunk not exists.
@@ -27,11 +27,11 @@ type Handle interface {
 }
 
 type Reader interface {
-	Read(chunk Name, writer *io.PipeWriter) error
+	Read(chunk Name) (*os.File, error)
 }
 
 type Writer interface {
-	Write(chunk Name, writer *io.PipeWriter) error
+	Write(chunk Name) (*os.File, error)
 	Truncate(chunk Name) error
 }
 

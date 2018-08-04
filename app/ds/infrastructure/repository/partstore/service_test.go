@@ -1,8 +1,6 @@
 package partstore
 
 import (
-	"fmt"
-	"io"
 	"os"
 	"testing"
 
@@ -55,8 +53,8 @@ func TestVolume(t *testing.T) {
 }
 
 func TestChunkRW(t *testing.T) {
-	dir := "test"
-	os.Mkdir(dir, 0775)
+	dir := "test/vol-1"
+	os.MkdirAll(dir, 0775)
 	//defer os.RemoveAll(dir)
 	s := newService(dir)
 	r := s.NewChunkHandleRepository()
@@ -65,25 +63,20 @@ func TestChunkRW(t *testing.T) {
 		t.Logf("Failed to create chunk - %q\n", err)
 	}
 
-	out := new(io.PipeWriter)
-	in := new(io.PipeWriter)
-
 	writer := h.NewWriter()
 
-	io.WriteString(out, "abcde\n")
-	err = writer.Write("chunk_1", out)
+	fw, err := writer.Write("chunk_1")
+	fw.WriteString("abcde")
 
 	reader := h.NewReader()
 
-	err = reader.Read("chunk_1", in)
+	fr, err := reader.Read("chunk_1")
 	if err != nil {
 		t.Logf("Failed to read chunk - %q\n", err)
 	}
 
-	var p []byte
-	in.Write(p)
-
-	fmt.Printf("%s\n", string(p))
+	fw.Close()
+	fr.Close()
 }
 
 /*

@@ -1,5 +1,7 @@
 package chunk
 
+import "os"
+
 type ObjectHandleBase struct {
 	Header Header
 	chunk  Name
@@ -13,11 +15,11 @@ type ObjectHeader struct {
 }
 
 type ObjectReader interface {
-	Read(object Name) error
+	Read(object Name) (*os.File, error)
 }
 
 type ObjectWriter interface {
-	Write(object Name) error
+	Write(object Name) (*os.File, error)
 }
 
 type ObjectHandle interface {
